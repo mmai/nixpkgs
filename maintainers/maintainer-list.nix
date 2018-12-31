@@ -2894,6 +2894,11 @@
     github = "mmahut";
     name = "Marek Mahut";
   };
+  mmai = {
+    email = "henri.bourcereau@gmail.com";
+    github = "mmai";
+    name = "Henri Bourcereau";
+  };
   mmlb = {
     email = "me.mmlb@mmlb.me";
     github = "mmlb";

@@ -14123,6 +14123,8 @@ in
 
   shaarli-material = callPackage ../servers/web-apps/shaarli/material-theme.nix { };
 
+  funkwhale  = callPackage ../servers/web-apps/funkwhale { };
+
   matomo = callPackage ../servers/web-apps/matomo { };
 
   axis2 = callPackage ../servers/http/tomcat/axis2 { };
