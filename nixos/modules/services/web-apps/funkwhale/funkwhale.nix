@@ -11,7 +11,29 @@ let
     );
   cfg              = config.services.funkwhale;
   funkwhaleHome    = config.users.extraUsers.funkwhale.home;
-  funkwhaleEnvFile = (import ./funkwhale.env.nix)       { pkgs = pkgs; cfg = cfg; };
+  funkwhaleEnvFile = pkgs.writeText "funkwhale.env" ''
+    FUNKWHALE_API_IP=${cfg.apiIp}
+    FUNKWHALE_API_PORT=${toString cfg.apiPort}
+    FUNKWHALE_URL = "${cfg.hostname}";
+    FUNKWHALE_HOSTNAME=${cfg.hostname}
+    FUNKWHALE_PROTOCOL=${cfg.protocol}
+    EMAIL_CONFIG=${cfg.emailConfig}
+    DEFAULT_FROM_EMAIL=${cfg.defaultFromEmail}
+    REVERSE_PROXY_TYPE=nginx
+    DATABASE_URL=${cfg.api.databaseUrl}
+    CACHE_URL=${cfg.api.cacheUrl}
+    MEDIA_ROOT=${cfg.api.mediaRoot}
+    STATIC_ROOT=${cfg.api.staticRoot}
+    DJANGO_ALLOWED_HOSTS=${cfg.api.djangoAllowedHosts}
+    DJANGO_SETTINGS_MODULE=config.settings.production
+    DJANGO_SECRET_KEY=${cfg.api.djangoSecretKey}
+    RAVEN_ENABLED=false
+    RAVEN_DSN=https://44332e9fdd3d42879c7d35bf8562c6a4:0062dc16a22b41679cd5765e5342f716@sentry.eliotberriot.com/5
+    MUSIC_DIRECTORY_PATH=${cfg.musicDirectoryPath}
+    MUSIC_DIRECTORY_SERVE_PATH=${cfg.musicDirectoryPath}
+    FUNKWHALE_FRONTEND_PATH=/srv/funkwhale/front/dist
+    NGINX_MAX_BODY_SIZE=30M
+  '';
   funkwhaleEnv = {
     FUNKWHALE_ENV_FILE = "${funkwhaleEnvFile}";
   };
@@ -22,135 +44,122 @@ in
     services.funkwhale = {
       enable = mkEnableOption "funkwhale";
 
-      api_ip = mkOption {
+      apiIp = mkOption {
         type = types.str;
         default = "127.0.0.1";
         description = ''
-          Funkwhale API IP
+          Funkwhale API IP.
         '';
       };
 
-      api_port = mkOption {
-        type = types.str;
-        default = "5000";
+      apiPort = mkOption {
+        type = types.port;
+        default = 5000;
         description = ''
-          Funkwhale API Port
+          Funkwhale API Port.
         '';
       };
 
       hostname = mkOption {
         type = types.str;
-        default = "yourdomain";
         description = ''
-          The definitive, public domain you will use for your instance
+          The definitive, public domain you will use for your instance.
         '';
       };
 
       protocol = mkOption {
-        type = types.str;
+        type = types.enum [ "http" "https" ];
         default = "https";
         description = ''
-          http or https
+          Web server protocol (http or https).
         '';
       };
 
-      email_config = mkOption {
+      emailConfig = mkOption {
         type = types.str;
         default = "consolemail://";
         description = ''
-          Configure email sending using this variale
-          By default, funkwhale will output emails sent to stdout
-          here are a few examples for this setting
+          Configure email sending using this variale.
+          By default, funkwhale will output emails sent to stdout.
+          here are a few examples for this setting :
           consolemail://         # output emails to console (the default)
           dummymail://          # disable email sending completely
           On a production instance, you'll usually want to use an external SMTP server:
           smtp://user@:password@youremail.host:25
           smtp+ssl://user@:password@youremail.host:465
           smtp+tls://user@:password@youremail.host:587
+          .
         '';
       };
 
-      default_from_email = mkOption {
+      defaultFromEmail = mkOption {
         type = types.str;
-        default = "noreply@yourdomain";
         description = ''
-          The email address to use to send system emails
+          The email address to use to send system emails.
         '';
       };
-
-      # reverse_proxy_type = mkOption {
-      #   type = types.str;
-      #   default = "nginx";
-      #   description = ''
-      #     Depending on the reverse proxy used in front of your funkwhale instance,
-      #     the API will use different kind of headers to serve audio files
-      #     Allowed values: nginx, apache2
-      #   '';
-      # };
 
     api = {
-      database_url = mkOption {
+      databaseUrl = mkOption {
         type = types.str;
         default = "postgresql://funkwhale@:5432/funkwhale";
         description = ''
-          Database configuration
+          Database configuration.
           Examples:
           postgresql://user:password@host:port/database
           postgresql://funkwhale:passw0rd@localhost:5432/funkwhale_database
+          .
         '';
       };
 
-      cache_url = mkOption {
+      cacheUrl = mkOption {
         type = types.str;
         default = "redis://127.0.0.1:6379/0";
         description = ''
-          Cache configuration
+          Cache configuration.
           Examples:
           redis://host:port/database
           redis://localhost:6379/0
+          .
         '';
       };
 
-      media_root = mkOption {
+      mediaRoot = mkOption {
         type = types.str;
         default = "/srv/funkwhale/data/media";
         description = ''
-          Where media files (such as album covers or audio tracks) should be stored on your system?
-          (Ensure this directory actually exists)
+          Where media files (such as album covers or audio tracks) should be stored on your system ? Ensure this directory actually exists.
         '';
       };
 
-      static_root = mkOption {
+      staticRoot = mkOption {
         type = types.str;
         default = "/srv/funkwhale/data/static";
         description = ''
-          Where static files (such as API css or icons) should be compiled on your system?
-          (Ensure this directory actually exists)
+          Where static files (such as API css or icons) should be compiled on your system ? Ensure this directory actually exists.
         '';
       };
 
-      django_allowed_hosts = mkOption {
+      djangoAllowedHosts = mkOption {
         type = types.str;
-        default = "yourdomain";
         description = ''
-          Update it to match the domain that will be used to reach your funkwhale instance
+          Update it to match the domain that will be used to reach your funkwhale instance.
         '';
       };
 
-      django_secret_key = mkOption {
+      djangoSecretKey = mkOption {
         type = types.str;
-        default = "";
         description = ''
-          Generate one using `openssl rand -base64 45`, for example
+          Generate one using `openssl rand -base64 45`, for example.
         '';
       };
     };
 
-    music_directory_path = mkOption {
+    musicDirectoryPath = mkOption {
         type = types.str;
         default = "/srv/funkwhale/data/music";
         description = ''
-          In-place import settings
+          In-place import settings.
         '';
       };
 
@@ -162,8 +171,6 @@ in
     services.redis.enable =  true;
     services.postgresql = {
       enable = true;
-      # package = pkgs.postgresql100;
-      # enableTCPIP = true;
       authentication = pkgs.lib.mkOverride 10 ''
         local all all trust
         host all all ::1/128 trust
@@ -176,13 +183,9 @@ in
     };
     services.nginx = {
       enable = true;
-      recommendedTlsSettings = true;
-      recommendedOptimisation = true;
-      recommendedGzipSettings = true;
-      recommendedProxySettings = true;
       appendHttpConfig = ''
         upstream funkwhale-api {
-          server ${cfg.api_ip}:${cfg.api_port};
+          server ${cfg.apiIp}:${toString cfg.apiPort};
         }
       '';
       virtualHosts = {
@@ -204,31 +207,34 @@ in
             "/federation/".proxyPass = "http://funkwhale-api/federation/";
             "/rest/".proxyPass = "http://funkwhale-api/api/subsonic/rest/";
             "/.well-known/".proxyPass = "http://funkwhale-api/.well-known/";
-            "/media/".alias = "${cfg.api.media_root}/";
+            "/media/".alias = "${cfg.api.mediaRoot}/";
             "/_protected/media" = {
               extraConfig = ''
                 internal;
               '';
-              alias = "${cfg.api.media_root}";
+              alias = cfg.api.mediaRoot;
             };
             "/_protected/music" = {
               extraConfig = ''
                 internal;
               '';
-              alias = "${cfg.music_directory_path}";
+              alias = cfg.musicDirectoryPath;
             };
-            "/staticfiles/".alias = "${cfg.api.static_root}/";
+            "/staticfiles/".alias = "${cfg.api.staticRoot}/";
           };
         };
         };
       };
+
+      # systemd.tmpfiles.rules = [
+      #   "d ${funkwhaleHome} 0755 funkwhale ${cfg.group} -"
+      # ];
 
       systemd.services = 
         let serviceConfig = {
             User = "funkwhale";
             WorkingDirectory = "${pkgs.funkwhale}";
             EnvironmentFile =  "${funkwhaleEnvFile}";
-            # WorkingDirectory = "${pkgs.funkwhale}/api";
           };
         in {
         "funkwhale.target" = {
@@ -255,10 +261,10 @@ in
           environment = funkwhaleEnv;
           script = ''
             chmod a+rx ${funkwhaleHome}
-            if ! test -e ${cfg.api.media_root}; then
-            mkdir -p ${cfg.api.media_root}
-            mkdir -p ${cfg.api.static_root}
-            mkdir -p ${cfg.music_directory_path}
+            if ! test -e ${cfg.api.mediaRoot}; then
+            mkdir -p ${cfg.api.mediaRoot}
+            mkdir -p ${cfg.api.staticRoot}
+            mkdir -p ${cfg.musicDirectoryPath}
             echo "#!/bin/sh
             
             ${pythonEnv}/bin/python ${pkgs.funkwhale}/manage.py createsuperuser" > ${funkwhaleHome}/createSuperUser.sh
@@ -282,7 +288,7 @@ in
 
           serviceConfig = serviceConfig;
           environment = funkwhaleEnv;
-          script = "${pythonEnv}/bin/daphne -b ${cfg.api_ip} -p ${cfg.api_port} config.asgi:application --proxy-headers";
+          script = "${pythonEnv}/bin/daphne -b ${cfg.apiIp} -p ${toString cfg.apiPort} config.asgi:application --proxy-headers";
 
           wantedBy = [ "multi-user.target" ];
         };
@@ -291,12 +297,10 @@ in
           description = "Funkwhale celery worker";
           partOf = [ "funkwhale.target" ];
 
-          serviceConfig = serviceConfig;
+          serviceConfig = serviceConfig // { RuntimeDirectory = "funkwhaleworker"; };
           environment = funkwhaleEnv;
+            
           script = ''
-            if ! test -e ${funkwhaleHome}/run; then
-            mkdir -p ${funkwhaleHome}/run
-            fi
             ${pythonEnv}/bin/celery -A funkwhale_api.taskapp worker -l INFO
             '';
 
@@ -307,13 +311,10 @@ in
           description = "Funkwhale celery beat process";
           partOf = [ "funkwhale.target" ];
 
-          serviceConfig = serviceConfig;
+          serviceConfig = serviceConfig // { RuntimeDirectory = "funkwhalebeat"; };
           environment = funkwhaleEnv;
           script = ''
-            if ! test -e ${funkwhaleHome}/run; then
-            mkdir -p ${funkwhaleHome}/run
-            fi
-            ${pythonEnv}/bin/celery -A funkwhale_api.taskapp beat -l INFO --schedule="${funkwhaleHome}/run/celerybeat-schedule.db"  --pidfile="${funkwhaleHome}/run/celerybeat.pid"
+            ${pythonEnv}/bin/celery -A funkwhale_api.taskapp beat -l INFO --schedule="/run/funkwhalebeat/celerybeat-schedule.db"  --pidfile="/run/funkwhalebeat/celerybeat.pid"
             '';
 
           wantedBy = [ "multi-user.target" ];

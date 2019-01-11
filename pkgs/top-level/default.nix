@@ -60,7 +60,7 @@ in let
   localSystem = lib.systems.elaborate (
     # Allow setting the platform in the config file. This take precedence over
     # the inferred platform, but not over an explicitly passed-in one.
-    builtins.intersectAttrs { platform = null; } config
+    builtins.intersectAttrs { platform = null; } (if config == null then {} else config)
     // args.localSystem);
 
   crossSystem = if crossSystem0 == null then localSystem
