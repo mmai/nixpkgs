@@ -14,18 +14,21 @@ index 886178c..517d395 100644
 -
 -os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.production")
 diff --git a/config/settings/common.py b/config/settings/common.py
-index 4759d7a..58777a9 100644
+index 4759d7a..d94da0a 100644
 --- a/config/settings/common.py
 +++ b/config/settings/common.py
-@@ -22,10 +22,7 @@ ROOT_DIR = environ.Path(__file__) - 3  # (/a/b/myfile.py - 3 = /)
- APPS_DIR = ROOT_DIR.path("funkwhale_api")
+@@ -23,9 +23,12 @@ APPS_DIR = ROOT_DIR.path("funkwhale_api")
  
  env = environ.Env()
--try:
+ try:
 -    env.read_env(ROOT_DIR.file(".env"))
--except FileNotFoundError:
++    env.read_env(env_file=env.str('FUNKWHALE_ENV_FILE', '.env'))
+ except FileNotFoundError:
 -    pass
-+env.read_env(env_file=env.str('FUNKWHALE_ENV_FILE', '.env'))
++    try:
++        env.read_env(ROOT_DIR.file(".env"))
++    except FileNotFoundError:
++        pass
  
  FUNKWHALE_HOSTNAME = None
  FUNKWHALE_HOSTNAME_SUFFIX = env("FUNKWHALE_HOSTNAME_SUFFIX", default=None)

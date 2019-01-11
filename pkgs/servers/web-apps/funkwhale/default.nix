@@ -1,5 +1,4 @@
-{ pkgs ? import <nixpkgs> {} }:
-with pkgs;
+{ stdenv, fetchurl, unzip }:
 
 let
   release = "0.17";
@@ -20,7 +19,7 @@ in stdenv.mkDerivation {
   name = "funkwhale";
   version = "${release}";
   src = srcs.api;
-  buildInputs = [ pkgs.unzip ];
+  buildInputs = [ unzip ];
   propagatedBuildInputs = [ ];
   patches = [ ./0001-changes.patch ];
   installPhase = ''
