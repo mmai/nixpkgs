@@ -1,28 +1,26 @@
-{ pkgs ? import <nixpkgs> {} }:
-with pkgs;
+{ stdenv, fetchurl, unzip }:
 
 let
-  release = "0.17";
+  release = "0.18";
   srcsUrl  = "https://code.eliotberriot.com/funkwhale/funkwhale/-/jobs/artifacts/${release}/download?job=";
   srcs = {
     api = fetchurl {
       url =  "${srcsUrl}build_api";
       name =  "api.zip";
-      sha256 = "18qi94l6v61h3z4pcjvvggj1h3iqnzz4z45kz1zmbrndhvzvj4c2";
+      sha256 = "1wv4sgv9pscdksr35kj5m1g7nwn1gkv7k285rm0ilbg24w5j6fdx";
     };
     frontend = fetchurl {
       url =  "${srcsUrl}build_front";
       name =  "frontend.zip";
-      sha256 = "18mlp3zqg33l4h5rhk41alj1yl8q3vg4vab09qf6hy551p3f2y1m";
+      sha256 = "12j09xzd31hxidh42dqdz07q267wskmz97c8xck2hwkldazxvyi0";
     };
   };
 in stdenv.mkDerivation {
   name = "funkwhale";
   version = "${release}";
   src = srcs.api;
-  buildInputs = [ pkgs.unzip ];
+  buildInputs = [ unzip ];
   propagatedBuildInputs = [ ];
-  patches = [ ./0001-changes.patch ];
   installPhase = ''
     mkdir $out
     cp -R ./* $out
