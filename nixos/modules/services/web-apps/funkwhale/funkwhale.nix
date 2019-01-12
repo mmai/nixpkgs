@@ -10,7 +10,6 @@ let
       python36.withPackages(ps: with ps; (builtins.attrValues pythonRequirements.packages))
     );
   cfg              = config.services.funkwhale;
-  funkwhaleHome    = config.users.extraUsers.funkwhale.home;
   funkwhaleEnvFile = pkgs.writeText "funkwhale.env" ''
     FUNKWHALE_API_IP=${cfg.apiIp}
     FUNKWHALE_API_PORT=${toString cfg.apiPort}
@@ -31,7 +30,7 @@ let
     RAVEN_DSN=https://44332e9fdd3d42879c7d35bf8562c6a4:0062dc16a22b41679cd5765e5342f716@sentry.eliotberriot.com/5
     MUSIC_DIRECTORY_PATH=${cfg.musicDirectoryPath}
     MUSIC_DIRECTORY_SERVE_PATH=${cfg.musicDirectoryPath}
-    FUNKWHALE_FRONTEND_PATH=/srv/funkwhale/front/dist
+    FUNKWHALE_FRONTEND_PATH=${cfg.dataDir}/front/dist
     NGINX_MAX_BODY_SIZE=30M
   '';
   funkwhaleEnv = {
@@ -43,6 +42,14 @@ in
   options = {
     services.funkwhale = {
       enable = mkEnableOption "funkwhale";
+
+      dataDir = mkOption {
+        type = types.string;
+        default = "/srv/funkwhale";
+        description = ''
+          Where to keep the funkwhale data.
+        '';
+      };
 
       apiIp = mkOption {
         type = types.str;
@@ -157,6 +164,16 @@ in
   };
 
   config = mkIf cfg.enable {
+    users.users.funkwhale = {
+      description = "Funkwhale service user";
+      isSystemUser = true;
+      createHome = false;
+      home = cfg.dataDir;
+      group = "funkwhale";
+    };
+
+    users.groups.funkwhale = {};
+
     services.ntp.enable = true; 
     services.redis.enable =  true;
     services.postgresql = {
@@ -225,7 +242,7 @@ in
               extraConfig = proxyConfig;
               proxyPass = "http://funkwhale-api/.well-known/";
             };
-            "/media/".alias = "${cfg.api.mediaRoot}/";
+            "/media".alias = cfg.api.mediaRoot;
             "/_protected/media" = {
               extraConfig = ''
                 internal;
@@ -238,15 +255,18 @@ in
               '';
               alias = cfg.musicDirectoryPath;
             };
-            "/staticfiles/".alias = "${cfg.api.staticRoot}/";
+            "/staticfiles".alias = cfg.api.staticRoot;
           };
         };
         };
       };
 
-      # systemd.tmpfiles.rules = [
-      #   "d ${funkwhaleHome} 0755 funkwhale ${cfg.group} -"
-      # ];
+      systemd.tmpfiles.rules = [
+        "d ${cfg.dataDir} 0755 funkwhale funkwhale -"
+        "d ${cfg.api.mediaRoot} 0755 funkwhale funkwhale -"
+        "d ${cfg.api.staticRoot} 0755 funkwhale funkwhale -"
+        "d ${cfg.musicDirectoryPath} 0755 funkwhale funkwhale -"
+      ];
 
       systemd.services = 
         let serviceConfig = {
@@ -278,24 +298,19 @@ in
           before   = [ "funkwhale-server.service" "funkwhale-worker.service" "funkwhale-beat.service" ];
           environment = funkwhaleEnv;
           script = ''
-            chmod a+rx ${funkwhaleHome}
-            if ! test -e ${cfg.api.mediaRoot}; then
-            mkdir -p ${cfg.api.mediaRoot}
-            mkdir -p ${cfg.api.staticRoot}
-            mkdir -p ${cfg.musicDirectoryPath}
-            echo "#!/bin/sh
+            if ! test -e ${cfg.dataDir}/createSuperUser.sh; then
+              echo "#!/bin/sh
             
-            ${pythonEnv}/bin/python ${pkgs.funkwhale}/manage.py createsuperuser" > ${funkwhaleHome}/createSuperUser.sh
-            chmod u+x ${funkwhaleHome}/createSuperUser.sh
-            chown -R funkwhale.users ${funkwhaleHome}
-
-            ${pythonEnv}/bin/python ${pkgs.funkwhale}/manage.py migrate
-            ${pythonEnv}/bin/python ${pkgs.funkwhale}/manage.py collectstatic
+              ${pythonEnv}/bin/python ${pkgs.funkwhale}/manage.py createsuperuser" > ${cfg.dataDir}/createSuperUser.sh
+              chmod u+x ${cfg.dataDir}/createSuperUser.sh
+              chown -R funkwhale.funkwhale ${cfg.dataDir}
+              ${pythonEnv}/bin/python ${pkgs.funkwhale}/manage.py migrate
+              ${pythonEnv}/bin/python ${pkgs.funkwhale}/manage.py collectstatic
             fi
-            if ! test -e ${funkwhaleHome}/config; then
-              mkdir -p ${funkwhaleHome}/config
-              ln -s ${funkwhaleEnvFile} ${funkwhaleHome}/config/.env
-              ln -s ${funkwhaleEnvFile} ${funkwhaleHome}/.env
+            if ! test -e ${cfg.dataDir}/config; then
+              mkdir -p ${cfg.dataDir}/config
+              ln -s ${funkwhaleEnvFile} ${cfg.dataDir}/config/.env
+              ln -s ${funkwhaleEnvFile} ${cfg.dataDir}/.env
             fi
           '';
         };
