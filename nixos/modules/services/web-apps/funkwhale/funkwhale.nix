@@ -14,7 +14,7 @@ let
   funkwhaleEnvFile = pkgs.writeText "funkwhale.env" ''
     FUNKWHALE_API_IP=${cfg.apiIp}
     FUNKWHALE_API_PORT=${toString cfg.apiPort}
-    FUNKWHALE_URL = "${cfg.hostname}";
+    FUNKWHALE_URL=${cfg.hostname}
     FUNKWHALE_HOSTNAME=${cfg.hostname}
     FUNKWHALE_PROTOCOL=${cfg.protocol}
     EMAIL_CONFIG=${cfg.emailConfig}
@@ -65,13 +65,14 @@ in
         description = ''
           The definitive, public domain you will use for your instance.
         '';
+        example = "funkwhale.yourdomain.net";
       };
 
       protocol = mkOption {
         type = types.enum [ "http" "https" ];
         default = "https";
         description = ''
-          Web server protocol (http or https).
+          Web server protocol.
         '';
       };
 
@@ -79,17 +80,9 @@ in
         type = types.str;
         default = "consolemail://";
         description = ''
-          Configure email sending using this variale.
-          By default, funkwhale will output emails sent to stdout.
-          here are a few examples for this setting :
-          consolemail://         # output emails to console (the default)
-          dummymail://          # disable email sending completely
-          On a production instance, you'll usually want to use an external SMTP server:
-          smtp://user@:password@youremail.host:25
-          smtp+ssl://user@:password@youremail.host:465
-          smtp+tls://user@:password@youremail.host:587
-          .
+          Configure email sending. By default, it outputs emails to console instead of sending them. See https://docs.funkwhale.audio/configuration.html#email-config for details.
         '';
+        example = "smtp+ssl://user@:password@youremail.host:465";
       };
 
       defaultFromEmail = mkOption {
@@ -97,6 +90,7 @@ in
         description = ''
           The email address to use to send system emails.
         '';
+        example = "funkwhale@yourdomain.net";
       };
 
     api = {
@@ -105,11 +99,8 @@ in
         default = "postgresql://funkwhale@:5432/funkwhale";
         description = ''
           Database configuration.
-          Examples:
-          postgresql://user:password@host:port/database
-          postgresql://funkwhale:passw0rd@localhost:5432/funkwhale_database
-          .
-        '';
+          '';
+        example = "postgresql://user:password@host:port/database";
       };
 
       cacheUrl = mkOption {
@@ -117,11 +108,8 @@ in
         default = "redis://127.0.0.1:6379/0";
         description = ''
           Cache configuration.
-          Examples:
-          redis://host:port/database
-          redis://localhost:6379/0
-          .
-        '';
+          '';
+        example = "redis://host:port/database";
       };
 
       mediaRoot = mkOption {
@@ -145,13 +133,15 @@ in
         description = ''
           Update it to match the domain that will be used to reach your funkwhale instance.
         '';
+        example = "funkwhale.yourdomain.net";
       };
 
       djangoSecretKey = mkOption {
         type = types.str;
         description = ''
-          Generate one using `openssl rand -base64 45`, for example.
+          Django secret key. Generate one using `openssl rand -base64 45` for example.
         '';
+        example = "6VhAWVKlqu/dJSdz6TVgEJn/cbbAidwsFvg9ddOwuPRssEs0OtzAhJxLcLVC";
       };
     };
 
@@ -188,7 +178,23 @@ in
           server ${cfg.apiIp}:${toString cfg.apiPort};
         }
       '';
-      virtualHosts = {
+      virtualHosts = 
+      let proxyConfig = ''
+          # global proxy conf
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header X-Forwarded-Host $host:$server_port;
+          proxy_set_header X-Forwarded-Port $server_port;
+          proxy_redirect off;
+
+          # websocket support
+          proxy_http_version 1.1;
+          proxy_set_header Upgrade $http_upgrade;
+          proxy_set_header Connection $connection_upgrade;
+        '';
+      in {
         "${cfg.hostname}" = {
         # enableACME = true; #Ask Let's Encrypt to sign a certificate for this vhost
         # addSSL = true;
@@ -203,10 +209,22 @@ in
             "@rewrites".extraConfig = ''
                 rewrite ^(.+)$ /index.html last;
               '';
-            "/api/".proxyPass = "http://funkwhale-api/api/";
-            "/federation/".proxyPass = "http://funkwhale-api/federation/";
-            "/rest/".proxyPass = "http://funkwhale-api/api/subsonic/rest/";
-            "/.well-known/".proxyPass = "http://funkwhale-api/.well-known/";
+            "/api/" = { 
+              extraConfig = proxyConfig;
+              proxyPass = "http://funkwhale-api/api/";
+            };
+            "/federation/" = { 
+              extraConfig = proxyConfig;
+              proxyPass = "http://funkwhale-api/federation/";
+            };
+            "/rest/" = { 
+              extraConfig = proxyConfig;
+              proxyPass = "http://funkwhale-api/api/subsonic/rest/";
+            };
+            "/.well-known/" = { 
+              extraConfig = proxyConfig;
+              proxyPass = "http://funkwhale-api/.well-known/";
+            };
             "/media/".alias = "${cfg.api.mediaRoot}/";
             "/_protected/media" = {
               extraConfig = ''
