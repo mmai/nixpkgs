@@ -26,7 +26,7 @@ let
     DJANGO_ALLOWED_HOSTS=${cfg.api.djangoAllowedHosts}
     DJANGO_SETTINGS_MODULE=config.settings.production
     DJANGO_SECRET_KEY=${cfg.api.djangoSecretKey}
-    RAVEN_ENABLED=false
+    RAVEN_ENABLED=${boolToString cfg.enableRaven}
     RAVEN_DSN=https://44332e9fdd3d42879c7d35bf8562c6a4:0062dc16a22b41679cd5765e5342f716@sentry.eliotberriot.com/5
     MUSIC_DIRECTORY_PATH=${cfg.musicDirectoryPath}
     MUSIC_DIRECTORY_SERVE_PATH=${cfg.musicDirectoryPath}
@@ -160,6 +160,17 @@ in
         '';
       };
 
+      enableRaven = mkOption {
+        type = types.bool;
+        default = false;
+        description = ''
+          Sentry/Raven error reporting (server side).
+          Enable Raven if you want to help improve funkwhale by
+          automatically sending error reports to the funkwhale developers Sentry instance.
+          This will help them detect and correct bugs.
+        '';
+      };
+
     };
   };
 
@@ -211,13 +222,12 @@ in
           proxy_set_header Upgrade $http_upgrade;
           proxy_set_header Connection $connection_upgrade;
         '';
+        withSSL = cfg.protocol == "https";
       in {
         "${cfg.hostname}" = {
-        # enableACME = true; #Ask Let's Encrypt to sign a certificate for this vhost
-        # addSSL = true;
-        # forceSSL = true;
+          enableACME = withSSL;
+          forceSSL = withSSL;
           root = "${pkgs.funkwhale}/front";
-          default = true;
           locations = {
             "/" = {
               proxyWebsockets = true;
