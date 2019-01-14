@@ -19,11 +19,11 @@ let
     EMAIL_CONFIG=${cfg.emailConfig}
     DEFAULT_FROM_EMAIL=${cfg.defaultFromEmail}
     REVERSE_PROXY_TYPE=nginx
-    DATABASE_URL=${cfg.api.databaseUrl}
-    CACHE_URL=${cfg.api.cacheUrl}
+    DATABASE_URL=postgresql://funkwhale@:5432/funkwhale
+    CACHE_URL=redis://127.0.0.1:6379/0
     MEDIA_ROOT=${cfg.api.mediaRoot}
     STATIC_ROOT=${cfg.api.staticRoot}
-    DJANGO_ALLOWED_HOSTS=${cfg.api.djangoAllowedHosts}
+    DJANGO_ALLOWED_HOSTS=${cfg.hostname}
     DJANGO_SETTINGS_MODULE=config.settings.production
     DJANGO_SECRET_KEY=${cfg.api.djangoSecretKey}
     RAVEN_ENABLED=${boolToString cfg.enableRaven}
@@ -100,59 +100,33 @@ in
         example = "funkwhale@yourdomain.net";
       };
 
-    api = {
-      databaseUrl = mkOption {
-        type = types.str;
-        default = "postgresql://funkwhale@:5432/funkwhale";
-        description = ''
-          Database configuration.
+      api = {
+        mediaRoot = mkOption {
+          type = types.str;
+          default = "/srv/funkwhale/data/media";
+          description = ''
+            Where media files (such as album covers or audio tracks) should be stored on your system ? Ensure this directory actually exists.
           '';
-        example = "postgresql://user:password@host:port/database";
-      };
+        };
 
-      cacheUrl = mkOption {
-        type = types.str;
-        default = "redis://127.0.0.1:6379/0";
-        description = ''
-          Cache configuration.
+        staticRoot = mkOption {
+          type = types.str;
+          default = "/srv/funkwhale/data/static";
+          description = ''
+            Where static files (such as API css or icons) should be compiled on your system ? Ensure this directory actually exists.
           '';
-        example = "redis://host:port/database";
+        };
+
+        djangoSecretKey = mkOption {
+          type = types.str;
+          description = ''
+            Django secret key. Generate one using `openssl rand -base64 45` for example.
+          '';
+          example = "6VhAWVKlqu/dJSdz6TVgEJn/cbbAidwsFvg9ddOwuPRssEs0OtzAhJxLcLVC";
+        };
       };
 
-      mediaRoot = mkOption {
-        type = types.str;
-        default = "/srv/funkwhale/data/media";
-        description = ''
-          Where media files (such as album covers or audio tracks) should be stored on your system ? Ensure this directory actually exists.
-        '';
-      };
-
-      staticRoot = mkOption {
-        type = types.str;
-        default = "/srv/funkwhale/data/static";
-        description = ''
-          Where static files (such as API css or icons) should be compiled on your system ? Ensure this directory actually exists.
-        '';
-      };
-
-      djangoAllowedHosts = mkOption {
-        type = types.str;
-        description = ''
-          Update it to match the domain that will be used to reach your funkwhale instance.
-        '';
-        example = "funkwhale.yourdomain.net";
-      };
-
-      djangoSecretKey = mkOption {
-        type = types.str;
-        description = ''
-          Django secret key. Generate one using `openssl rand -base64 45` for example.
-        '';
-        example = "6VhAWVKlqu/dJSdz6TVgEJn/cbbAidwsFvg9ddOwuPRssEs0OtzAhJxLcLVC";
-      };
-    };
-
-    musicDirectoryPath = mkOption {
+      musicDirectoryPath = mkOption {
         type = types.str;
         default = "/srv/funkwhale/data/music";
         description = ''
