@@ -2270,6 +2270,8 @@ in {
 
   django-sampledatahelper = callPackage ../development/python-modules/django-sampledatahelper { };
 
+	django-versatileimagefield = callPackage ../development/python-modules/django-versatileimagefield  { };
+
   django-sites = callPackage ../development/python-modules/django-sites { };
 
   django-sr = callPackage ../development/python-modules/django-sr { };
