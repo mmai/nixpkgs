@@ -2218,6 +2218,8 @@ in {
 
   django_polymorphic = callPackage ../development/python-modules/django-polymorphic { };
 
+  django-rest-auth = callPackage ../development/python-modules/django-rest-auth { };
+
   django-sampledatahelper = callPackage ../development/python-modules/django-sampledatahelper { };
 
   django-sites = callPackage ../development/python-modules/django-sites { };
