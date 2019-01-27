@@ -3919,6 +3919,8 @@ in {
 
   owslib = callPackage ../development/python-modules/owslib { };
 
+  requests-http-signature = callPackage ../development/python-modules/requests-http-signature { };
+
   resampy = callPackage ../development/python-modules/resampy { };
 
   restructuredtext_lint = callPackage ../development/python-modules/restructuredtext_lint { };
