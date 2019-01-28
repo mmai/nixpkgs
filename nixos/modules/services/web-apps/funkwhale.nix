@@ -470,8 +470,18 @@ in
               set +a
               ${pythonEnv}/bin/python ${pkgs.funkwhale}/manage.py createsuperuser" > ${cfg.dataDir}/createSuperUser.sh
               chmod u+x ${cfg.dataDir}/createSuperUser.sh
-              chown -R funkwhale.funkwhale ${cfg.dataDir}
             fi
+            if ! test -e ${cfg.dataDir}/importMusic.sh; then
+              echo "#!/bin/sh
+            
+              LIBRARY_ID=\$1
+              set -a
+              . ${funkwhaleEnvFile}
+              set +a
+              ${pythonEnv}/bin/python ${pkgs.funkwhale}/manage.py import_files \$LIBRARY_ID '/srv/funkwhale/data/music/**/*.*' --recursive --noinput --in-place" > ${cfg.dataDir}/importMusic.sh
+              chmod u+x ${cfg.dataDir}/importMusic.sh
+            fi
+            chown -R funkwhale.funkwhale ${cfg.dataDir}
             if ! test -e ${cfg.dataDir}/config; then
               mkdir -p ${cfg.dataDir}/config
               ln -s ${funkwhaleEnvFile} ${cfg.dataDir}/config/.env
