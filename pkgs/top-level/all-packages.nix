@@ -1665,6 +1665,8 @@ in
 
   fsmark = callPackage ../tools/misc/fsmark { };
 
+  funkwhale  = callPackage ../servers/web-apps/funkwhale { };
+
   futhark = haskell.lib.justStaticExecutables haskellPackages.futhark;
 
   fwup = callPackage ../tools/misc/fwup { };
