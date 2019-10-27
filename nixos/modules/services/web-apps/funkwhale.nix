@@ -77,8 +77,8 @@ let
     "DJANGO_SECRET_KEY=${cfg.api.djangoSecretKey}"
     "RAVEN_ENABLED=${boolToString cfg.enableRaven}"
     "RAVEN_DSN=${cfg.ravenDsn}"
-    "MUSIC_DIRECTORY_PATH=${cfg.musicDirectoryPath}"
-    "MUSIC_DIRECTORY_SERVE_PATH=${cfg.musicDirectoryPath}"
+    "MUSIC_DIRECTORY_PATH=${cfg.musicPath}"
+    "MUSIC_DIRECTORY_SERVE_PATH=${cfg.musicPath}"
     "FUNKWHALE_FRONTEND_PATH=${cfg.dataDir}/front/dist"
   ];
   funkwhaleEnvFileData = builtins.concatStringsSep "\n" funkwhaleEnvironment;
@@ -117,7 +117,6 @@ in
           port = mkOption {
             type = types.int;
             default = 5432;
-            defaultText = "5432";
             description = "Database host port.";
           };
 
@@ -156,8 +155,6 @@ in
           socket = mkOption {
             type = types.nullOr types.path;
             default = "/run/postgresql";
-            defaultText = "/run/postgresql";
-            example = "/run/postgresql";
             description = "Path to the unix socket file to use for authentication for local connections.";
           };
 
@@ -220,7 +217,8 @@ in
           type = types.str;
           default = "consolemail://";
           description = ''
-            Configure email sending. By default, it outputs emails to console instead of sending them. See https://docs.funkwhale.audio/configuration.html#email-config for details.
+            Configure email sending. By default, it outputs emails to console instead of sending them.
+            See <link xlink:href="https://docs.funkwhale.audio/configuration.html#email-config"/> for details.
           '';
           example = "smtp+ssl://user@:password@youremail.host:465";
         };
@@ -238,7 +236,7 @@ in
             type = types.str;
             default = "/srv/funkwhale/media";
             description = ''
-              Where media files (such as album covers or audio tracks) should be stored on your system ? Ensure this directory actually exists.
+              Where media files (such as album covers or audio tracks) should be stored on your system.
             '';
           };
 
@@ -246,20 +244,20 @@ in
             type = types.str;
             default = "/srv/funkwhale/static";
             description = ''
-              Where static files (such as API css or icons) should be compiled on your system ? Ensure this directory actually exists.
+              Where static files (such as API css or icons) should be compiled on your system.
             '';
           };
 
           djangoSecretKey = mkOption {
             type = types.str;
             description = ''
-              Django secret key. Generate one using `openssl rand -base64 45` for example.
+              Django secret key. Generate one using <command>openssl rand -base64 45</command> for example.
             '';
             example = "6VhAWVKlqu/dJSdz6TVgEJn/cbbAidwsFvg9ddOwuPRssEs0OtzAhJxLcLVC";
           };
         };
 
-        musicDirectoryPath = mkOption {
+        musicPath = mkOption {
           type = types.str;
           default = "/srv/funkwhale/music";
           description = ''
@@ -306,12 +304,14 @@ in
         }
       ];
 
-      users.users = optionalAttrs (cfg.user == "funkwhale") (singleton
-        { name = "funkwhale";
-          group = cfg.group;
-        });
+      # users.users = optionalAttrs (cfg.user == "funkwhale") (singleton
+      #   { name = "funkwhale";
+      #     group = cfg.group;
+      #   });
+      users.users.funkwhale = mkIf (cfg.user == "funkwhale") { group = cfg.group; };
 
-      users.groups = optionalAttrs (cfg.group == "funkwhale") (singleton { name = "funkwhale"; });
+      # users.groups = optionalAttrs (cfg.group == "funkwhale") (singleton { name = "funkwhale"; });
+      users.groups.funkwhale = mkIf (cfg.group == "funkwhale") {};
 
       services.postgresql = mkIf cfg.database.createLocally {
         enable = true;
@@ -354,7 +354,8 @@ in
             enableACME = withSSL;
             forceSSL = withSSL;
             root = "${pkgs.funkwhale}/front";
-          # gzip config is nixos nginx recommendedGzipSettings with gzip_types from funkwhale doc (https://docs.funkwhale.audio/changelog.html#id5)
+          # gzip config is nixos nginx recommendedGzipSettings with gzip_types 
+          # from funkwhale doc (https://docs.funkwhale.audio/changelog.html#id5)
             extraConfig = ''
               add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; object-src 'none'; media-src 'self' data:";
               add_header Referrer-Policy "strict-origin-when-cross-origin";
@@ -432,7 +433,7 @@ in
                 extraConfig = ''
                   internal;
                 '';
-                alias = "${cfg.musicDirectoryPath}/";
+                alias = "${cfg.musicPath}/";
               };
               "/staticfiles/".alias = "${cfg.api.staticRoot}/";
             };
@@ -444,7 +445,7 @@ in
         "d ${cfg.dataDir} 0755 ${cfg.user} ${cfg.group} - -"
         "d ${cfg.api.mediaRoot} 0755 ${cfg.user} ${cfg.group} - -"
         "d ${cfg.api.staticRoot} 0755 ${cfg.user} ${cfg.group} - -"
-        "d ${cfg.musicDirectoryPath} 0755 ${cfg.user} ${cfg.group} - -"
+        "d ${cfg.musicPath} 0755 ${cfg.user} ${cfg.group} - -"
       ];
 
       systemd.targets.funkwhale = {
@@ -455,7 +456,6 @@ in
       let serviceConfig = {
         User = "${cfg.user}";
         WorkingDirectory = "${pkgs.funkwhale}";
-        EnvironmentFile =  "${funkwhaleEnvFile}";
       };
       in {
         funkwhale-psql-init = mkIf cfg.database.createLocally {
@@ -465,7 +465,9 @@ in
           before   = [ "funkwhale-init.service" ];
           serviceConfig = {
             User = "postgres";
-            ExecStart = '' ${config.services.postgresql.package}/bin/psql -d ${cfg.database.name}  -c 'CREATE EXTENSION IF NOT EXISTS "unaccent";CREATE EXTENSION IF NOT EXISTS "citext";' '';
+            ExecStart = '' ${config.services.postgresql.package}/bin/psql \
+              -d ${cfg.database.name}  -c 'CREATE EXTENSION IF NOT EXISTS \
+              "unaccent";CREATE EXTENSION IF NOT EXISTS "citext";' '';
           };
         };
         funkwhale-init = {
@@ -478,12 +480,13 @@ in
             Group = "${cfg.group}";
           };
           script = ''
-            ${pythonEnv}/bin/python ${pkgs.funkwhale}/manage.py migrate
-            ${pythonEnv}/bin/python ${pkgs.funkwhale}/manage.py collectstatic --no-input
+            ${pythonEnv.interpreter} ${pkgs.funkwhale}/manage.py migrate
+            ${pythonEnv.interpreter} ${pkgs.funkwhale}/manage.py collectstatic --no-input
             if ! test -e ${cfg.dataDir}/createSuperUser.sh; then
               echo "#!/bin/sh
 
-              ${funkwhaleEnvScriptData} ${pythonEnv}/bin/python ${pkgs.funkwhale}/manage.py createsuperuser" > ${cfg.dataDir}/createSuperUser.sh
+              ${funkwhaleEnvScriptData} ${pythonEnv.interpreter} ${pkgs.funkwhale}/manage.py \
+                createsuperuser" > ${cfg.dataDir}/createSuperUser.sh
               chmod u+x ${cfg.dataDir}/createSuperUser.sh
               chown -R ${cfg.user}.${cfg.group} ${cfg.dataDir}
             fi
@@ -500,7 +503,9 @@ in
           partOf = [ "funkwhale.target" ];
 
           serviceConfig = serviceConfig // { 
-            ExecStart = "${pythonEnv}/bin/gunicorn config.asgi:application -w ${toString cfg.webWorkers} -k uvicorn.workers.UvicornWorker -b ${cfg.apiIp}:${toString cfg.apiPort}";
+            ExecStart = ''${pythonEnv}/bin/gunicorn config.asgi:application \
+              -w ${toString cfg.webWorkers} -k uvicorn.workers.UvicornWorker \
+              -b ${cfg.apiIp}:${toString cfg.apiPort}'';
           };
           environment = funkwhaleEnv;
 
@@ -526,7 +531,9 @@ in
 
           serviceConfig = serviceConfig // { 
             RuntimeDirectory = "funkwhalebeat"; 
-            ExecStart = '' ${pythonEnv}/bin/celery -A funkwhale_api.taskapp beat -l INFO --schedule="/run/funkwhalebeat/celerybeat-schedule.db"  --pidfile="/run/funkwhalebeat/celerybeat.pid" '';
+            ExecStart = '' ${pythonEnv}/bin/celery -A funkwhale_api.taskapp beat \
+              -l INFO --schedule="/run/funkwhalebeat/celerybeat-schedule.db"  \
+              --pidfile="/run/funkwhalebeat/celerybeat.pid" '';
           };
           environment = funkwhaleEnv;
 
