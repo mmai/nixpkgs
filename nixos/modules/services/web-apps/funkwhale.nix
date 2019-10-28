@@ -3,58 +3,11 @@
 with lib;
 
 let
-  pythonEnv = (pkgs.python3.override {
+  funkwhalePyEnv = (pkgs.python3.override {
     packageOverrides = self: super: rec {
       django = self.django_2_2;
     };
-  }).withPackages (ps: [
-    ps.aioredis
-    ps.aiohttp
-    ps.autobahn
-    ps.av
-    ps.boto3
-    ps.celery
-    ps.channels
-    ps.channels-redis
-    ps.django
-    ps.django-allauth
-    ps.django-auth-ldap
-    ps.django-oauth-toolkit
-    ps.django-cleanup
-    ps.django-cors-headers
-    ps.django-dynamic-preferences
-    ps.django_environ
-    ps.django-filter
-    ps.django_redis
-    ps.django-rest-auth
-    ps.djangorestframework
-    ps.djangorestframework-jwt
-    ps.django-storages
-    ps.django_taggit
-    ps.django-versatileimagefield
-    ps.gunicorn
-    ps.kombu
-    ps.ldap
-    ps.mutagen
-    ps.musicbrainzngs
-    ps.pillow
-    ps.pendulum
-    ps.persisting-theory
-    ps.psycopg2
-    ps.pyacoustid
-    ps.pydub
-    ps.PyLD
-    ps.pymemoize
-    ps.pyopenssl
-    ps.python_magic
-    ps.redis
-    ps.requests
-    ps.requests-http-signature
-    ps.service-identity
-    ps.unidecode
-    ps.unicode-slugify
-    ps.uvicorn
-  ]);
+  }).withPackages (ps: with ps; [ funkwhale ]);
   cfg              = config.services.funkwhale;
   databasePassword = if (cfg.database.passwordFile != null) 
     then builtins.readFile cfg.database.passwordFile
@@ -79,7 +32,7 @@ let
     "RAVEN_DSN=${cfg.ravenDsn}"
     "MUSIC_DIRECTORY_PATH=${cfg.musicPath}"
     "MUSIC_DIRECTORY_SERVE_PATH=${cfg.musicPath}"
-    "FUNKWHALE_FRONTEND_PATH=${cfg.dataDir}/front/dist"
+    "FUNKWHALE_FRONTEND_PATH=${cfg.dataDir}/dist"
   ];
   funkwhaleEnvFileData = builtins.concatStringsSep "\n" funkwhaleEnvironment;
   funkwhaleEnvScriptData = builtins.concatStringsSep " " funkwhaleEnvironment;
@@ -353,7 +306,7 @@ in
           "${cfg.hostname}" = {
             enableACME = withSSL;
             forceSSL = withSSL;
-            root = "${pkgs.funkwhale}/front";
+            root = "${pkgs.funkwhale}";
           # gzip config is nixos nginx recommendedGzipSettings with gzip_types 
           # from funkwhale doc (https://docs.funkwhale.audio/changelog.html#id5)
             extraConfig = ''
@@ -390,7 +343,7 @@ in
                 proxyPass = "http://funkwhale-api/";
               };
               "/front/" = {
-                alias = "${pkgs.funkwhale}/front/";
+                alias = "${pkgs.funkwhale}/";
                 extraConfig = ''
                   add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; object-src 'none'; media-src 'self' data:";
                   add_header Referrer-Policy "strict-origin-when-cross-origin";
@@ -400,7 +353,7 @@ in
                 '';
               };
               "= /front/embed.html" = {
-                alias = "${pkgs.funkwhale}/front/embed.html";
+                alias = "${pkgs.funkwhale}/embed.html";
                 extraConfig = ''
                   add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; object-src 'none'; media-src 'self' data:";
                   add_header Referrer-Policy "strict-origin-when-cross-origin";
@@ -455,7 +408,7 @@ in
       systemd.services = 
       let serviceConfig = {
         User = "${cfg.user}";
-        WorkingDirectory = "${pkgs.funkwhale}";
+        WorkingDirectory = "${pkgs.python37Packages.funkwhale}";
       };
       in {
         funkwhale-psql-init = mkIf cfg.database.createLocally {
@@ -480,12 +433,12 @@ in
             Group = "${cfg.group}";
           };
           script = ''
-            ${pythonEnv.interpreter} ${pkgs.funkwhale}/manage.py migrate
-            ${pythonEnv.interpreter} ${pkgs.funkwhale}/manage.py collectstatic --no-input
+            ${funkwhalePyEnv.interpreter} ${pkgs.python37Packages.funkwhale}/manage.py migrate
+            ${funkwhalePyEnv.interpreter} ${pkgs.python37Packages.funkwhale}/manage.py collectstatic --no-input
             if ! test -e ${cfg.dataDir}/createSuperUser.sh; then
               echo "#!/bin/sh
 
-              ${funkwhaleEnvScriptData} ${pythonEnv.interpreter} ${pkgs.funkwhale}/manage.py \
+              ${funkwhaleEnvScriptData} ${funkwhalePyEnv.interpreter} ${pkgs.python37Packages.funkwhale}/manage.py \
                 createsuperuser" > ${cfg.dataDir}/createSuperUser.sh
               chmod u+x ${cfg.dataDir}/createSuperUser.sh
               chown -R ${cfg.user}.${cfg.group} ${cfg.dataDir}
@@ -503,7 +456,7 @@ in
           partOf = [ "funkwhale.target" ];
 
           serviceConfig = serviceConfig // { 
-            ExecStart = ''${pythonEnv}/bin/gunicorn config.asgi:application \
+            ExecStart = ''${pkgs.python37Packages.funkwhale}/bin/gunicorn config.asgi:application \
               -w ${toString cfg.webWorkers} -k uvicorn.workers.UvicornWorker \
               -b ${cfg.apiIp}:${toString cfg.apiPort}'';
           };
@@ -518,7 +471,7 @@ in
 
           serviceConfig = serviceConfig // { 
             RuntimeDirectory = "funkwhaleworker"; 
-            ExecStart = "${pythonEnv}/bin/celery -A funkwhale_api.taskapp worker -l INFO";
+            ExecStart = "${pkgs.python37Packages.funkwhale}/bin/celery -A funkwhale_api.taskapp worker -l INFO";
           };
           environment = funkwhaleEnv;
 
@@ -531,7 +484,7 @@ in
 
           serviceConfig = serviceConfig // { 
             RuntimeDirectory = "funkwhalebeat"; 
-            ExecStart = '' ${pythonEnv}/bin/celery -A funkwhale_api.taskapp beat \
+            ExecStart = '' ${pkgs.python37Packages.funkwhale}/bin/celery -A funkwhale_api.taskapp beat \
               -l INFO --schedule="/run/funkwhalebeat/celerybeat-schedule.db"  \
               --pidfile="/run/funkwhalebeat/celerybeat.pid" '';
           };
