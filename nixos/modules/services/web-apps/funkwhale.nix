@@ -456,7 +456,7 @@ in
           partOf = [ "funkwhale.target" ];
 
           serviceConfig = serviceConfig // { 
-            ExecStart = ''${pkgs.python37Packages.funkwhale}/bin/gunicorn config.asgi:application \
+            ExecStart = ''${pkgs.python37Packages.gunicorn}/bin/gunicorn config.asgi:application \
               -w ${toString cfg.webWorkers} -k uvicorn.workers.UvicornWorker \
               -b ${cfg.apiIp}:${toString cfg.apiPort}'';
           };
@@ -471,7 +471,7 @@ in
 
           serviceConfig = serviceConfig // { 
             RuntimeDirectory = "funkwhaleworker"; 
-            ExecStart = "${pkgs.python37Packages.funkwhale}/bin/celery -A funkwhale_api.taskapp worker -l INFO";
+            ExecStart = "${pkgs.python37Packages.celery}/bin/celery -A funkwhale_api.taskapp worker -l INFO";
           };
           environment = funkwhaleEnv;
 
@@ -484,7 +484,7 @@ in
 
           serviceConfig = serviceConfig // { 
             RuntimeDirectory = "funkwhalebeat"; 
-            ExecStart = '' ${pkgs.python37Packages.funkwhale}/bin/celery -A funkwhale_api.taskapp beat \
+            ExecStart = '' ${pkgs.python37Packages.celery}/bin/celery -A funkwhale_api.taskapp beat \
               -l INFO --schedule="/run/funkwhalebeat/celerybeat-schedule.db"  \
               --pidfile="/run/funkwhalebeat/celerybeat.pid" '';
           };

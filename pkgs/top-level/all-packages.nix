@@ -1666,6 +1666,7 @@ in
   fsmark = callPackage ../tools/misc/fsmark { };
 
   funkwhale  = callPackage ../servers/web-apps/funkwhale { };
+  funkwhale-django = callPackage ../servers/web-apps/funkwhale/funkwhale-django.nix { };
 
   futhark = haskell.lib.justStaticExecutables haskellPackages.futhark;
 

@@ -609,8 +609,6 @@ in {
 
   flufl_lock = callPackage ../development/python-modules/flufl/lock.nix { };
 
-  funkwhale = disabledIf (!isPy3k) (callPackage ../servers/web-apps/funkwhale/funkwhale-django.nix { });
-
   foxdot = callPackage ../development/python-modules/foxdot { };
 
   fsspec = callPackage ../development/python-modules/fsspec { };
