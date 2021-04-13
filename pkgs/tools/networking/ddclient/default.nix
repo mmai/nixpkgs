@@ -1,28 +1,27 @@
-{ stdenv, fetchurl, perlPackages, iproute }:
+{ lib, fetchurl, perlPackages, iproute2, perl }:
 
 perlPackages.buildPerlPackage rec {
-  name = "ddclient-${version}";
-  version = "3.8.3";
+  pname = "ddclient";
+  version = "3.9.0";
 
   src = fetchurl {
-    url = "mirror://sourceforge/ddclient/${name}.tar.gz";
-    sha256 = "1j8zdn7fy7i0bjk3jf0hxnbnshc2yf054vxq64imxdpfd7n5zgfy";
+    url = "mirror://sourceforge/ddclient/${pname}-${version}.tar.gz";
+    sha256 = "0fwyhab8yga2yi1kdfkbqxa83wxhwpagmj1w1mwkg2iffh1fjjlw";
   };
 
   # perl packages by default get devdoc which isn't present
   outputs = [ "out" ];
 
-  buildInputs = with perlPackages; [ IOSocketSSL DigestSHA1 ];
-
-  patches = [ ./ddclient-line-buffer-stdout.patch ];
+  buildInputs = with perlPackages; [ IOSocketSSL DigestSHA1 DataValidateIP JSONPP ];
 
   # Use iproute2 instead of ifconfig
   preConfigure = ''
     touch Makefile.PL
     substituteInPlace ddclient \
       --replace 'in the output of ifconfig' 'in the output of ip addr show' \
-      --replace 'ifconfig -a'               '${iproute}/sbin/ip addr show' \
-      --replace 'ifconfig $arg'             '${iproute}/sbin/ip addr show $arg'
+      --replace 'ifconfig -a' '${iproute2}/sbin/ip addr show' \
+      --replace 'ifconfig $arg' '${iproute2}/sbin/ip addr show $arg' \
+      --replace '/usr/bin/perl' '${perl}/bin/perl' # Until we get the patchShebangs fixed (issue #55786) we need to patch this manually
   '';
 
   installPhase = ''
@@ -37,9 +36,9 @@ perlPackages.buildPerlPackage rec {
   # there are no tests distributed with ddclient
   doCheck = false;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Client for updating dynamic DNS service entries";
-    homepage    = https://sourceforge.net/p/ddclient/wiki/Home/;
+    homepage    = "https://sourceforge.net/p/ddclient/wiki/Home/";
     license     = licenses.gpl2Plus;
     # Mostly since `iproute` is Linux only.
     platforms   = platforms.linux;

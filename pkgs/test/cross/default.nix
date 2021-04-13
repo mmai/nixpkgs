@@ -13,7 +13,7 @@ let
   compareTest = { emulator, pkgFun, hostPkgs, crossPkgs, exec, args ? [] }: let
     pkgName = (pkgFun hostPkgs).name;
     args' = lib.concatStringsSep " " args;
-  in pkgs.runCommand "test-${pkgName}-${crossPkgs.hostPlatform.config}" {
+  in crossPkgs.runCommand "test-${pkgName}-${crossPkgs.hostPlatform.config}" {
     nativeBuildInputs = [ pkgs.dos2unix ];
   } ''
     # Just in case we are using wine, get rid of that annoying extra
@@ -26,13 +26,19 @@ let
     # We need to remove whitespace, unfortunately
     # Windows programs use \r but Unix programs use \n
 
+    echo Running native-built program natively
+
     # find expected value natively
     ${getExecutable hostPkgs pkgFun exec} ${args'} \
       | dos2unix > $out/expected
 
+    echo Running cross-built program in emulator
+
     # run emulator to get actual value
     ${emulator} ${getExecutable crossPkgs pkgFun exec} ${args'} \
       | dos2unix > $out/actual
+
+    echo Comparing results...
 
     if [ "$(cat $out/actual)" != "$(cat $out/expected)" ]; then
       echo "${pkgName} did not output expected value:"
@@ -47,10 +53,10 @@ let
     fi
   '';
 
-  mapMultiPlatformTest = test: lib.mapAttrs (name: system: test rec {
+  mapMultiPlatformTest = crossSystemFun: test: lib.mapAttrs (name: system: test rec {
     crossPkgs = import pkgs.path {
       localSystem = { inherit (pkgs.hostPlatform) config; };
-      crossSystem = system;
+      crossSystem = crossSystemFun system;
     };
 
     emulator = crossPkgs.hostPlatform.emulator pkgs;
@@ -65,26 +71,43 @@ let
       } else pkg;
   }) testedSystems;
 
-in
+  tests = {
 
-lib.mapAttrs (_: mapMultiPlatformTest) {
+    file = {platformFun, crossPkgs, emulator}: compareTest {
+      inherit emulator crossPkgs;
+      hostPkgs = pkgs;
+      exec = "/bin/file";
+      args = [
+        "${pkgs.file}/share/man/man1/file.1.gz"
+        "${pkgs.dejavu_fonts}/share/fonts/truetype/DejaVuMathTeXGyre.ttf"
+      ];
+      pkgFun = pkgs: platformFun pkgs.file;
+    };
 
-  file = {platformFun, crossPkgs, emulator}: compareTest {
-    inherit emulator crossPkgs;
-    hostPkgs = pkgs;
-    exec = "/bin/file";
-    args = [
-      "${pkgs.file}/share/man/man1/file.1.gz"
-      "${pkgs.dejavu_fonts}/share/fonts/truetype/DejaVuMathTeXGyre.ttf"
-    ];
-    pkgFun = pkgs: platformFun pkgs.file;
+    hello = {platformFun, crossPkgs, emulator}: compareTest {
+      inherit emulator crossPkgs;
+      hostPkgs = pkgs;
+      exec = "/bin/hello";
+      pkgFun = pkgs: pkgs.hello;
+    };
+
+    pkg-config = {platformFun, crossPkgs, emulator}: crossPkgs.runCommand
+      "test-pkg-config-${crossPkgs.hostPlatform.config}"
+    {
+      depsBuildBuild = [ crossPkgs.pkgsBuildBuild.pkg-config ];
+      nativeBuildInputs = [ crossPkgs.pkgsBuildHost.pkg-config crossPkgs.buildPackages.zlib ];
+      depsBuildTarget = [ crossPkgs.pkgsBuildTarget.pkg-config ];
+      buildInputs = [ crossPkgs.zlib ];
+      NIX_DEBUG = 7;
+    } ''
+       mkdir $out
+       ${crossPkgs.pkgsBuildBuild.pkg-config.targetPrefix}pkg-config --cflags zlib > "$out/for-build"
+       ${crossPkgs.pkgsBuildHost.pkg-config.targetPrefix}pkg-config --cflags zlib > "$out/for-host"
+       ! diff "$out/for-build" "$out/for-host"
+    '';
   };
 
-  hello = {platformFun, crossPkgs, emulator}: compareTest {
-    inherit emulator crossPkgs;
-    hostPkgs = pkgs;
-    exec = "/bin/hello";
-    pkgFun = pkgs: pkgs.hello;
-  };
-
+in {
+  gcc = (lib.mapAttrs (_: mapMultiPlatformTest (system: system // {useLLVM = false;})) tests);
+  llvm = (lib.mapAttrs (_: mapMultiPlatformTest (system: system // {useLLVM = true;})) tests);
 }

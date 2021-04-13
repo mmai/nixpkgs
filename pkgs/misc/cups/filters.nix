@@ -1,33 +1,22 @@
-{ stdenv, fetchurl, pkgconfig, cups, poppler, poppler_utils, fontconfig
+{ lib, stdenv, fetchurl, pkg-config, cups, poppler, poppler_utils, fontconfig
 , libjpeg, libpng, perl, ijs, qpdf, dbus, avahi
 , makeWrapper, coreutils, gnused, bc, gawk, gnugrep, which, ghostscript
 , mupdf
-, fetchpatch
 }:
 
 let
-  binPath = stdenv.lib.makeBinPath [ coreutils gnused bc gawk gnugrep which ];
+  binPath = lib.makeBinPath [ coreutils gnused bc gawk gnugrep which ];
 
 in stdenv.mkDerivation rec {
-  name = "cups-filters-${version}";
-  version = "1.20.4";
+  pname = "cups-filters";
+  version = "1.25.12";
 
   src = fetchurl {
-    url = "https://openprinting.org/download/cups-filters/${name}.tar.xz";
-    sha256 = "0sjkmclcb1r77015wllsyz26272br3s17v6b1q2xwb2nm2gnwx9k";
+    url = "https://openprinting.org/download/cups-filters/${pname}-${version}.tar.xz";
+    sha256 = "1kv25011iyzvd33n5zmmn1z2p6pzk26hmmw6qvjjnx8p3sp7raqn";
   };
 
-  patches = [
-    # This patch fixes cups-filters when compiled with poppler-0.67.0.
-    # Issue: https://github.com/OpenPrinting/cups-filters/pull/50
-    # PR: https://github.com/OpenPrinting/cups-filters/pull/51
-    (fetchpatch {
-      url = "https://github.com/OpenPrinting/cups-filters/commit/219de01c61f3b1ec146abf142d0dfc8c560cc58e.patch";
-      sha256 = "0f0lql3rbm2g8mxrpigfyi8fb4i2g4av20g417jzdilp60jq0ny8";
-    })
-  ];
-
-  nativeBuildInputs = [ pkgconfig makeWrapper ];
+  nativeBuildInputs = [ pkg-config makeWrapper ];
 
   buildInputs = [
     cups poppler poppler_utils fontconfig libjpeg libpng perl
@@ -74,9 +63,9 @@ in stdenv.mkDerivation rec {
   doCheck = false; # fails 4 out of 6 tests
 
   meta = {
-    homepage = http://www.linuxfoundation.org/collaborate/workgroups/openprinting/cups-filters;
+    homepage = "http://www.linuxfoundation.org/collaborate/workgroups/openprinting/cups-filters";
     description = "Backends, filters, and other software that was once part of the core CUPS distribution but is no longer maintained by Apple Inc";
-    license = stdenv.lib.licenses.gpl2;
-    platforms = stdenv.lib.platforms.linux;
+    license = lib.licenses.gpl2;
+    platforms = lib.platforms.linux;
   };
 }

@@ -1,8 +1,7 @@
-{ stdenv, fetchFromGitHub
+{ lib, fetchFromGitHub
 , ninja
-, boost
 , meson
-, pkgconfig
+, pkg-config
 , wrapGAppsHook
 , appstream-glib
 , desktop-file-utils
@@ -12,7 +11,6 @@
 , python3Packages
 , file
 , cairo
-, sqlite
 , gettext
 , gnome3
 }:
@@ -21,18 +19,23 @@ python3Packages.buildPythonApplication rec {
 
   format = "other"; # no setup.py
 
-  name = "cozy-${version}";
-  version = "0.6.3";
+  pname = "cozy";
+  version = "0.7.2";
+
+  # Temporary fix
+  # See https://github.com/NixOS/nixpkgs/issues/57029
+  # and https://github.com/NixOS/nixpkgs/issues/56943
+  strictDeps = false;
 
   src = fetchFromGitHub {
     owner = "geigi";
-    repo = "cozy";
+    repo = pname;
     rev = version;
-    sha256 = "0xs6vzvmx0nvybpjqlrngggv2x8b2ky073slh760iirs1p0dclbc";
+    sha256 = "0fmbddi4ga0bppwg3rm3yjmf7jgqc6zfslmavnr1pglbzkjhy9fs";
   };
 
   nativeBuildInputs = [
-    meson ninja pkgconfig
+    meson ninja pkg-config
     wrapGAppsHook
     appstream-glib
     desktop-file-utils
@@ -43,7 +46,7 @@ python3Packages.buildPythonApplication rec {
     gtk3
     cairo
     gettext
-    gnome3.defaultIconTheme
+    gnome3.adwaita-icon-theme
   ] ++ (with gst_all_1; [
     gstreamer
     gst-plugins-good
@@ -52,29 +55,32 @@ python3Packages.buildPythonApplication rec {
   ]);
 
   propagatedBuildInputs = with python3Packages; [
-    gst-python
-    pygobject3
+    apsw
+    cairo
     dbus-python
-    mutagen
-    peewee
+    distro
+    gst-python
     magic
+    mutagen
+    packaging
+    peewee
+    pygobject3
+    pytz
+    requests
   ];
 
   postPatch = ''
-    chmod +x data/meson_post_install.py
-    patchShebangs data/meson_post_install.py
-    substituteInPlace cozy/magic/magic.py --replace "ctypes.util.find_library('magic')" "'${file}/lib/libmagic${stdenv.hostPlatform.extensions.sharedLibrary}'"
+    chmod +x meson/post_install.py
+    patchShebangs meson/post_install.py
   '';
 
   postInstall = ''
     ln -s $out/bin/com.github.geigi.cozy $out/bin/cozy
   '';
 
-  meta = with stdenv.lib; {
-    description = ''
-       A modern audio book player for Linux using GTK+ 3
-    '';
-    homepage = https://cozy.geigi.de/;
+  meta = with lib; {
+    description = "A modern audio book player for Linux using GTK 3";
+    homepage = "https://cozy.geigi.de/";
     maintainers = [ maintainers.makefu ];
     license = licenses.gpl3;
   };

@@ -1,10 +1,13 @@
-{ pkgs, newScope }:
+{ newScope
+, llvmPackages
+, giflib_4_1
+}:
 
 let
   callPackage = newScope self;
 
   self = rec {
-    stdenv = pkgs.clangStdenv;
+    stdenv = llvmPackages.stdenv;
 
     gsmakeDerivation = callPackage ./make/gsmakeDerivation.nix {};
     gorm = callPackage ./gorm {};
@@ -13,7 +16,7 @@ let
     libobjc = callPackage ./libobjc2 {};
     make = callPackage ./make {};
     back = callPackage ./back {};
-    base = callPackage ./base { giflib = pkgs.giflib_4_1; };
+    base = callPackage ./base { giflib = giflib_4_1; };
     gui = callPackage ./gui {};
     gworkspace = callPackage ./gworkspace {};
   };

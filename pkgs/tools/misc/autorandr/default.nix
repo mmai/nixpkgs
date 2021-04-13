@@ -1,4 +1,4 @@
-{ stdenv
+{ lib, stdenv
 , python3Packages
 , fetchFromGitHub
 , systemd
@@ -6,10 +6,11 @@
 
 let
   python = python3Packages.python;
-  version = "1.7";
+  version = "1.11";
 in
   stdenv.mkDerivation {
-    name = "autorandr-${version}";
+    pname = "autorandr";
+    inherit version;
 
     buildInputs = [ python ];
 
@@ -20,20 +21,24 @@ in
         --replace '["xrandr"]' '["${xrandr}/bin/xrandr"]'
     '';
 
+    outputs = [ "out" "man" ];
+
     installPhase = ''
       runHook preInstall
       make install TARGETS='autorandr' PREFIX=$out
 
-      make install TARGETS='bash_completion' DESTDIR=$out
+      make install TARGETS='bash_completion' DESTDIR=$out/share/bash-completion/completions
 
       make install TARGETS='autostart_config' PREFIX=$out DESTDIR=$out
+
+      make install TARGETS='manpage' PREFIX=$man
 
       ${if systemd != null then ''
         make install TARGETS='systemd udev' PREFIX=$out DESTDIR=$out \
           SYSTEMD_UNIT_DIR=/lib/systemd/system \
           UDEV_RULES_DIR=/etc/udev/rules.d
         substituteInPlace $out/etc/udev/rules.d/40-monitor-hotplug.rules \
-          --replace /bin/systemctl "${systemd}/bin/systemctl"
+          --replace /bin/systemctl "/run/current-system/systemd/bin/systemctl"
       '' else ''
         make install TARGETS='pmutils' DESTDIR=$out \
           PM_SLEEPHOOKS_DIR=/lib/pm-utils/sleep.d
@@ -47,15 +52,15 @@ in
     src = fetchFromGitHub {
       owner = "phillipberndt";
       repo = "autorandr";
-      rev = "${version}";
-      sha256 = "0wpiimc5xai813h7gywwp20svkn35pkw99bnjflmpwz7x8fn8dfz";
+      rev = version;
+      sha256 = "0rmnqk2bi6bbd2if1rll37mlzlqxzmnazfffdhcpzskxwyaj4yn5";
     };
 
-    meta = {
-      homepage = https://github.com/phillipberndt/autorandr/;
-      description = "Auto-detect the connect display hardware and load the appropiate X11 setup using xrandr";
-      license = stdenv.lib.licenses.gpl3Plus;
-      maintainers = [ stdenv.lib.maintainers.coroa ];
-      platforms = stdenv.lib.platforms.unix;
+    meta = with lib; {
+      homepage = "https://github.com/phillipberndt/autorandr/";
+      description = "Automatically select a display configuration based on connected devices";
+      license = licenses.gpl3Plus;
+      maintainers = with maintainers; [ coroa globin ];
+      platforms = platforms.unix;
     };
   }

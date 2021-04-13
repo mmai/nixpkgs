@@ -1,18 +1,18 @@
-{ stdenv, fetchhg, cmake, glib, gst_all_1, makeWrapper, pkgconfig
-, python, SDL2, SDL2_image, SDL2_mixer, SDL2_ttf, sqlite, zlib
+{ lib, stdenv, fetchhg, cmake, glib, gst_all_1, makeWrapper, pkg-config
+, python, SDL2, SDL2_image, SDL2_mixer, SDL2_ttf, sqlite, zlib, runtimeShell
 }:
 
-stdenv.mkDerivation rec {
-  name = "retrofe-${version}";
+stdenv.mkDerivation {
+  pname = "retrofe";
   version = "0.6.169";
 
   src = fetchhg {
-    url = https://bitbucket.org/teamretro/retrofe;
+    url = "https://bitbucket.org/teamretro/retrofe";
     rev = "8793e03";
     sha256 = "0cvsg07ff0fdqh5zgiv2fs7s6c98hn150kpxmpw5fn6jilaszwkm";
   };
 
-  nativeBuildInputs = [ cmake makeWrapper pkgconfig python ];
+  nativeBuildInputs = [ cmake makeWrapper pkg-config python ];
 
   buildInputs = [
     glib gst_all_1.gstreamer SDL2 SDL2_image SDL2_mixer SDL2_ttf sqlite zlib
@@ -38,7 +38,7 @@ stdenv.mkDerivation rec {
     mv $out/share/retrofe/example/retrofe $out/bin/
 
     cat > $out/bin/retrofe-init << EOF
-    #!/bin/sh
+    #!${runtimeShell}
 
     echo "This will install retrofe's example files into this directory"
     echo "Example files location: $out/share/retrofe/example/"
@@ -68,9 +68,9 @@ stdenv.mkDerivation rec {
       --run 'export RETROFE_PATH=''${RETROFE_PATH:-$PWD}'
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A frontend for arcade cabinets and media PCs";
-    homepage = http://retrofe.com;
+    homepage = "http://retrofe.com";
     license = licenses.gpl3Plus;
     maintainers = with maintainers; [ hrdinka ];
     platforms = with platforms; linux;

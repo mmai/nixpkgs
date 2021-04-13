@@ -1,4 +1,4 @@
-{ stdenv, skawarePackages }:
+{ skawarePackages }:
 
 with skawarePackages;
 
@@ -7,8 +7,8 @@ let
 
 in buildPackage {
   pname = pname;
-  version = "2.2.1.2";
-  sha256 = "0if77z07rfygd1yk9d2abxkdbx3dg52vcjhb20isb8kvqxhkg8ih";
+  version = "2.2.3.1";
+  sha256 = "1ks1ch5v3p2z8y8wp5fmzzgjrqn2l5sj1sgfp8vv6wy8psd8mrj3";
 
   description = "A set of tiny general Unix utilities optimized for simplicity and small size";
 

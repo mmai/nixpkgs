@@ -1,39 +1,96 @@
-{ stdenv, fetchsvn, makeWrapper, pkgconfig, cmake, qtbase, cairo, pixman,
-boost, cups, fontconfig, freetype, hunspell, libjpeg, libtiff, libxml2, lcms2,
-podofo, poppler, poppler_data, python2, harfbuzz, qtimageformats, qttools }:
+{ boost
+, cairo
+, cmake
+, cups
+, fetchpatch
+, fetchurl
+, fontconfig
+, freetype
+, harfbuzzFull
+, hunspell
+, lcms2
+, libjpeg
+, libtiff
+, libxml2
+, mkDerivation
+, pixman
+, pkg-config
+, podofo
+, poppler
+, poppler_data
+, python3
+, qtbase
+, qtimageformats
+, qttools
+, lib
+}:
 
 let
-  pythonEnv = python2.withPackages(ps: [ps.tkinter ps.pillow]);
-  revision = "22730";
-in 
-stdenv.mkDerivation rec {
-  name = "scribus-unstable-${version}";
-  version = "2018-10-13";
+  pythonEnv = python3.withPackages (
+    ps: [
+      ps.pillow
+      ps.tkinter
+    ]
+  );
+in
+mkDerivation rec {
+  pname = "scribus";
 
-  src = fetchsvn {
-    url = "svn://scribus.net/trunk/Scribus";
-    rev = revision;
-    sha256 = "1nlg4qva0fach8fi07r1pakjjlijishpwzlgpnxyaz7r31yjaw63";
+  version = "1.5.6.1";
+
+  src = fetchurl {
+    url = "mirror://sourceforge/${pname}/${pname}-devel/${pname}-${version}.tar.xz";
+    sha256 = "sha256-1CV2lVOc+kDerYq9rwTFHjTU10vK1aLJNNCObp1Dt6s=";
   };
 
-  enableParallelBuilding = true;
-
-  buildInputs = [
-    makeWrapper pkgconfig cmake qtbase cairo pixman boost cups fontconfig
-    freetype hunspell libjpeg libtiff libxml2 lcms2 podofo poppler
-    poppler_data pythonEnv harfbuzz qtimageformats qttools
+  patches = [
+    (fetchpatch {  # fix build with podofo 0.9.7
+      url = "https://github.com/scribusproject/scribus/commit/c6182ef92820b422d61c904e40e9fed865458eb5.patch";
+      sha256 = "0vp275xfbd4xnj5s55cgzsihgihby5mmjlbmrc7sa6jbrsm8aa2c";
+    })
   ];
 
-  postFixup = ''
-    wrapProgram $out/bin/scribus \
-      --prefix QT_PLUGIN_PATH : "${qtbase}/${qtbase.qtPluginPrefix}"
-  '';
+  nativeBuildInputs = [
+    cmake
+    pkg-config
+  ];
 
-  meta = {
-    maintainers = [ stdenv.lib.maintainers.erictapen ];
-    platforms = stdenv.lib.platforms.linux;
+  buildInputs = [
+    boost
+    cairo
+    cups
+    fontconfig
+    freetype
+    harfbuzzFull
+    hunspell
+    lcms2
+    libjpeg
+    libtiff
+    libxml2
+    pixman
+    podofo
+    poppler
+    poppler_data
+    pythonEnv
+    qtbase
+    qtimageformats
+    qttools
+  ];
+
+  meta = with lib; {
+    maintainers = with maintainers; [
+      erictapen
+      kiwi
+    ];
+    platforms = platforms.linux;
     description = "Desktop Publishing (DTP) and Layout program for Linux";
-    homepage = http://www.scribus.net;
-    license = stdenv.lib.licenses.gpl2;
+    homepage = "https://www.scribus.net";
+    # There are a lot of licenses... https://github.com/scribusproject/scribus/blob/20508d69ca4fc7030477db8dee79fd1e012b52d2/COPYING#L15-L19
+    license = with licenses; [
+      bsd3
+      gpl2
+      mit
+      publicDomain
+    ];
   };
 }

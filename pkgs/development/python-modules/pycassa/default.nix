@@ -1,4 +1,17 @@
-{ stdenv, buildPythonPackage, fetchPypi, thrift, isPy3k }:
+{ lib, buildPythonPackage, fetchPypi, thrift, isPy3k }:
+
+let
+
+  thrift' = thrift.overridePythonAttrs (old: rec {
+    version = "0.9.3";
+    src= fetchPypi {
+      inherit (old) pname;
+      inherit version;
+      sha256 = "0zl7cgckqy9j5vq8wyfzw82q1blkdpsblnmhv8c6ffcxs4xkvg6z";
+    };
+  });
+
+in
 
 buildPythonPackage rec {
   pname = "pycassa";
@@ -15,11 +28,11 @@ buildPythonPackage rec {
   # running
   doCheck = false;
 
-  propagatedBuildInputs = [ thrift ];
+  propagatedBuildInputs = [ thrift' ];
 
-  meta = {
+  meta = with lib; {
     description = "A python client library for Apache Cassandra";
-    homepage = https://github.com/pycassa/pycassa;
-    license = stdenv.lib.licenses.mit;
+    homepage = "https://github.com/pycassa/pycassa";
+    license = licenses.mit;
   };
 }

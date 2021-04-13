@@ -1,7 +1,7 @@
-{ stdenv, buildGoPackage, fetchFromGitHub }:
+{ lib, buildGoPackage, fetchFromGitHub }:
 
 buildGoPackage rec {
-  name = "mesos_exporter-${version}";
+  pname = "mesos_exporter";
   version = "0.1.0";
   rev = version;
 
@@ -16,9 +16,9 @@ buildGoPackage rec {
 
   goDeps = ./mesos-exporter_deps.nix;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Export Mesos metrics to Prometheus";
-    homepage = https://github.com/prometheus/mesos_exporter;
+    homepage = "https://github.com/prometheus/mesos_exporter";
     license = licenses.asl20;
     maintainers = with maintainers; [ benley ];
     platforms = platforms.unix;

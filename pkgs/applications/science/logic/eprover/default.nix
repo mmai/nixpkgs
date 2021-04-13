@@ -1,12 +1,12 @@
-{ stdenv, fetchurl, which }:
+{ lib, stdenv, fetchurl, which }:
 
 stdenv.mkDerivation rec {
-  name = "eprover-${version}";
-  version = "2.2";
+  pname = "eprover";
+  version = "2.5";
 
   src = fetchurl {
     url = "https://wwwlehre.dhbw-stuttgart.de/~sschulz/WORK/E_DOWNLOAD/V_${version}/E.tgz";
-    sha256 = "08ihpwgkz0l7skr42iw8lm202kqr51i792bs61qsbnk9gsjlab1c";
+    sha256 = "0jj0zkiqpcx9xp16spkskrv3jycprz7jg1g97i67j43c4yvxylwa";
   };
 
   buildInputs = [ which ];
@@ -19,9 +19,9 @@ stdenv.mkDerivation rec {
     "--man-prefix=$(out)/share/man"
   ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Automated theorem prover for full first-order logic with equality";
-    homepage = http://www.eprover.org/;
+    homepage = "http://www.eprover.org/";
     license = licenses.gpl2;
     maintainers = with maintainers; [ raskin gebner ];
     platforms = platforms.all;

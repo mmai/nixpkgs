@@ -1,20 +1,19 @@
-{ stdenv, fetchFromGitHub, gitMinimal, python2Packages }:
+{ lib, stdenv, fetchFromGitHub, gitMinimal, docutils }:
 
 stdenv.mkDerivation rec {
-  name = "git-hub-${version}";
-  version = "1.0.1";
+  pname = "git-hub";
+  version = "2.1.0";
 
   src = fetchFromGitHub {
-    sha256 = "1lizjyi8vac1p1anbnh6qrr176rwxp5yjc1787asw437sackkwza";
-    rev = "v${version}";
-    repo = "git-hub";
     owner = "sociomantic-tsunami";
+    repo = "git-hub";
+    rev = "v${version}";
+    sha256 = "1df9l8fpbxjgcgi72fwaqxiay5kpfihyc63f0gj67mns9n9ic1i7";
   };
 
-  buildInputs = [ python2Packages.python ];
   nativeBuildInputs = [
     gitMinimal        # Used during build to generate Bash completion.
-    python2Packages.docutils
+    docutils
   ];
 
   postPatch = ''
@@ -30,7 +29,7 @@ stdenv.mkDerivation rec {
     rm -r $out/share/{doc,vim}
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     inherit (src.meta) homepage;
     description = "Git command line interface to GitHub";
     longDescription = ''

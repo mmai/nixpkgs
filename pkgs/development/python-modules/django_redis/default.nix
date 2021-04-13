@@ -1,12 +1,12 @@
-{ stdenv, fetchPypi, buildPythonPackage,
+{ lib, fetchPypi, buildPythonPackage,
   mock, django, redis, msgpack }:
 buildPythonPackage rec {
   pname = "django-redis";
-  version = "4.9.1";
+  version = "4.12.1";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "93fc0f73b0c1736546a979a4996826b2c430f56f7e4176df40ef53b9cb0e4f36";
+    sha256 = "306589c7021e6468b2656edc89f62b8ba67e8d5a1c8877e2688042263daa7a63";
   };
 
   doCheck = false;
@@ -19,9 +19,9 @@ buildPythonPackage rec {
     msgpack
   ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Full featured redis cache backend for Django";
-    homepage = https://github.com/niwibe/django-redis;
+    homepage = "https://github.com/niwibe/django-redis";
     license = licenses.bsd3;
   };
 }

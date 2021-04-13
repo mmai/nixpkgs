@@ -1,21 +1,61 @@
-{ stdenv, fetchurl, pkgconfig, perlPackages, libXft
-, libpng, zlib, popt, boehmgc, libxml2, libxslt, glib, gtkmm2
-, glibmm, libsigcxx, lcms, boost, gettext, makeWrapper
-, gsl, python2, poppler, imagemagick, libwpg, librevenge
-, libvisio, libcdr, libexif, potrace, cmake, hicolor-icon-theme
+{ lib, stdenv
+, boehmgc
+, boost
+, cairo
+, cmake
+, double-conversion
+, fetchurl
+, gettext
+, gdl
+, ghostscript
+, glib
+, glib-networking
+, glibmm
+, gsl
+, gtk-mac-integration
+, gtkmm3
+, gtkspell3
+, gdk-pixbuf
+, imagemagick
+, lcms
+, libcdr
+, libexif
+, libpng
+, librevenge
+, librsvg
+, libsigcxx
+, libsoup
+, libvisio
+, libwpg
+, libXft
+, libxml2
+, libxslt
+, ninja
+, perlPackages
+, pkg-config
+, poppler
+, popt
+, potrace
+, python3
+, substituteAll
+, wrapGAppsHook
+, zlib
 }:
-
 let
-  python2Env = python2.withPackages(ps: with ps;
-    [ numpy lxml scour ]);
+  python3Env = python3.withPackages
+    (ps: with ps; [
+      numpy
+      lxml
+      scour
+    ]);
 in
-
 stdenv.mkDerivation rec {
-  name = "inkscape-0.92.3";
+  pname = "inkscape";
+  version = "1.0.2";
 
   src = fetchurl {
-    url = "https://media.inkscape.org/dl/resources/file/${name}.tar.bz2";
-    sha256 = "1chng2yw8dsjxc9gf92aqv7plj11cav8ax321wmakmv5bb09cch6";
+    url = "https://media.inkscape.org/dl/resources/file/${pname}-${version}.tar.xz";
+    sha256 = "sha256-2j4jBRGgjL8h6GcQ0WFFhZT+qHhn6RV7Z+0BoE6ieYo=";
   };
 
   # Inkscape hits the ARGMAX when linking on macOS. It appears to be
@@ -24,48 +64,89 @@ stdenv.mkDerivation rec {
   # will leave us under ARGMAX.
   strictDeps = true;
 
-  unpackPhase = ''
-    cp $src ${name}.tar.bz2
-    tar xvjf ${name}.tar.bz2 > /dev/null
-    cd ${name}
-  '';
+  patches = [
+    (substituteAll {
+      src = ./fix-python-paths.patch;
+      # Python is used at run-time to execute scripts,
+      # e.g., those from the "Effects" menu.
+      python3 = "${python3Env}/bin/python";
+    })
+  ];
 
   postPatch = ''
     patchShebangs share/extensions
-    patchShebangs fix-roff-punct
-
-    # Python is used at run-time to execute scripts, e.g., those from
-    # the "Effects" menu.
-    substituteInPlace src/extension/implementation/script.cpp \
-      --replace '"python-interpreter", "python"' '"python-interpreter", "${python2Env}/bin/python"'
+    substituteInPlace share/extensions/eps_input.inx \
+      --replace "location=\"path\">ps2pdf" "location=\"absolute\">${ghostscript}/bin/ps2pdf"
+    substituteInPlace share/extensions/ps_input.inx \
+      --replace "location=\"path\">ps2pdf" "location=\"absolute\">${ghostscript}/bin/ps2pdf"
+    substituteInPlace share/extensions/ps_input.py \
+      --replace "call('ps2pdf'" "call('${ghostscript}/bin/ps2pdf'"
+    patchShebangs share/templates
+    patchShebangs man/fix-roff-punct
   '';
 
-  nativeBuildInputs = [ pkgconfig cmake makeWrapper python2Env ]
-    ++ (with perlPackages; [ perl XMLParser ]);
-  buildInputs = [
-    libXft libpng zlib popt boehmgc
-    libxml2 libxslt glib gtkmm2 glibmm libsigcxx lcms boost gettext
-    gsl poppler imagemagick libwpg librevenge
-    libvisio libcdr libexif potrace hicolor-icon-theme
+  nativeBuildInputs = [
+    pkg-config
+    cmake
+    ninja
+    python3Env
+    glib # for setup hook
+    gdk-pixbuf # for setup hook
+    wrapGAppsHook
+  ] ++ (with perlPackages; [
+    perl
+    XMLParser
+  ]);
 
-    python2Env perlPackages.perl
+  buildInputs = [
+    boehmgc
+    boost
+    double-conversion
+    gdl
+    gettext
+    glib
+    glib-networking
+    glibmm
+    gsl
+    gtkmm3
+    imagemagick
+    lcms
+    libcdr
+    libexif
+    libpng
+    librevenge
+    librsvg # for loading icons
+    libsigcxx
+    libsoup
+    libvisio
+    libwpg
+    libXft
+    libxml2
+    libxslt
+    perlPackages.perl
+    poppler
+    popt
+    potrace
+    python3Env
+    zlib
+  ] ++ lib.optionals (!stdenv.isDarwin) [
+    gtkspell3
+  ] ++ lib.optionals stdenv.isDarwin [
+    cairo
+    gtk-mac-integration
   ];
 
-  enableParallelBuilding = true;
-
   # Make sure PyXML modules can be found at run-time.
-  postInstall = stdenv.lib.optionalString stdenv.isDarwin ''
+  postInstall = lib.optionalString stdenv.isDarwin ''
     install_name_tool -change $out/lib/libinkscape_base.dylib $out/lib/inkscape/libinkscape_base.dylib $out/bin/inkscape
     install_name_tool -change $out/lib/libinkscape_base.dylib $out/lib/inkscape/libinkscape_base.dylib $out/bin/inkview
   '';
 
-  # 0.92.3 complains about an invalid conversion from const char * to char *
-  NIX_CFLAGS_COMPILE = " -fpermissive ";
-
-  meta = with stdenv.lib; {
-    license = "GPL";
-    homepage = https://www.inkscape.org;
+  meta = with lib; {
     description = "Vector graphics editor";
+    homepage = "https://www.inkscape.org";
+    license = licenses.gpl3Plus;
+    maintainers = [ maintainers.jtojnar ];
     platforms = platforms.all;
     longDescription = ''
       Inkscape is a feature-rich vector graphics editor that edits

@@ -1,11 +1,11 @@
-{ stdenv, lib, fetchurl, perl, makeWrapper, perlPackages }:
+{ lib, stdenv, fetchurl, makeWrapper, perlPackages }:
 
 let
   perlDeps = with perlPackages; [ TimeDate ];
 in
 stdenv.mkDerivation rec {
   version = "3.20";
-  name = "mb2md-${version}";
+  pname = "mb2md";
 
   src = fetchurl {
     url = "http://batleth.sapienti-sat.org/projects/mb2md/mb2md-${version}.pl.gz";
@@ -13,7 +13,7 @@ stdenv.mkDerivation rec {
   };
 
   nativeBuildInputs = [ makeWrapper ];
-  buildInputs = [ perl ];
+  buildInputs = [ perlPackages.perl ];
 
   unpackPhase = ''
     sourceRoot=.
@@ -26,10 +26,10 @@ stdenv.mkDerivation rec {
 
   postFixup = ''
     wrapProgram $out/bin/mb2md \
-      --set PERL5LIB "${lib.makePerlPath perlDeps}"
+      --set PERL5LIB "${perlPackages.makePerlPath perlDeps}"
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "mbox to maildir tool";
     license = licenses.publicDomain;
     platforms = platforms.all;

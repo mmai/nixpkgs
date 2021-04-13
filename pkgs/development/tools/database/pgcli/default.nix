@@ -1,28 +1,52 @@
-{ lib, python3Packages, fetchFromGitHub }:
+{ lib, stdenv
+, buildPythonApplication
+, fetchPypi
+, isPy3k
+, cli-helpers
+, click
+, configobj
+, humanize
+, prompt_toolkit
+, psycopg2
+, pygments
+, sqlparse
+, pgspecial
+, setproctitle
+, keyring
+, pendulum
+, pytestCheckHook
+, mock
+}:
 
-python3Packages.buildPythonApplication rec {
+buildPythonApplication rec {
   pname = "pgcli";
-  version = "2.0.1";
+  version = "3.1.0";
 
-  # Python 2 won't have prompt_toolkit 2.x.x
-  # See: https://github.com/NixOS/nixpkgs/blob/f49e2ad3657dede09dc998a4a98fd5033fb52243/pkgs/top-level/python-packages.nix#L3408
-  disabled = python3Packages.isPy27;
+  disabled = !isPy3k;
 
-  src = python3Packages.fetchPypi {
+  src = fetchPypi {
     inherit pname version;
-    sha256 = "149naq3gp1n922vag7vixs0hd114bpbmbmv70k4kzc1q7jz748l2";
+    sha256 = "d5b2d803f7e4e7fe679306a000bde5d14d15ec590ddd108f3dc4c0ecad169d2b";
   };
 
-  propagatedBuildInputs = with python3Packages; [
-    cli-helpers click configobj humanize prompt_toolkit psycopg2
-    pygments sqlparse pgspecial setproctitle keyring
+  propagatedBuildInputs = [
+    cli-helpers
+    click
+    configobj
+    humanize
+    prompt_toolkit
+    psycopg2
+    pygments
+    sqlparse
+    pgspecial
+    setproctitle
+    keyring
+    pendulum
   ];
 
-  checkInputs = with python3Packages; [ pytest mock ];
+  checkInputs = [ pytestCheckHook mock ];
 
-  checkPhase = ''
-    pytest
-  '';
+  disabledTests = lib.optionals stdenv.isDarwin [ "test_application_name_db_uri" ];
 
   meta = with lib; {
     description = "Command-line interface for PostgreSQL";
@@ -30,7 +54,8 @@ python3Packages.buildPythonApplication rec {
       Rich command-line interface for PostgreSQL with auto-completion and
       syntax highlighting.
     '';
-    homepage = https://pgcli.com;
+    homepage = "https://pgcli.com";
+    changelog = "https://github.com/dbcli/pgcli/blob/v${version}/changelog.rst";
     license = licenses.bsd3;
     maintainers = with maintainers; [ dywedir ];
   };

@@ -1,17 +1,34 @@
-{ stdenv, meson, ninja, gettext, fetchurl, pkgconfig
-, wrapGAppsHook, itstool, desktop-file-utils, python3
-, glib, gtk3, evolution-data-server
-, libuuid, webkitgtk, zeitgeist
-, gnome3, libxml2 }:
+{ lib, stdenv
+, meson
+, ninja
+, gettext
+, fetchurl
+, pkg-config
+, wrapGAppsHook
+, itstool
+, desktop-file-utils
+, python3
+, glib
+, gtk3
+, evolution-data-server
+, gnome-online-accounts
+, libuuid
+, libhandy_0
+, webkitgtk
+, zeitgeist
+, gnome3
+, libxml2
+, gsettings-desktop-schemas
+, tracker
+}:
 
-let
-  version = "3.30.3";
-in stdenv.mkDerivation rec {
-  name = "gnome-notes-${version}";
+stdenv.mkDerivation rec {
+  pname = "gnome-notes";
+  version = "3.38.0";
 
   src = fetchurl {
-    url = "mirror://gnome/sources/bijiben/${stdenv.lib.versions.majorMinor version}/bijiben-${version}.tar.xz";
-    sha256 = "1mkpi2i9nqpip5l15ihjcscyiri113s0705sjgh6b89164ahyn5k";
+    url = "mirror://gnome/sources/bijiben/${lib.versions.majorMinor version}/bijiben-${version}.tar.xz";
+    sha256 = "H/bMCsbGKQe/KgmhchXt0vF7dNrKs6XIminDBJFyvis=";
   };
 
   doCheck = true;
@@ -22,15 +39,29 @@ in stdenv.mkDerivation rec {
   '';
 
   nativeBuildInputs = [
-    meson ninja pkgconfig gettext itstool libxml2 desktop-file-utils python3 wrapGAppsHook
+    meson
+    ninja
+    pkg-config
+    gettext
+    itstool
+    libxml2
+    desktop-file-utils
+    python3
+    wrapGAppsHook
   ];
 
   buildInputs = [
-    glib gtk3 libuuid webkitgtk gnome3.tracker
-    gnome3.gnome-online-accounts zeitgeist
-    gnome3.gsettings-desktop-schemas
+    glib
+    gtk3
+    libuuid
+    libhandy_0 # doesn't support libhandy-1 yet
+    webkitgtk
+    tracker
+    gnome-online-accounts
+    zeitgeist
+    gsettings-desktop-schemas
     evolution-data-server
-    gnome3.defaultIconTheme
+    gnome3.adwaita-icon-theme
   ];
 
   mesonFlags = [
@@ -45,11 +76,11 @@ in stdenv.mkDerivation rec {
     };
   };
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Note editor designed to remain simple to use";
-    homepage = https://wiki.gnome.org/Apps/Notes;
+    homepage = "https://wiki.gnome.org/Apps/Notes";
     license = licenses.gpl3;
-    maintainers = gnome3.maintainers;
+    maintainers = teams.gnome.members;
     platforms = platforms.linux;
   };
 }

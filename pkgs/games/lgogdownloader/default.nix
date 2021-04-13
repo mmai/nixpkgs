@@ -1,25 +1,36 @@
-{ stdenv, fetchFromGitHub, cmake, pkgconfig, curl, boost, liboauth, jsoncpp
-, htmlcxx, rhash, tinyxml-2, help2man }:
+{ lib, stdenv
+, fetchFromGitHub
+, cmake
+, pkg-config
+, curl
+, boost
+, liboauth
+, jsoncpp
+, htmlcxx
+, rhash
+, tinyxml-2
+, help2man
+}:
 
 stdenv.mkDerivation rec {
-  name = "lgogdownloader-${version}";
-  version = "3.4";
+  pname = "lgogdownloader";
+  version = "3.7";
 
   src = fetchFromGitHub {
     owner = "Sude-";
     repo = "lgogdownloader";
     rev = "v${version}";
-    sha256 = "155vnz4w2v5d3yihwzq8yi406g19kc7banzlarhlcp3j11riwd24";
+    sha256 = "sha256-3xFlFokqdD1Nstu7TSUCaHUxvSodIb12QNVjmNgn9gs=";
   };
 
-  nativeBuildInputs = [ cmake pkgconfig help2man ];
+  nativeBuildInputs = [ cmake pkg-config help2man ];
 
-  buildInputs = [ curl boost liboauth jsoncpp htmlcxx rhash tinyxml-2 ];
+  buildInputs = [ boost curl htmlcxx jsoncpp liboauth rhash tinyxml-2 ];
 
-  meta = {
-    homepage = https://github.com/Sude-/lgogdownloader;
+  meta = with lib; {
     description = "Unofficial downloader to GOG.com for Linux users. It uses the same API as the official GOGDownloader";
-    license = stdenv.lib.licenses.wtfpl;
-    platforms = stdenv.lib.platforms.linux;
+    homepage = "https://github.com/Sude-/lgogdownloader";
+    license = licenses.wtfpl;
+    platforms = platforms.linux;
   };
 }

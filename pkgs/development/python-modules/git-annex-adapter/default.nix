@@ -1,10 +1,10 @@
-{ stdenv, buildPythonPackage, isPy3k, fetchFromGitHub, fetchpatch
-, utillinux, pygit2, gitMinimal, git-annex
+{ lib, buildPythonPackage, isPy3k, fetchFromGitHub, fetchpatch, substituteAll
+, python, util-linux, pygit2, gitMinimal, git-annex, cacert
 }:
 
 buildPythonPackage rec {
   pname = "git-annex-adapter";
-  version = "0.2.1";
+  version = "0.2.2";
 
   disabled = !isPy3k;
 
@@ -13,31 +13,37 @@ buildPythonPackage rec {
     owner = "alpernebbi";
     repo = pname;
     rev = "v${version}";
-    sha256 = "146q1jhcfc7f96ajkhjffskkljk2xzivs5ih5clb8qx0sh7mj097";
+    sha256 = "0666vqspgnvmfs6j3kifwyxr6zmxjs0wlwis7br4zcq0gk32zgdx";
   };
 
-  prePatch = ''
-    substituteInPlace git_annex_adapter/process.py \
-      --replace "'git', 'annex'" "'${git-annex}/bin/git-annex'" \
-      --replace "'git-annex'" "'${git-annex}/bin/git-annex'"
-  '';
-
-  checkInputs = [
-    utillinux # `rev` is needed in tests/test_process.py
+  patches = [
+    # fix tests with recent versions of git-annex
+    (fetchpatch {
+      url = "https://github.com/alpernebbi/git-annex-adapter/commit/6c210d828e8a57b12c716339ad1bf15c31cd4a55.patch";
+      sha256 = "17kp7pnm9svq9av4q7hfic95xa1w3z02dnr8nmg14sjck2rlmqsi";
+    })
+    (substituteAll {
+      src = ./git-annex-path.patch;
+      gitAnnex = "${git-annex}/bin/git-annex";
+    })
   ];
 
-  propagatedBuildInputs = [ pygit2 gitMinimal ];
+  checkInputs = [
+    gitMinimal
+    util-linux # `rev` is needed in tests/test_process.py
+  ];
 
-  buildInputs = [ git-annex ];
+  propagatedBuildInputs = [ pygit2 cacert ];
 
   checkPhase = ''
-    python -m unittest
+    ${python.interpreter} -m unittest
   '';
+  pythonImportsCheck = [ "git_annex_adapter" ];
 
-  meta = with stdenv.lib; {
-    homepage = https://github.com/alpernebbi/git-annex-adapter;
+  meta = with lib; {
+    homepage = "https://github.com/alpernebbi/git-annex-adapter";
     description = "Call git-annex commands from Python";
     license = licenses.gpl3Plus;
-    maintainers = with maintainers; [ dotlambda ma27 ];
+    maintainers = with maintainers; [ dotlambda ];
   };
 }

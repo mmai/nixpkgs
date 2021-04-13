@@ -1,30 +1,42 @@
-{ stdenv
+{ lib
+, async_generator
 , buildPythonPackage
-, fetchPypi
-, isPy27
-, mock
-, tox
-, pylint
+, fetchFromGitHub
+, geographiclib
+, isPy3k
+, pytestCheckHook
 }:
 
 buildPythonPackage rec {
   pname = "geopy";
-  version = "1.17.0";
-  disabled = !isPy27;
+  version = "2.1.0";
+  disabled = !isPy3k; # only Python 3
 
-  src = fetchPypi {
-    inherit pname version;
-    sha256 = "1bbea0efc5af91e0a7d4c2b31650f61667bcc1d0d717784d78c03f0ed13bb374";
+  src = fetchFromGitHub {
+    owner = pname;
+    repo = pname;
+    rev = version;
+    sha256 = "0239a4achk49ngagb6aqy6cgzfwgbxir07vwi13ysbpx78y0l4g9";
   };
 
-  doCheck = false;  # too much
+  propagatedBuildInputs = [ geographiclib ];
 
-  buildInputs = [ mock tox pylint ];
+  checkInputs = [
+    async_generator
+    pytestCheckHook
+  ];
 
-  meta = with stdenv.lib; {
+  # Exclude tests which perform API calls
+  pytestFlagsArray = [ "--ignore test/geocoders/" ];
+  pythonImportsCheck = [ "geopy" ];
+
+  __darwinAllowLocalNetworking = true;
+
+  meta = with lib; {
     homepage = "https://github.com/geopy/geopy";
     description = "Python Geocoding Toolbox";
-    license = licenses.mit;
+    changelog = "https://github.com/geopy/geopy/releases/tag/${version}";
+    license = with licenses; [ mit ];
+    maintainers = with maintainers; [ GuillaumeDesforges ];
   };
-
 }

@@ -7,12 +7,13 @@ let
 
   addCheckDesc = desc: elemType: check: types.addCheck elemType check
     // { description = "${elemType.description} (with check: ${desc})"; };
-  nonEmptyStr = addCheckDesc "non-empty" types.str
-    (x: x != "" && ! (all (c: c == " " || c == "\t") (stringToCharacters x)));
+
+  isNonEmpty = s: (builtins.match "[ \t\n]*" s) == null;
+  nonEmptyStr = addCheckDesc "non-empty" types.str isNonEmpty;
 
   fileSystems' = toposort fsBefore (attrValues config.fileSystems);
 
-  fileSystems = if fileSystems' ? "result"
+  fileSystems = if fileSystems' ? result
                 then # use topologically sorted fileSystems everywhere
                      fileSystems'.result
                 else # the assertion below will catch this,
@@ -21,17 +22,15 @@ let
                      # their assertions too
                      (attrValues config.fileSystems);
 
-  prioOption = prio: optionalString (prio != null) " pri=${toString prio}";
-
   specialFSTypes = [ "proc" "sysfs" "tmpfs" "ramfs" "devtmpfs" "devpts" ];
 
   coreFileSystemOpts = { name, config, ... }: {
 
     options = {
-
       mountPoint = mkOption {
         example = "/mnt/usb";
-        type = nonEmptyStr;
+        type = addCheckDesc "non-empty without trailing slash" types.str
+          (s: isNonEmpty s && (builtins.match ".+/" s) == null);
         description = "Location of the mounted the file system.";
       };
 
@@ -159,7 +158,7 @@ in
           "/bigdisk".label = "bigdisk";
         }
       '';
-      type = types.loaOf (types.submodule [coreFileSystemOpts fileSystemOpts]);
+      type = types.attrsOf (types.submodule [coreFileSystemOpts fileSystemOpts]);
       description = ''
         The file systems to be mounted.  It must include an entry for
         the root directory (<literal>mountPoint = "/"</literal>).  Each
@@ -193,7 +192,7 @@ in
 
     boot.specialFileSystems = mkOption {
       default = {};
-      type = types.loaOf (types.submodule coreFileSystemOpts);
+      type = types.attrsOf (types.submodule coreFileSystemOpts);
       internal = true;
       description = ''
         Special filesystems that are mounted very early during boot.
@@ -209,9 +208,16 @@ in
 
     assertions = let
       ls = sep: concatMapStringsSep sep (x: x.mountPoint);
+      notAutoResizable = fs: fs.autoResize && !(hasPrefix "ext" fs.fsType || fs.fsType == "f2fs");
     in [
-      { assertion = ! (fileSystems' ? "cycle");
+      { assertion = ! (fileSystems' ? cycle);
         message = "The ‘fileSystems’ option can't be topologically sorted: mountpoint dependency path ${ls " -> " fileSystems'.cycle} loops to ${ls ", " fileSystems'.loops}";
+      }
+      { assertion = ! (any notAutoResizable fileSystems);
+        message = let
+          fs = head (filter notAutoResizable fileSystems);
+        in
+          "Mountpoint '${fs.mountPoint}': 'autoResize = true' is not supported for 'fsType = \"${fs.fsType}\"':${if fs.fsType == "auto" then " fsType has to be explicitly set and" else ""} only the ext filesystems and f2fs support it.";
       }
     ];
 
@@ -231,7 +237,9 @@ in
         fsToSkipCheck = [ "none" "bindfs" "btrfs" "zfs" "tmpfs" "nfs" "vboxsf" "glusterfs" ];
         skipCheck = fs: fs.noCheck || fs.device == "none" || builtins.elem fs.fsType fsToSkipCheck;
         # https://wiki.archlinux.org/index.php/fstab#Filepath_spaces
-        escape = string: builtins.replaceStrings [ " " ] [ "\\040" ] string;
+        escape = string: builtins.replaceStrings [ " " "\t" ] [ "\\040" "\\011" ] string;
+        swapOptions = sw: "defaults"
+          + optionalString (sw.priority != null) ",pri=${toString sw.priority}";
       in ''
         # This is a generated file.  Do not edit!
         #
@@ -254,7 +262,7 @@ in
 
         # Swap devices.
         ${flip concatMapStrings config.swapDevices (sw:
-            "${sw.realDevice} none swap${prioOption sw.priority}\n"
+            "${sw.realDevice} none swap ${swapOptions sw}\n"
         )}
       '';
 
@@ -279,7 +287,7 @@ in
             before = [ mountPoint' "systemd-fsck@${device'}.service" ];
             requires = [ device'' ];
             after = [ device'' ];
-            path = [ pkgs.utillinux ] ++ config.system.fsPackages;
+            path = [ pkgs.util-linux ] ++ config.system.fsPackages;
             script =
               ''
                 if ! [ -e "${fs.device}" ]; then exit 1; fi
@@ -297,6 +305,11 @@ in
 
       in listToAttrs (map formatDevice (filter (fs: fs.autoFormat) fileSystems));
 
+    systemd.tmpfiles.rules = [
+      "d /run/keys 0750 root ${toString config.ids.gids.keys}"
+      "z /run/keys 0750 root ${toString config.ids.gids.keys}"
+    ];
+
     # Sync mount options with systemd's src/core/mount-setup.c: mount_table.
     boot.specialFileSystems = {
       "/proc" = { fsType = "proc"; options = [ "nosuid" "noexec" "nodev" ]; };
@@ -305,8 +318,8 @@ in
       "/dev/shm" = { fsType = "tmpfs"; options = [ "nosuid" "nodev" "strictatime" "mode=1777" "size=${config.boot.devShmSize}" ]; };
       "/dev/pts" = { fsType = "devpts"; options = [ "nosuid" "noexec" "mode=620" "ptmxmode=0666" "gid=${toString config.ids.gids.tty}" ]; };
 
-      # To hold secrets that shouldn't be written to disk (generally used for NixOps, harmless elsewhere)
-      "/run/keys" = { fsType = "ramfs"; options = [ "nosuid" "nodev" "mode=750" "gid=${toString config.ids.gids.keys}" ]; };
+      # To hold secrets that shouldn't be written to disk
+      "/run/keys" = { fsType = "ramfs"; options = [ "nosuid" "nodev" "mode=750" ]; };
     } // optionalAttrs (!config.boot.isContainer) {
       # systemd-nspawn populates /sys by itself, and remounting it causes all
       # kinds of weird issues (most noticeably, waiting for host disk device

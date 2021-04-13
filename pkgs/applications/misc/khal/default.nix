@@ -1,19 +1,22 @@
-{ stdenv, pkgs, python3 }:
+{ lib, stdenv, pkgs, python3, fetchpatch, glibcLocales }:
 
 with python3.pkgs; buildPythonApplication rec {
   pname = "khal";
-  version = "0.9.10";
+  version = "0.10.2";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "03h0j0d3xyqh98x5v2gv63wv3g91hip3vsaxvybsn5iz331d23h4";
+    sha256 = "11qhrga44knlnp88py9p547d4nr5kn041d2nszwa3dqw7mf22ks9";
   };
 
-  LC_ALL = "en_US.UTF-8";
+  patches = [
+    ./skip-broken-test.patch
+  ];
 
   propagatedBuildInputs = [
     atomicwrites
     click
+    click-log
     configobj
     dateutil
     icalendar
@@ -27,24 +30,42 @@ with python3.pkgs; buildPythonApplication rec {
     pkginfo
     freezegun
   ];
-  nativeBuildInputs = [ setuptools_scm pkgs.glibcLocales ];
-  checkInputs = [ pytest ];
+  nativeBuildInputs = [ setuptools_scm sphinx sphinxcontrib_newsfeed ];
+  checkInputs = [ pytest glibcLocales ];
+  LC_ALL = "en_US.UTF-8";
+
+  postPatch = ''
+    sed -i \
+      -e "s/Invalid value for \"ics\"/Invalid value for \\\'ics\\\'/" \
+      -e "s/Invalid value for \"\[ICS\]\"/Invalid value for \\\'\[ICS\]\\\'/" \
+      tests/cli_test.py
+  '';
 
   postInstall = ''
+    # zsh completion
     install -D misc/__khal $out/share/zsh/site-functions/__khal
+
+    # man page
+    PATH="${python3.withPackages (ps: with ps; [ sphinx sphinxcontrib_newsfeed ])}/bin:$PATH" \
+    make -C doc man
+    install -Dm755 doc/build/man/khal.1 -t $out/share/man/man1
+
+    # desktop
+    install -Dm755 misc/khal.desktop -t $out/share/applications
   '';
 
-  # One test fails as of 0.9.10 due to the upgrade to icalendar 4.0.3
-  doCheck = false;
+  doCheck = !stdenv.isAarch64;
 
   checkPhase = ''
-    py.test
+    py.test -k "not test_vertical_month_abbr_fr and not test_vertical_month_unicode_weekdeays_gr \
+      and not test_event_different_timezones and not test_default_calendar and not test_birthdays \
+      and not test_birthdays_no_year"
   '';
 
-  meta = with stdenv.lib; {
-    homepage = http://lostpackets.de/khal/;
+  meta = with lib; {
+    homepage = "http://lostpackets.de/khal/";
     description = "CLI calendar application";
     license = licenses.mit;
-    maintainers = with maintainers; [ jgeerds gebner ];
+    maintainers = with maintainers; [ gebner ];
   };
 }

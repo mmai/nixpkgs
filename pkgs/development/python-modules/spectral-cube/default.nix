@@ -1,30 +1,39 @@
 { lib
 , fetchPypi
 , buildPythonPackage
+, aplpy
+, joblib
 , astropy
 , radio_beam
-, pytest }:
+, pytest
+, pytest-astropy
+, astropy-helpers
+}:
 
 buildPythonPackage rec {
   pname = "spectral-cube";
-  version = "0.4.3";
-
-  doCheck = false; # the tests requires several pytest plugins that are not in nixpkgs
+  version = "0.5.0";
+  format = "pyproject";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "057g3mzlg5cy4wg2hh3p6gssn93rs6i7pswzhldvcq4k8m8hsl3b";
+    sha256 = "17zisr26syfb8kn89xj17lrdycm0hsmy5yp5zrn236wgd8rjriki";
   };
 
-  propagatedBuildInputs = [ astropy radio_beam pytest ];
+  nativeBuildInputs = [ astropy-helpers ];
+  propagatedBuildInputs = [ astropy radio_beam joblib ];
+  checkInputs = [ aplpy pytest pytest-astropy ];
+
+  checkPhase = ''
+    pytest spectral_cube
+  '';
 
   meta = {
     description = "Library for reading and analyzing astrophysical spectral data cubes";
-    homepage = http://radio-astro-tools.github.io;
+    homepage = "http://radio-astro-tools.github.io";
     license = lib.licenses.bsd3;
     platforms = lib.platforms.all;
     maintainers = with lib.maintainers; [ smaret ];
   };
 }
-
 

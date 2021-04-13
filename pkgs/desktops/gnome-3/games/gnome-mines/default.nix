@@ -1,22 +1,25 @@
-{ stdenv, fetchurl, meson, ninja, vala, gobject-introspection, pkgconfig, gnome3, gtk3, wrapGAppsHook
-, librsvg, gettext, itstool, python3, libxml2, libgnome-games-support, libgee }:
+{ lib, stdenv, fetchurl, meson, ninja, vala, gobject-introspection, pkg-config, gnome3, gtk3, wrapGAppsHook
+, librsvg, gettext, itstool, python3, libxml2, libgnome-games-support, libgee, desktop-file-utils }:
 
 stdenv.mkDerivation rec {
-  name = "gnome-mines-${version}";
-  version = "3.30.1.1";
+  pname = "gnome-mines";
+  version = "3.36.1";
 
   src = fetchurl {
-    url = "mirror://gnome/sources/gnome-mines/${stdenv.lib.versions.majorMinor version}/${name}.tar.xz";
-    sha256 = "08ddk400sg1g3q26gnm5mgv81vdqyix0yl7pd47p50vkc1w6f33z";
+    url = "mirror://gnome/sources/${pname}/${lib.versions.majorMinor version}/${pname}-${version}.tar.xz";
+    sha256 = "0m2680r94nk61imym4x73j03jwfjd8cxm592m5ybiqdfdw6i723i";
   };
 
   # gobject-introspection for finding vapi files
-  nativeBuildInputs = [ meson ninja vala gobject-introspection pkgconfig gettext itstool python3 libxml2 wrapGAppsHook ];
-  buildInputs = [ gtk3 librsvg gnome3.defaultIconTheme libgnome-games-support libgee ];
+  nativeBuildInputs = [
+    meson ninja vala gobject-introspection pkg-config gettext itstool python3
+    libxml2 wrapGAppsHook desktop-file-utils
+  ];
+  buildInputs = [ gtk3 librsvg gnome3.adwaita-icon-theme libgnome-games-support libgee ];
 
   postPatch = ''
-    chmod +x data/meson_compile_gschema.py # patchShebangs requires executable file
-    patchShebangs data/meson_compile_gschema.py
+    chmod +x build-aux/meson_post_install.py
+    patchShebangs build-aux/meson_post_install.py
   '';
 
   passthru = {
@@ -26,10 +29,10 @@ stdenv.mkDerivation rec {
     };
   };
 
-  meta = with stdenv.lib; {
-    homepage = https://wiki.gnome.org/Apps/Mines;
+  meta = with lib; {
+    homepage = "https://wiki.gnome.org/Apps/Mines";
     description = "Clear hidden mines from a minefield";
-    maintainers = gnome3.maintainers;
+    maintainers = teams.gnome.members;
     license = licenses.gpl3;
     platforms = platforms.linux;
   };

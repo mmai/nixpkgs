@@ -1,34 +1,26 @@
-{stdenv, bash, which, autoconf, automake, fetchurl, coq}:
+{ lib, bash, which, autoconf, automake,
+  mkCoqDerivation, coq, version ? null }:
 
-stdenv.mkDerivation rec {
+with lib; mkCoqDerivation {
+  pname = "flocq";
+  owner = "flocq";
+  domain = "gitlab.inria.fr";
+  inherit version;
+  defaultVersion = with versions; switch coq.coq-version [
+    { case = isGe "8.7";        out = "3.3.1"; }
+    { case = range "8.5" "8.8"; out = "2.6.1"; }
+  ] null;
+  release."3.3.1".sha256 = "1mk8adhi5hrllsr0hamzk91vf2405sjr4lh5brg9201mcw11abkz";
+  release."2.6.1".sha256 = "0q5a038ww5dn72yvwn5298d3ridkcngb1dik8hdyr3xh7gr5qibj";
+  releaseRev = v: "flocq-${v}";
 
-  name = "coq${coq.coq-version}-flocq-${version}";
-  version = "2.6.0";
+  nativeBuildInputs = [ bash which autoconf ];
+  mlPlugin = true;
+  useMelquiondRemake.logpath = "Flocq";
 
-  src = fetchurl {
-    url = https://gforge.inria.fr/frs/download.php/file/37054/flocq-2.6.0.tar.gz;
-    sha256 = "13fv150dcwnjrk00d7zj2c5x9jwmxgrq0ay440gkr730l8mvk3l3";
-  };
-
-  buildInputs = with coq.ocamlPackages; [ ocaml camlp5 bash which autoconf automake ];
-  propagatedBuildInputs = [ coq ];
-
-  buildPhase = ''
-    ${bash}/bin/bash autogen.sh
-    ${bash}/bin/bash configure --libdir=$out/lib/coq/${coq.coq-version}/user-contrib/Flocq
-    ./remake
-  '';
-
-  installPhase = ''
-    ./remake install
-  '';
-
-  meta = with stdenv.lib; {
-    homepage = http://flocq.gforge.inria.fr/;
+  meta = {
     description = "A floating-point formalization for the Coq system";
     license = licenses.lgpl3;
     maintainers = with maintainers; [ jwiegley ];
-    platforms = coq.meta.platforms;
   };
-
 }

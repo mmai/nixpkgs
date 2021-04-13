@@ -1,36 +1,32 @@
-{ stdenv, fetchFromGitHub
-, cmake, pkgconfig, SDL2, SDL, SDL2_ttf, openssl, spice-protocol, fontconfig
-, libX11, freefont_ttf, nettle, libconfig
+{ lib, stdenv, fetchFromGitHub, cmake, pkg-config, SDL2, SDL2_ttf, spice-protocol
+, fontconfig, libX11, freefont_ttf, nettle, libpthreadstubs, libXau, libXdmcp
+, libXi, libXext, wayland, libffi, libGLU, expat, libbfd
 }:
 
 stdenv.mkDerivation rec {
-  name = "looking-glass-client-${version}";
-  version = "a12";
+  pname = "looking-glass-client";
+  version = "B2";
 
   src = fetchFromGitHub {
     owner = "gnif";
     repo = "LookingGlass";
     rev = version;
-    sha256 = "0r6bvl9q94039r6ff4f2bg8si95axx9w8bf1h1qr5730d2kv5yxq";
+    sha256 = "100b5kzh8gr81kzw5fdqz2jsms25hv3815d31vy3qd6lrlm5gs3d";
+    fetchSubmodules = true;
   };
 
-  nativeBuildInputs = [ pkgconfig ];
+  nativeBuildInputs = [ cmake pkg-config ];
 
   buildInputs = [
-    SDL SDL2 SDL2_ttf openssl spice-protocol fontconfig
-    libX11 freefont_ttf nettle libconfig cmake
+    SDL2 SDL2_ttf spice-protocol fontconfig libX11 freefont_ttf nettle
+    libpthreadstubs libXau libXdmcp libXi libXext wayland libffi libGLU expat
+    libbfd
   ];
 
-  enableParallelBuilding = true;
-
   sourceRoot = "source/client";
+  NIX_CFLAGS_COMPILE = "-mavx"; # Fix some sort of AVX compiler problem.
 
-  installPhase = ''
-    mkdir -p $out/bin
-    mv looking-glass-client $out/bin
-  '';
-
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A KVM Frame Relay (KVMFR) implementation";
     longDescription = ''
       Looking Glass is an open source application that allows the use of a KVM
@@ -39,9 +35,9 @@ stdenv.mkDerivation rec {
       step required to move away from dual booting with other operating systems
       for legacy programs that require high performance graphics.
     '';
-    homepage = https://looking-glass.hostfission.com/;
+    homepage = "https://looking-glass.io/";
     license = licenses.gpl2Plus;
-    maintainers = [ maintainers.pneumaticat ];
+    maintainers = with maintainers; [ alexbakker ];
     platforms = [ "x86_64-linux" ];
   };
 }

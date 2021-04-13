@@ -1,30 +1,33 @@
-{ stdenv, fetch, cmake, libxml2, llvm, version, clang-tools-extra_src, python
+{ lib, stdenv, fetch, cmake, libxml2, llvm, version, clang-tools-extra_src, python3
 , fixDarwinDylibNames
 , enableManpages ? false
 }:
 
 let
-  gcc = if stdenv.cc.isGNU then stdenv.cc.cc else stdenv.cc.cc.gcc;
   self = stdenv.mkDerivation ({
-    name = "clang-${version}";
+    pname = "clang";
+    inherit version;
+
+    src = fetch "cfe" "0018520c4qxf5hgjdqgpz2dgl3faf4gsz87fdlb8zdmx99rfk77s";
 
     unpackPhase = ''
-      unpackFile ${fetch "cfe" "0018520c4qxf5hgjdqgpz2dgl3faf4gsz87fdlb8zdmx99rfk77s"}
+      unpackFile $src
       mv cfe-${version}* clang
       sourceRoot=$PWD/clang
       unpackFile ${clang-tools-extra_src}
       mv clang-tools-extra-* $sourceRoot/tools/extra
     '';
 
-    nativeBuildInputs = [ cmake python ]
-      ++ stdenv.lib.optional enableManpages python.pkgs.sphinx;
+    nativeBuildInputs = [ cmake python3 ]
+      ++ lib.optional enableManpages python3.pkgs.sphinx
+      ++ lib.optional stdenv.hostPlatform.isDarwin fixDarwinDylibNames;
 
-    buildInputs = [ libxml2 llvm ]
-      ++ stdenv.lib.optional stdenv.isDarwin fixDarwinDylibNames;
+    buildInputs = [ libxml2 llvm ];
 
     cmakeFlags = [
       "-DCMAKE_CXX_FLAGS=-std=c++11"
-    ] ++ stdenv.lib.optionals enableManpages [
+      "-DLLVM_ENABLE_RTTI=ON"
+    ] ++ lib.optionals enableManpages [
       "-DCLANG_INCLUDE_DOCS=ON"
       "-DLLVM_ENABLE_SPHINX=ON"
       "-DSPHINX_OUTPUT_MAN=ON"
@@ -41,7 +44,7 @@ let
 
       # Patch for standalone doc building
       sed -i '1s,^,find_package(Sphinx REQUIRED)\n,' docs/CMakeLists.txt
-    '' + stdenv.lib.optionalString stdenv.hostPlatform.isMusl ''
+    '' + lib.optionalString stdenv.hostPlatform.isMusl ''
       sed -i -e 's/lgcc_s/lgcc_eh/' lib/Driver/ToolChains/*.cpp
     '';
 
@@ -69,23 +72,19 @@ let
       rm $out/bin/c-index-test
     '';
 
-    enableParallelBuilding = true;
-
     passthru = {
       isClang = true;
       inherit llvm;
-    } // stdenv.lib.optionalAttrs stdenv.isLinux {
-      inherit gcc;
     };
 
     meta = {
       description = "A c, c++, objective-c, and objective-c++ frontend for the llvm compiler";
-      homepage    = http://llvm.org/;
-      license     = stdenv.lib.licenses.ncsa;
-      platforms   = stdenv.lib.platforms.all;
+      homepage    = "https://llvm.org/";
+      license     = lib.licenses.ncsa;
+      platforms   = lib.platforms.all;
     };
-  } // stdenv.lib.optionalAttrs enableManpages {
-    name = "clang-manpages-${version}";
+  } // lib.optionalAttrs enableManpages {
+    pname = "clang-manpages";
 
     buildPhase = ''
       make docs-clang-man

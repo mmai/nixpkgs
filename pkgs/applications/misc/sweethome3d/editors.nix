@@ -1,40 +1,54 @@
-{ stdenv, fetchcvs, makeWrapper, makeDesktopItem, jdk, jre, ant
-, gtk3, gsettings-desktop-schemas, sweethome3dApp }:
+{ lib
+, stdenv
+, fetchcvs
+, makeWrapper
+, makeDesktopItem
+# sweethome3d 6.4.2 does not yet build with jdk 9 and later.
+# this is fixed on trunk (7699?) but let's build with jdk8 until then.
+, jdk8
+# it can run on the latest stable jre fine though
+, jre
+, ant
+, gtk3
+, gsettings-desktop-schemas
+, sweethome3dApp }:
 
 let
 
-  sweetExec = with stdenv.lib;
+  sweetExec = with lib;
     m: "sweethome3d-"
     + removeSuffix "libraryeditor" (toLower m)
     + "-editor";
-  sweetName = m: v: sweetExec m + "-" + v;
-
-  getDesktopFileName = drvName: (builtins.parseDrvName drvName).name;
 
   mkEditorProject =
-  { name, module, version, src, license, description, desktopName }:
+  { pname, module, version, src, license, description, desktopName }:
 
   stdenv.mkDerivation rec {
     application = sweethome3dApp;
-    inherit name module version src description;
+    inherit pname module version src description;
     exec = sweetExec module;
     editorItem = makeDesktopItem {
       inherit exec desktopName;
-      name = getDesktopFileName name;
+      name = pname;
       comment =  description;
       genericName = "Computer Aided (Interior) Design";
-      categories = "Application;Graphics;2DGraphics;3DGraphics;";
+      categories = "Graphics;2DGraphics;3DGraphics;";
     };
 
-    buildInputs = [ ant jre jdk makeWrapper gtk3 gsettings-desktop-schemas ];
+    nativeBuildInputs = [ makeWrapper ];
+    buildInputs = [ ant jre jdk8 gtk3 gsettings-desktop-schemas ];
 
-    patchPhase = ''
+    postPatch = ''
       sed -i -e 's,../SweetHome3D,${application.src},g' build.xml
       sed -i -e 's,lib/macosx/java3d-1.6/jogl-all.jar,lib/java3d-1.6/jogl-all.jar,g' build.xml
     '';
 
     buildPhase = ''
-      ant -lib ${application.src}/libtest -lib ${application.src}/lib -lib ${jdk}/lib
+      runHook preBuild
+
+      ant -lib ${application.src}/libtest -lib ${application.src}/lib -lib ${jdk8}/lib
+
+      runHook postBuild
     '';
 
     installPhase = ''
@@ -50,25 +64,25 @@ let
     dontStrip = true;
 
     meta = {
-      homepage = http://www.sweethome3d.com/index.jsp;
+      homepage = "http://www.sweethome3d.com/index.jsp";
       inherit description;
       inherit license;
-      maintainers = [ stdenv.lib.maintainers.edwtjo ];
-      platforms = stdenv.lib.platforms.linux;
+      maintainers = [ lib.maintainers.edwtjo ];
+      platforms = lib.platforms.linux;
     };
 
   };
 
-  d2u = stdenv.lib.replaceChars ["."] ["_"];
+  d2u = lib.replaceChars ["."] ["_"];
 
 in {
 
   textures-editor = mkEditorProject rec {
     version = "1.5";
     module = "TexturesLibraryEditor";
-    name = sweetName module version;
+    pname = module;
     description = "Easily create SH3T files and edit the properties of the texture images it contain";
-    license = stdenv.lib.licenses.gpl2Plus;
+    license = lib.licenses.gpl2Plus;
     src = fetchcvs {
       cvsRoot = ":pserver:anonymous@sweethome3d.cvs.sourceforge.net:/cvsroot/sweethome3d";
       sha256 = "15wxdns3hc8yq362x0rj53bcxran2iynxznfcb9js85psd94zq7h";
@@ -81,9 +95,9 @@ in {
   furniture-editor = mkEditorProject rec {
     version = "1.19";
     module = "FurnitureLibraryEditor";
-    name = sweetName module version;
+    pname = module;
     description = "Quickly create SH3F files and edit the properties of the 3D models it contain";
-    license = stdenv.lib.licenses.gpl2;
+    license = lib.licenses.gpl2;
     src = fetchcvs {
       cvsRoot = ":pserver:anonymous@sweethome3d.cvs.sourceforge.net:/cvsroot/sweethome3d";
       sha256 = "0rr4nqil1mngak3ds5vz7f1whrgcgzpk6fb0qcr5ljms0jx0ylvs";

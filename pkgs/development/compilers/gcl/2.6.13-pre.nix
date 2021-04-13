@@ -1,14 +1,14 @@
-{ stdenv, fetchgit, mpfr, m4, binutils, emacs, zlib, which
-, texinfo, libX11, xproto, inputproto, libXi, gmp, readline, strace
-, libXext, xextproto, libXt, libXaw, libXmu } :
+{ lib, stdenv, fetchgit, mpfr, m4, binutils, emacs, zlib, which
+, texinfo, libX11, xorgproto, libXi, gmp, readline, strace
+, libXext, libXt, libXaw, libXmu } :
 
 assert stdenv ? cc ;
 assert stdenv.cc.isGNU ;
 assert stdenv.cc ? libc ;
 assert stdenv.cc.libc != null ;
 
-stdenv.mkDerivation rec {
-  name = "gcl-${version}";
+stdenv.mkDerivation {
+  pname = "gcl";
   version = "2.6.13pre50";
 
   src = fetchgit {
@@ -19,6 +19,11 @@ stdenv.mkDerivation rec {
 
   postPatch = ''
     sed -e 's/<= obj-date/<= (if (= 0 obj-date) 1 obj-date)/' -i lsp/make.lisp
+  ''
+  # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=902475
+  + ''
+    substituteInPlace h/elf64_i386_reloc.h \
+      --replace 'case R_X86_64_PC32:' 'case R_X86_64_PC32: case R_X86_64_PLT32:'
   '';
 
   sourceRoot = "gcl/gcl";
@@ -27,8 +32,8 @@ stdenv.mkDerivation rec {
 
   buildInputs = [
     mpfr m4 binutils emacs gmp
-    libX11 xproto inputproto libXi
-    libXext xextproto libXt libXaw libXmu
+    libX11 xorgproto libXi
+    libXext libXt libXaw libXmu
     zlib which texinfo readline strace
   ];
 
@@ -40,7 +45,7 @@ stdenv.mkDerivation rec {
 
   meta = {
     description = "GNU Common Lisp compiler working via GCC";
-    maintainers = [ stdenv.lib.maintainers.raskin ];
-    platforms = stdenv.lib.platforms.linux;
+    maintainers = [ lib.maintainers.raskin ];
+    platforms = lib.platforms.linux;
   };
 }

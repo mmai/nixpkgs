@@ -1,15 +1,15 @@
-{ stdenv, python3Packages, fetchFromGitHub, glibcLocales }:
+{ lib, python3Packages, fetchFromGitHub, glibcLocales }:
 
 with python3Packages;
 buildPythonApplication rec {
-  name = "wakatime-${version}";
-  version = "10.6.0";
+  pname = "wakatime";
+  version = "13.0.7";
 
   src = fetchFromGitHub {
     owner = "wakatime";
     repo = "wakatime";
     rev = version;
-    sha256 = "0g4zvy1ll30jg55ddpfqmlncqd0igg6kqy87j4izs1dpapk7a1ln";
+    sha256 = "1rnapzaabg962wxrmfcq9lxz0yyqd3mxqbx3dq1ih4w33lf4fi8d";
   };
 
   # needs more dependencies from https://github.com/wakatime/wakatime/blob/191b302bfb5f272ae928c6d3867d06f3dfcba4a8/dev-requirements.txt
@@ -22,7 +22,7 @@ buildPythonApplication rec {
     pytest tests
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     inherit (src.meta) homepage;
     description = "WakaTime command line interface";
     longDescription = ''

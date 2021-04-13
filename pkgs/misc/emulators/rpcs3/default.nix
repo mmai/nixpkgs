@@ -1,29 +1,31 @@
-{ stdenv, lib, fetchgit, cmake, pkgconfig, git                                                                      
-, qt5, openal, glew, vulkan-loader, libpng, ffmpeg, libevdev, python27                                              
-, pulseaudioSupport ? true, libpulseaudio                                                                           
-, waylandSupport ? true, wayland                                                                                    
-, alsaSupport ? true, alsaLib                                                                                       
-}:                                                                                                                  
-                                                                                                                    
-let                                                                                                                 
-  majorVersion = "0.0.5";                                                                                           
-  gitVersion = "6980-81e5f3b7f"; # echo $(git rev-list HEAD --count)-$(git rev-parse --short HEAD)                  
-in                                                                                                                  
-stdenv.mkDerivation rec {                                                                                           
-  name = "rpcs3-${version}";                                                                                        
-  version = "${majorVersion}-${gitVersion}";                                                                        
-                                                                                                                    
-  src = fetchgit {                                                                                                  
-    url = "https://github.com/RPCS3/rpcs3";                                                                         
-    rev = "81e5f3b7f299942f56bcfdde54edd09c722b32d8";                                                               
-    sha256 = "0czj6ga1nccqgcvi58sjnv1cc4k7qvwijp4warml463hpsmbd9r0";                                                
-  };                                                                                                                
-                                                                                                                    
-  preConfigure = ''                                                                                                 
-    cat > ./rpcs3/git-version.h <<EOF                                                                               
-    #define RPCS3_GIT_VERSION "${gitVersion}"                                                                       
-    #define RPCS3_GIT_BRANCH "HEAD"                                                                                 
-    #define RPCS3_GIT_VERSION_NO_UPDATE 1                                                                           
+{ mkDerivation, lib, fetchgit, cmake, pkg-config, git
+, qtbase, qtquickcontrols, openal, glew, vulkan-headers, vulkan-loader, libpng
+, ffmpeg, libevdev, python3
+, pulseaudioSupport ? true, libpulseaudio
+, waylandSupport ? true, wayland
+, alsaSupport ? true, alsaLib
+}:
+
+let
+  majorVersion = "0.0.12";
+  gitVersion = "10811-a86a3d2fe"; # echo $(git rev-list HEAD --count)-$(git rev-parse --short HEAD)
+in
+mkDerivation {
+  pname = "rpcs3";
+  version = "${majorVersion}-${gitVersion}";
+
+  src = fetchgit {
+    url = "https://github.com/RPCS3/rpcs3";
+    rev = "v${majorVersion}";
+    sha256 = "182rkmbnnlcfzam4bwas7lwv10vqiqvvaw3299a3hariacd7rq8x";
+  };
+
+  preConfigure = ''
+    cat > ./rpcs3/git-version.h <<EOF
+    #define RPCS3_GIT_VERSION "${gitVersion}"
+    #define RPCS3_GIT_FULL_BRANCH "RPCS3/rpcs3/master"
+    #define RPCS3_GIT_BRANCH "HEAD"
+    #define RPCS3_GIT_VERSION_NO_UPDATE 1
     EOF
   '';
 
@@ -33,20 +35,19 @@ stdenv.mkDerivation rec {
     "-DUSE_NATIVE_INSTRUCTIONS=OFF"
   ];
 
-  nativeBuildInputs = [ cmake pkgconfig git ];
+  nativeBuildInputs = [ cmake pkg-config git ];
 
   buildInputs = [
-    qt5.qtbase qt5.qtquickcontrols openal glew vulkan-loader libpng ffmpeg libevdev python27
+    qtbase qtquickcontrols openal glew vulkan-headers vulkan-loader libpng ffmpeg
+    libevdev python3
   ] ++ lib.optional pulseaudioSupport libpulseaudio
     ++ lib.optional alsaSupport alsaLib
     ++ lib.optional waylandSupport wayland;
 
-  enableParallelBuilding = true;
-
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "PS3 emulator/debugger";
     homepage = "https://rpcs3.net/";
-    maintainers = with maintainers; [ abbradar nocent ];
+    maintainers = with maintainers; [ abbradar neonfuz ilian ];
     license = licenses.gpl2;
     platforms = [ "x86_64-linux" ];
   };

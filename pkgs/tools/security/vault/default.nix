@@ -1,43 +1,37 @@
-{ stdenv, fetchFromGitHub, go, gox, removeReferencesTo }:
+{ lib, fetchFromGitHub, buildGoPackage, installShellFiles, nixosTests }:
 
-stdenv.mkDerivation rec {
-  name = "vault-${version}";
-  version = "1.0.1";
+buildGoPackage rec {
+  pname = "vault";
+  version = "1.7.0";
 
   src = fetchFromGitHub {
     owner = "hashicorp";
     repo = "vault";
     rev = "v${version}";
-    sha256 = "17gyl8hb72gwb3vy7nrp3cj9lrj0zgb8xja0bgwqpv511hg1qwwf";
+    sha256 = "1lsz8fyjcxamvs9n3m974q2jxhv828fb5p6qx8wlqdaahqgrc8qg";
   };
 
-  nativeBuildInputs = [ go gox removeReferencesTo ];
+  goPackagePath = "github.com/hashicorp/vault";
 
-  preBuild = ''
-    patchShebangs ./
-    substituteInPlace scripts/build.sh --replace 'git rev-parse HEAD' 'echo ${src.rev}'
-    sed -i s/'^GIT_DIRTY=.*'/'GIT_DIRTY="+NixOS"'/ scripts/build.sh
+  subPackages = [ "." ];
 
-    mkdir -p .git/hooks src/github.com/hashicorp
-    ln -s $(pwd) src/github.com/hashicorp/vault
+  nativeBuildInputs = [ installShellFiles ];
 
-    export GOPATH=$(pwd)
+  buildFlagsArray = [ "-tags=vault" "-ldflags=-s -w -X ${goPackagePath}/sdk/version.GitCommit=${src.rev}" ];
+
+  postInstall = ''
+    echo "complete -C $out/bin/vault vault" > vault.bash
+    installShellCompletion vault.bash
   '';
 
-  installPhase = ''
-    mkdir -p $out/bin $out/share/bash-completion/completions
+  passthru.tests.vault = nixosTests.vault;
 
-    cp pkg/*/* $out/bin/
-    find $out/bin -type f -exec remove-references-to -t ${go} '{}' +
-
-    echo "complete -C $out/bin/vault vault" > $out/share/bash-completion/completions/vault
-  '';
-
-  meta = with stdenv.lib; {
-    homepage = https://www.vaultproject.io;
+  meta = with lib; {
+    homepage = "https://www.vaultproject.io/";
     description = "A tool for managing secrets";
+    changelog = "https://github.com/hashicorp/vault/blob/v${version}/CHANGELOG.md";
     platforms = platforms.linux ++ platforms.darwin;
     license = licenses.mpl20;
-    maintainers = with maintainers; [ rushmorem lnl7 offline pradeepchhetri ];
+    maintainers = with maintainers; [ rushmorem lnl7 offline pradeepchhetri Chili-Man ];
   };
 }

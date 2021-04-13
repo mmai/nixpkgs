@@ -1,6 +1,6 @@
-{ stdenv, fetchFromGitHub, cmake }:
+{ lib, stdenv, fetchFromGitHub, cmake }:
 
-stdenv.mkDerivation rec {
+stdenv.mkDerivation {
   name = "qhull-2016.1";
 
   src = fetchFromGitHub {
@@ -12,10 +12,10 @@ stdenv.mkDerivation rec {
 
   nativeBuildInputs = [ cmake ];
 
-  meta = with stdenv.lib; {
-    homepage = http://www.qhull.org/;
+  meta = with lib; {
+    homepage = "http://www.qhull.org/";
     description = "Compute the convex hull, Delaunay triangulation, Voronoi diagram and more";
-    license = licenses.free;
+    license = licenses.qhull;
     platforms = platforms.unix;
     maintainers = with maintainers; [ orivej ];
   };

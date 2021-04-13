@@ -1,31 +1,45 @@
-{ stdenv, fetchurl, recode }:
+{ lib, stdenv, fetchurl, cmake, recode, perl }:
 
-stdenv.mkDerivation {
-  name = "fortune-mod-1.99.1";
+stdenv.mkDerivation rec {
+  pname = "fortune-mod";
+  version = "3.4.1";
 
+  # We use fetchurl instead of fetchFromGitHub because the release pack has some
+  # special files.
   src = fetchurl {
-    url = http://ftp.de.debian.org/debian/pool/main/f/fortune-mod/fortune-mod_1.99.1.orig.tar.gz;
-    sha256 = "1kpa2hgbglj5dbfasvl9wc1q3xpl91mqn3sfby46r4rwyzhswlgw";
+    url = "https://github.com/shlomif/fortune-mod/releases/download/${pname}-${version}/${pname}-${version}.tar.xz";
+    sha256 = "02hjf432mq5qpbf1hywid7b356jys5n9brrrmm6z6r05jpzybbg3";
   };
+
+  nativeBuildInputs = [ cmake perl ];
 
   buildInputs = [ recode ];
 
-  preConfigure = ''
-    sed -i "s|/usr/|$out/|" Makefile
-  '';
+  cmakeFlags = [
+    "-DLOCALDIR=${placeholder "out"}/share/fortunes"
+  ];
 
-  preBuild = ''
-    makeFlagsArray=("CC=$CC" "REGEXDEFS=-DHAVE_REGEX_H -DPOSIX_REGEX" "LDFLAGS=")
-  '';
+  patches = [ (builtins.toFile "not-a-game.patch" ''
+    diff --git a/CMakeLists.txt b/CMakeLists.txt
+    index 865e855..5a59370 100644
+    --- a/CMakeLists.txt
+    +++ b/CMakeLists.txt
+    @@ -154,7 +154,7 @@ ENDMACRO()
+     my_exe(
+         "fortune"
+         "fortune/fortune.c"
+    -    "games"
+    +    "bin"
+     )
 
-  postInstall = ''
-    mv $out/games/fortune $out/bin/fortune
-    rmdir $out/games
-  '';
+     my_exe(
+    --
+  '') ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A program that displays a pseudorandom message from a database of quotations";
     license = licenses.bsdOriginal;
     platforms = platforms.unix;
+    maintainers = with maintainers; [ vonfry ];
   };
 }

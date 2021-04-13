@@ -1,15 +1,15 @@
-{ stdenv
+{ lib, stdenv
 , buildPythonPackage
 , fetchPypi
 }:
 
 buildPythonPackage rec {
   pname = "Pympler";
-  version = "0.6";
+  version = "0.9";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "c262ceca4dac67b8b523956833c52443420eabc3321a07185990b358b8ba13a7";
+    sha256 = "f2cbe7df622117af890249f2dea884eb702108a12d729d264b7c5983a6e06e47";
   };
 
   postPatch = ''
@@ -18,9 +18,9 @@ buildPythonPackage rec {
 
   doCheck = stdenv.hostPlatform.isLinux;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Tool to measure, monitor and analyze memory behavior";
-    homepage = https://pythonhosted.org/Pympler/;
+    homepage = "https://pythonhosted.org/Pympler/";
     license = licenses.asl20;
   };
 

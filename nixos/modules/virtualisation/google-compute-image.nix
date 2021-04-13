@@ -43,7 +43,7 @@ in
     system.build.googleComputeImage = import ../../lib/make-disk-image.nix {
       name = "google-compute-image";
       postVM = ''
-        PATH=$PATH:${with pkgs; stdenv.lib.makeBinPath [ gnutar gzip ]}
+        PATH=$PATH:${with pkgs; lib.makeBinPath [ gnutar gzip ]}
         pushd $out
         mv $diskImage disk.raw
         tar -Szcf nixos-image-${config.system.nixos.label}-${pkgs.stdenv.hostPlatform.system}.raw.tar.gz disk.raw
@@ -51,7 +51,7 @@ in
         popd
       '';
       format = "raw";
-      configFile = if isNull cfg.configFile then defaultConfigFile else cfg.configFile;
+      configFile = if cfg.configFile == null then defaultConfigFile else cfg.configFile;
       inherit (cfg) diskSize;
       inherit config lib pkgs;
     };

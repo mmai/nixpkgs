@@ -1,50 +1,57 @@
-{ stdenv, fetchFromGitHub, fetchurl, fetchpatch
-, ocaml, findlib, ocamlbuild, ocaml_oasis,
- bitstring, camlzip, cmdliner, core_kernel, ezjsonm, faillib, fileutils, ocaml_lwt, ocamlgraph, ocurl, re, uri, zarith, piqi, piqi-ocaml, uuidm, llvm_38, frontc, ounit, ppx_jane, parsexp,
- utop,
- which, makeWrapper, writeText
+{ lib, stdenv, fetchFromGitHub, fetchurl
+, ocaml, findlib, ocamlbuild, ocaml_oasis
+, bitstring, camlzip, cmdliner, core_kernel, ezjsonm, fileutils, ocaml_lwt, ocamlgraph, ocurl, re, uri, zarith, piqi, piqi-ocaml, uuidm, llvm, frontc, ounit, ppx_jane, parsexp
+, utop, libxml2, ncurses
+, linenoise
+, ppx_bap
+, ppx_bitstring
+, yojson
+, which, makeWrapper, writeText
+, z3
 }:
+
+if !lib.versionAtLeast ocaml.version "4.08"
+then throw "BAP is not available for OCaml ${ocaml.version}"
+else
 
 stdenv.mkDerivation rec {
   name = "ocaml${ocaml.version}-bap-${version}";
-  version = "1.4.0";
+  version = "2.2.0";
   src = fetchFromGitHub {
     owner = "BinaryAnalysisPlatform";
     repo = "bap";
     rev = "v${version}";
-    sha256 = "0329m65x8q5q8vgvsqgyz2vz7q6qkh2rh11j7x29hckk3fzxsf8g";
+    sha256 = "0c53sps6ba9n5cjdmapi8ylzlpcc11pksijp9swzlwgxyz5d276f";
   };
 
   sigs = fetchurl {
      url = "https://github.com/BinaryAnalysisPlatform/bap/releases/download/v${version}/sigs.zip";
-     sha256 = "0k761w82zkmi5dwsfqq61dbjnb8mmmpb2xwp7vp85xs14g5fjz19";
+     sha256 = "0d69jd28z4g64mglq94kj5imhmk5f6sgcsh9q2nij3b0arpcliwk";
   };
-
-  patches = [(fetchpatch {
-    url = "https://github.com/BinaryAnalysisPlatform/bap/commit/e4ee3a1e5b427e8d8991e7462b06123178c0a046.patch";
-    sha256 = "1yq33zd2sdacclr20g05c1q050m7x7vfbl66qdgansh23dr4fnxk";
-  })];
 
   createFindlibDestdir = true;
 
   setupHook = writeText "setupHook.sh" ''
-    export CAML_LD_LIBRARY_PATH="''${CAML_LD_LIBRARY_PATH}''${CAML_LD_LIBRARY_PATH:+:}''$1/lib/ocaml/${ocaml.version}/site-lib/${name}/"
-    export CAML_LD_LIBRARY_PATH="''${CAML_LD_LIBRARY_PATH}''${CAML_LD_LIBRARY_PATH:+:}''$1/lib/ocaml/${ocaml.version}/site-lib/${name}-llvm-plugins/"
+    export CAML_LD_LIBRARY_PATH="''${CAML_LD_LIBRARY_PATH-}''${CAML_LD_LIBRARY_PATH:+:}''$1/lib/ocaml/${ocaml.version}/site-lib/${name}/"
+    export CAML_LD_LIBRARY_PATH="''${CAML_LD_LIBRARY_PATH-}''${CAML_LD_LIBRARY_PATH:+:}''$1/lib/ocaml/${ocaml.version}/site-lib/${name}-llvm-plugins/"
   '';
 
   nativeBuildInputs = [ which makeWrapper ];
 
   buildInputs = [ ocaml findlib ocamlbuild ocaml_oasis
-                  llvm_38
-                  utop ];
+                  linenoise
+                  ounit
+                  ppx_bitstring
+                  z3
+                  utop libxml2 ncurses ];
 
-  propagatedBuildInputs = [ bitstring camlzip cmdliner ppx_jane core_kernel ezjsonm faillib fileutils ocaml_lwt ocamlgraph ocurl re uri zarith piqi parsexp
-                            piqi-ocaml uuidm frontc ounit ];
+  propagatedBuildInputs = [ bitstring camlzip cmdliner ppx_bap core_kernel ezjsonm fileutils ocaml_lwt ocamlgraph ocurl re uri zarith piqi parsexp
+                            piqi-ocaml uuidm frontc yojson ];
 
   installPhase = ''
     export OCAMLPATH=$OCAMLPATH:$OCAMLFIND_DESTDIR;
     export PATH=$PATH:$out/bin
-    export CAML_LD_LIBRARY_PATH=$CAML_LD_LIBRARY_PATH:$OCAMLFIND_DESTDIR/bap-plugin-llvm/:$OCAMLFIND_DESTDIR/bap/
+    export CAML_LD_LIBRARY_PATH=''${CAML_LD_LIBRARY_PATH-}''${CAML_LD_LIBRARY_PATH:+:}$OCAMLFIND_DESTDIR/bap-plugin-llvm/:$OCAMLFIND_DESTDIR/bap/
     mkdir -p $out/lib/bap
     make install
     rm $out/bin/baptop
@@ -53,17 +60,20 @@ stdenv.mkDerivation rec {
     ln -s $sigs $out/share/bap/sigs.zip
   '';
 
-  disableIda = "--disable-ida --disable-fsi-benchmark";
+  disableIda = "--disable-ida";
 
-  configureFlags = [ "--enable-everything ${disableIda}" "--with-llvm-config=${llvm_38}/bin/llvm-config" ];
+  patches = [ ./curses_is_ncurses.patch ];
 
-  BAPBUILDFLAGS = "-j $(NIX_BUILD_CORES)";
+  preConfigure = ''
+    substituteInPlace oasis/elf-loader --replace bitstring.ppx ppx_bitstring
+  '';
 
-  meta = with stdenv.lib; {
+  configureFlags = [ "--enable-everything ${disableIda}" "--with-llvm-config=${llvm}/bin/llvm-config" ];
+
+  meta = with lib; {
     description = "Platform for binary analysis. It is written in OCaml, but can be used from other languages.";
-    homepage = https://github.com/BinaryAnalysisPlatform/bap/;
+    homepage = "https://github.com/BinaryAnalysisPlatform/bap/";
     maintainers = [ maintainers.maurer ];
     license = licenses.mit;
-    broken = versionOlder ocaml.version "4.03";
   };
 }

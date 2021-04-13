@@ -1,4 +1,4 @@
-{ stdenv
+{ lib, stdenv
 , rtpPath ? "share/vim-plugins"
 , vim
 }:
@@ -18,7 +18,7 @@ rec {
     buildPhase ? "",
     preInstall ? "",
     postInstall ? "",
-    path ? (builtins.parseDrvName name).name,
+    path ? lib.getName name,
     addonInfo ? null,
     ...
   }:
@@ -37,7 +37,7 @@ rec {
         # build help tags
         if [ -d "$target/doc" ]; then
           echo "Building help tags"
-          if ! ${vim}/bin/vim -N -u NONE -i NONE -n -E -s -c "helptags $target/doc" +quit!; then
+          if ! ${vim}/bin/vim -N -u NONE -i NONE -n -E -s -V1 -c "helptags $target/doc" +quit!; then
             echo "Failed to build help tags!"
             exit 1
           fi

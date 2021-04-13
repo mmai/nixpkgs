@@ -1,20 +1,17 @@
-{ stdenv, fetchurl, pkgconfig, gtk3, glibmm, cairomm, pangomm, atkmm, epoxy }:
+{ lib, stdenv, fetchurl, pkg-config, meson, ninja, python3, gtk3, glibmm, cairomm, pangomm, atkmm, epoxy, gnome3 }:
 
-let
-  ver_maj = "3.22";
-  ver_min = "2";
-in
 stdenv.mkDerivation rec {
-  name = "gtkmm-${ver_maj}.${ver_min}";
+  pname = "gtkmm";
+  version = "3.24.3";
 
   src = fetchurl {
-    url = "mirror://gnome/sources/gtkmm/${ver_maj}/${name}.tar.xz";
-    sha256 = "91afd98a31519536f5f397c2d79696e3d53143b80b75778521ca7b48cb280090";
+    url = "mirror://gnome/sources/${pname}/${lib.versions.majorMinor version}/${pname}-${version}.tar.xz";
+    sha256 = "sha256-YEl8T381TDvSVXSF8CVPi3tM9L68n+4L4mp3dE6s1DU=";
   };
 
   outputs = [ "out" "dev" ];
 
-  nativeBuildInputs = [ pkgconfig ];
+  nativeBuildInputs = [ pkg-config meson ninja python3 ];
   buildInputs = [ epoxy ];
 
   propagatedBuildInputs = [ glibmm gtk3 atkmm cairomm pangomm ];
@@ -24,12 +21,19 @@ stdenv.mkDerivation rec {
   # https://bugzilla.gnome.org/show_bug.cgi?id=764521
   doCheck = false;
 
-  meta = with stdenv.lib; {
-    description = "C++ interface to the GTK+ graphical user interface library";
+  passthru = {
+    updateScript = gnome3.updateScript {
+      packageName = pname;
+      attrPath = "${pname}3";
+    };
+  };
+
+  meta = with lib; {
+    description = "C++ interface to the GTK graphical user interface library";
 
     longDescription = ''
       gtkmm is the official C++ interface for the popular GUI library
-      GTK+.  Highlights include typesafe callbacks, and a
+      GTK.  Highlights include typesafe callbacks, and a
       comprehensive set of widgets that are easily extensible via
       inheritance.  You can create user interfaces either in code or
       with the Glade User Interface designer, using libglademm.
@@ -37,7 +41,7 @@ stdenv.mkDerivation rec {
       tutorial.
     '';
 
-    homepage = https://gtkmm.org/;
+    homepage = "https://gtkmm.org/";
 
     license = licenses.lgpl2Plus;
 

@@ -1,24 +1,22 @@
-{ stdenv, pkgconfig, fetchpatch, fetchFromGitHub, buildPythonPackage
+{ lib, pkg-config, fetchPypi, buildPythonPackage
+, buildPackages
 , zstd, pytest }:
 
 buildPythonPackage rec {
   pname = "zstd";
-  version = "1.3.5.1";
+  version = "1.4.8.1";
 
-  # Switch back to fetchPypi when tests/ is included, see https://github.com/NixOS/nixpkgs/pull/49339
-  src = fetchFromGitHub {
-    owner = "sergey-dryabzhinsky";
-    repo = "python-zstd";
-    rev = "v${version}";
-    sha256 = "08n1vz4zavas4cgzpdfcbpy33lnv39xxhq5mgj0zv3xi03ypc1rl";
+  src = fetchPypi {
+    inherit pname version;
+    sha256 = "b62b21eb850abd6b8c0046bfc1c5c773c873eeb94f1904ef1ff304e98b62b80e";
   };
 
   postPatch = ''
     substituteInPlace setup.py \
-      --replace "/usr/bin/pkg-config" "${pkgconfig}/bin/pkg-config"
+      --replace "/usr/bin/pkg-config" "${buildPackages.pkg-config}/bin/${buildPackages.pkg-config.targetPrefix}pkg-config"
   '';
 
-  nativeBuildInputs = [ pkgconfig ];
+  nativeBuildInputs = [ pkg-config ];
   buildInputs = [ zstd ];
 
   setupPyBuildFlags = [
@@ -38,9 +36,9 @@ buildPythonPackage rec {
     pytest
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Simple python bindings to Yann Collet ZSTD compression library";
-    homepage = https://github.com/sergey-dryabzhinsky/python-zstd;
+    homepage = "https://github.com/sergey-dryabzhinsky/python-zstd";
     license = licenses.bsd2;
     maintainers = with maintainers; [
       eadwu

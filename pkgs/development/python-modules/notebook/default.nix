@@ -2,6 +2,7 @@
 , lib
 , buildPythonPackage
 , fetchPypi
+, argon2_cffi
 , nose
 , nose_warnings_filters
 , glibcLocales
@@ -21,26 +22,28 @@
 , send2trash
 , pexpect
 , prometheus_client
+, pytestCheckHook
 }:
 
 buildPythonPackage rec {
   pname = "notebook";
-  version = "5.7.2";
+  version = "6.2.0";
+  disabled = !isPy3k;
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "91705b109fc785198faed892489cddb233265564d5e2dad5e4f7974af05ee8dd";
+    sha256 = "0464b28e18e7a06cec37e6177546c2322739be07962dd13bf712bcb88361f013";
   };
 
   LC_ALL = "en_US.utf8";
 
-  checkInputs = [ nose glibcLocales ]
+  checkInputs = [ nose pytestCheckHook glibcLocales ]
     ++ (if isPy3k then [ nose_warnings_filters ] else [ mock ]);
 
   propagatedBuildInputs = [
     jinja2 tornado ipython_genutils traitlets jupyter_core send2trash
     jupyter_client nbformat nbconvert ipykernel terminado requests pexpect
-    prometheus_client
+    prometheus_client argon2_cffi
   ];
 
   # disable warning_filters
@@ -51,23 +54,32 @@ buildPythonPackage rec {
   postPatch = ''
     # Remove selenium tests
     rm -rf notebook/tests/selenium
-
+    export HOME=$TMPDIR
   '';
 
-  checkPhase = ''
-    runHook preCheck
-    mkdir tmp
-    HOME=tmp nosetests -v ${if (stdenv.isDarwin) then ''
-      --exclude test_delete \
-      --exclude test_checkpoints_follow_file
-    ''
-    else ""}
-  '';
+  disabledTests = [
+    # a "system_config" is generated, and fails many tests
+    "config"
+    "load_ordered"
+    # requires jupyter, but will cause circular imports
+    "test_run"
+    "TestInstallServerExtension"
+    "launch_socket"
+    "sock_server"
+    "test_list_formats" # tries to find python MIME type
+    "KernelCullingTest" # has a race condition failing on slower hardware
+  ] ++ lib.optional stdenv.isDarwin [
+    "test_delete"
+    "test_checkpoints_follow_file"
+  ];
+
+  # Some of the tests use localhost networking.
+  __darwinAllowLocalNetworking = true;
 
   meta = {
     description = "The Jupyter HTML notebook is a web-based notebook environment for interactive computing";
-    homepage = http://jupyter.org/;
+    homepage = "https://jupyter.org/";
     license = lib.licenses.bsd3;
-    maintainers = with lib.maintainers; [ fridh globin ];
+    maintainers = with lib.maintainers; [ fridh ];
   };
 }

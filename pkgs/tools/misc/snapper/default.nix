@@ -1,31 +1,42 @@
-{ stdenv, fetchFromGitHub, fetchpatch
-, autoreconfHook, pkgconfig, docbook_xsl, libxslt, docbook_xml_dtd_45
+{ lib, stdenv, fetchFromGitHub
+, autoreconfHook, pkg-config, docbook_xsl, libxslt, docbook_xml_dtd_45
 , acl, attr, boost, btrfs-progs, dbus, diffutils, e2fsprogs, libxml2
-, lvm2, pam, python, utillinux }:
+, lvm2, pam, python, util-linux, fetchpatch, json_c, nixosTests
+, ncurses }:
 
 stdenv.mkDerivation rec {
-  name = "snapper-${version}";
-  version = "0.8.1";
+  pname = "snapper";
+  version = "0.8.15";
 
   src = fetchFromGitHub {
     owner = "openSUSE";
     repo = "snapper";
     rev = "v${version}";
-    sha256 = "0kl0najv8jpx94v44v68fmqsg2vv6yz3y5dmy0q8la0zyz766dhm";
+    sha256 = "1rqv1qfxr02qbkix1mpx91s4827irxryxkhby3ii0fdkm3ympsas";
   };
 
   nativeBuildInputs = [
-    autoreconfHook pkgconfig
+    autoreconfHook pkg-config
     docbook_xsl libxslt docbook_xml_dtd_45
   ];
   buildInputs = [
     acl attr boost btrfs-progs dbus diffutils e2fsprogs libxml2
-    lvm2 pam python utillinux
+    lvm2 pam python util-linux json_c ncurses
+  ];
+
+  passthru.tests.snapper = nixosTests.snapper;
+
+  patches = [
+    # Don't use etc/dbus-1/system.d
+    (fetchpatch {
+      url = "https://github.com/openSUSE/snapper/commit/c51708aea22d9436da287cba84424557ad03644b.patch";
+      sha256 = "106pf7pv8z3q37c8ckmgwxs1phf2fy7l53a9g5xq5kk2rjj1cx34";
+    })
   ];
 
   postPatch = ''
     # Hard-coded root paths, hard-coded root paths everywhere...
-    for file in {client,data,pam,scripts}/Makefile.am; do
+    for file in {client,data,pam,scripts,zypp-plugin}/Makefile.am; do
       substituteInPlace $file \
         --replace '$(DESTDIR)/usr' "$out" \
         --replace "DESTDIR" "out" \
@@ -41,9 +52,7 @@ stdenv.mkDerivation rec {
 
   enableParallelBuilding = true;
 
-  NIX_CFLAGS_COMPILE = [
-    "-I${libxml2.dev}/include/libxml2"
-  ];
+  NIX_CFLAGS_COMPILE = "-I${libxml2.dev}/include/libxml2";
 
   postInstall = ''
     rm -r $out/etc/cron.*
@@ -57,11 +66,11 @@ stdenv.mkDerivation rec {
     done
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Tool for Linux filesystem snapshot management";
-    homepage = http://snapper.io;
-    license = licenses.gpl2;
+    homepage = "http://snapper.io";
+    license = licenses.gpl2Only;
     platforms = platforms.linux;
-    maintainers = with maintainers; [ tstrobel ];
+    maintainers = with maintainers; [ tstrobel markuskowa ];
   };
 }

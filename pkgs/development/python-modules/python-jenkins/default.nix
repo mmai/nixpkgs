@@ -1,38 +1,40 @@
-{ stdenv
+{ lib
 , buildPythonPackage
 , fetchPypi
-, python
 , mock
 , pbr
 , pyyaml
+, setuptools
 , six
 , multi_key_dict
-, testtools
 , testscenarios
-, testrepository
-, kerberos
+, requests
+, unittest2
+, requests-mock
 }:
 
 buildPythonPackage rec {
   pname = "python-jenkins";
-  version = "1.3.0";
+  version = "1.7.0";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "b44b3c8e0dabed371a1a8a301cc8833c635625faf003fd68c176800c71a6597c";
+    sha256 = "01jid5s09lr3kayr2h1z9n8h9nhyw3jxv9c4b5hrlxijknkqzvfy";
   };
 
-  patchPhase = ''
-    sed -i 's@python@${python.interpreter}@' .testr.conf
+  buildInputs = [ mock ];
+  propagatedBuildInputs = [ pbr pyyaml setuptools six multi_key_dict requests ];
+
+  checkInputs = [ unittest2 testscenarios requests-mock ];
+  checkPhase = ''
+    unit2
   '';
 
-  buildInputs = [ mock ];
-  propagatedBuildInputs = [ pbr pyyaml six multi_key_dict testtools testscenarios testrepository kerberos ];
-
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Python bindings for the remote Jenkins API";
-    homepage = https://pypi.python.org/pypi/python-jenkins;
+    homepage = "https://pypi.python.org/pypi/python-jenkins";
     license = licenses.bsd3;
+    maintainers = with maintainers; [ ];
   };
 
 }

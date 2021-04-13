@@ -1,5 +1,5 @@
-{ stdenv, buildPythonPackage, fetchPypi
-, pytest, setuptools_scm }:
+{ lib, buildPythonPackage, fetchPypi
+, pytest, setuptools_scm, isPy3k }:
 
 buildPythonPackage rec {
   pname = "apipkg";
@@ -10,16 +10,32 @@ buildPythonPackage rec {
     sha256 = "37228cda29411948b422fae072f57e31d3396d2ee1c9783775980ee9c9990af6";
   };
 
-  buildInputs = [ setuptools_scm ];
+  nativeBuildInputs = [ setuptools_scm ];
   checkInputs = [ pytest ];
 
-  checkPhase = ''
-    py.test
+  # Fix pytest 4 support. See: https://github.com/pytest-dev/apipkg/issues/14
+  postPatch = ''
+    substituteInPlace "test_apipkg.py" \
+      --replace "py.test.ensuretemp('test_apipkg')" "py.path.local('test_apipkg')"
   '';
 
-  meta = with stdenv.lib; {
+  # Failing tests on Python 3
+  # https://github.com/pytest-dev/apipkg/issues/17
+  checkPhase = let
+    disabledTests = lib.optionals isPy3k [
+      "test_error_loading_one_element"
+      "test_aliasmodule_proxy_methods"
+      "test_eagerload_on_bython"
+    ];
+    testExpression = lib.optionalString (disabledTests != [])
+    "-k 'not ${lib.concatStringsSep " and not " disabledTests}'";
+  in ''
+    py.test ${testExpression}
+  '';
+
+  meta = with lib; {
     description = "Namespace control and lazy-import mechanism";
-    homepage = https://bitbucket.org/hpk42/apipkg;
+    homepage = "https://github.com/pytest-dev/apipkg";
     license = licenses.mit;
   };
 }

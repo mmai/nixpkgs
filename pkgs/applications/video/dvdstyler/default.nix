@@ -1,4 +1,4 @@
-{ stdenv, fetchurl, pkgconfig
+{ lib, stdenv, fetchurl, pkg-config
 , flex, bison, gettext
 , xineUI, wxSVG
 , fontconfig
@@ -10,20 +10,20 @@
 , dbusSupport ? true, dbus ? null
 , makeWrapper }:
 
-with stdenv.lib;
+with lib;
 stdenv.mkDerivation rec {
 
-  name = "dvdstyler-${version}";
+  pname = "dvdstyler";
   srcName = "DVDStyler-${version}";
-  version = "3.0.4";
+  version = "3.1.2";
 
   src = fetchurl {
     url = "mirror://sourceforge/project/dvdstyler/dvdstyler/${version}/${srcName}.tar.bz2";
-    sha256 = "0lwc0hn94m9r8fi07sjqz3fr618l6lnw3zsakxw7nlgnxbjsk7pi";
+    sha256 = "03lsblqficcadlzkbyk8agh5rqcfz6y6dqvy9y866wqng3163zq4";
   };
 
   nativeBuildInputs =
-  [ pkgconfig ];
+  [ pkg-config ];
 
   packagesToBinPath =
   [ cdrtools dvdauthor dvdplusrwtools ];
@@ -45,7 +45,7 @@ stdenv.mkDerivation rec {
       --prefix PATH ":" "${binPath}"
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A DVD authoring software";
     longDescription = ''
     DVDStyler is a cross-platform free DVD authoring application for the
@@ -77,7 +77,7 @@ stdenv.mkDerivation rec {
     - copy any menu object or whole menu
     - customize navigation using DVD scripting
     '';
-    homepage = http://www.dvdstyler.org/;
+    homepage = "http://www.dvdstyler.org/";
     license = with licenses; gpl2;
     maintainers = with maintainers; [ AndersonTorres ];
     platforms = with platforms; linux;

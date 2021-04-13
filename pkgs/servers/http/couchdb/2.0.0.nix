@@ -1,17 +1,20 @@
-{ stdenv, fetchurl, erlang, icu, openssl, spidermonkey
-, coreutils, bash, makeWrapper }:
+{ lib, stdenv, fetchurl, erlang, icu, openssl, spidermonkey_1_8_5
+, coreutils, bash, makeWrapper, python3 }:
 
 stdenv.mkDerivation rec {
-  name = "couchdb-${version}";
-  version = "2.3.0";
+  pname = "couchdb";
+  version = "2.3.1";
 
+
+  # when updating this, please consider bumping the OTP version
+  # in all-packages.nix
   src = fetchurl {
-    url = "mirror://apache/couchdb/source/${version}/apache-${name}.tar.gz";
-    sha256 = "0lpk64n6fip85j1jz59kq20jdliwv6mh8j2h5zyxjn5i8b86hf0b";
+    url = "mirror://apache/couchdb/source/${version}/apache-${pname}-${version}.tar.gz";
+    sha256 = "0z926hjqyhxhyr65kqxwpmp80nyfqbig6d9dy8dqflpb87n8rss3";
   };
 
   nativeBuildInputs = [ makeWrapper ];
-  buildInputs = [ erlang icu openssl spidermonkey ];
+  buildInputs = [ erlang icu openssl spidermonkey_1_8_5 (python3.withPackages(ps: with ps; [ requests ]))];
 
   patches = [ ./jsapi.patch ];
   postPatch = ''
@@ -44,11 +47,11 @@ stdenv.mkDerivation rec {
     wrapProgram $out/bin/couchdb --suffix PATH : ${bash}/bin
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A database that uses JSON for documents, JavaScript for MapReduce queries, and regular HTTP for an API";
-    homepage = http://couchdb.apache.org;
+    homepage = "http://couchdb.apache.org";
     license = licenses.asl20;
     platforms = platforms.all;
-    maintainers = with maintainers; [ garbas ];
+    maintainers = with maintainers; [ ];
   };
 }

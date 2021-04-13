@@ -1,26 +1,52 @@
-{ stdenv, fetchFromGitHub, cmake, pkgconfig, pcre, qt5, glib }:
+{ lib
+, mkDerivation
+, fetchFromGitHub
+, cmake
+, pkg-config
+, pcre
+, qtbase
+, glib
+, lxqtUpdateScript
+}:
 
-stdenv.mkDerivation rec {
-  name = "lxqt-build-tools-${version}";
-  version = "0.5.0";
+mkDerivation rec {
+  pname = "lxqt-build-tools";
+  version = "0.8.0";
 
   src = fetchFromGitHub {
     owner = "lxqt";
-    repo = "lxqt-build-tools";
+    repo = pname;
     rev = version;
-    sha256 = "0dcwzrijmn4sgivmy2zwz3xa4y69pwhranyw0m90g0pp55di2psz";
+    sha256 = "1wf6mhcfgk64isy7bk018szlm18xa3hjjnmhpcy2whnnjfq0jal6";
   };
 
-  nativeBuildInputs = [ cmake pkgconfig ];
+  nativeBuildInputs = [
+    cmake
+    pkg-config
+    setupHook
+  ];
 
-  buildInputs = [ qt5.qtbase glib pcre ];
+  buildInputs = [
+    qtbase
+    glib
+    pcre
+  ];
 
-  preConfigure = ''cmakeFlags+=" -DLXQT_ETC_XDG_DIR=$out/etc/xdg"'';
+  setupHook = ./setup-hook.sh;
 
-  meta = with stdenv.lib; {
+  # We're dependent on this macro doing add_definitions in most places
+  # But we have the setup-hook to set the values.
+  postInstall = ''
+    rm $out/share/cmake/lxqt-build-tools/modules/LXQtConfigVars.cmake
+    cp ${./LXQtConfigVars.cmake} $out/share/cmake/lxqt-build-tools/modules/LXQtConfigVars.cmake
+  '';
+
+  passthru.updateScript = lxqtUpdateScript { inherit pname version src; };
+
+  meta = with lib; {
+    homepage = "https://github.com/lxqt/lxqt-build-tools";
     description = "Various packaging tools and scripts for LXQt applications";
-    homepage = https://github.com/lxqt/lxqt-build-tools;
-    license = licenses.lgpl21;
+    license = licenses.lgpl21Plus;
     platforms = with platforms; unix;
     maintainers = with maintainers; [ romildo ];
   };

@@ -1,57 +1,61 @@
-{ stdenv
+{ lib, stdenv
 , ctags
+, appstream-glib
 , desktop-file-utils
 , docbook_xsl
 , docbook_xml_dtd_43
 , fetchurl
 , flatpak
-, glibcLocales
 , gnome3
+, libgit2-glib
 , gobject-introspection
+, glade
 , gspell
 , gtk-doc
 , gtk3
 , gtksourceview4
-, hicolor-icon-theme
 , json-glib
 , jsonrpc-glib
 , libdazzle
+, libpeas
+, libportal
 , libxml2
 , meson
 , ninja
 , ostree
 , pcre
-, pkgconfig
+, pcre2
+, pkg-config
 , python3
 , sysprof
 , template-glib
 , vala
+, vte
 , webkitgtk
 , wrapGAppsHook
+, dbus
+, xvfb_run
 }:
-let
-  version = "3.30.2";
+
+stdenv.mkDerivation rec {
   pname = "gnome-builder";
-in stdenv.mkDerivation {
-  name = "${pname}-${version}";
+  version = "3.38.2";
 
   src = fetchurl {
-    url = "mirror://gnome/sources/${pname}/${stdenv.lib.versions.majorMinor version}/${pname}-${version}.tar.xz";
-    sha256 = "05yax7iv9g831xvw9xdc01qc0l7qpmh6rfd692x8cbg76hljxdrr";
+    url = "mirror://gnome/sources/${pname}/${lib.versions.majorMinor version}/${pname}-${version}.tar.xz";
+    sha256 = "jFNco64yoZC1TZbTIHGVf+wBYYQHo2JRiMZFHngzYTs=";
   };
 
   nativeBuildInputs = [
-    #appstream-glib # tests fail if these tools are available
+    appstream-glib
     desktop-file-utils
     docbook_xsl
     docbook_xml_dtd_43
-    glibcLocales # for Meson's gtkdochelper
     gobject-introspection
     gtk-doc
-    hicolor-icon-theme
     meson
     ninja
-    pkgconfig
+    pkg-config
     python3
     python3.pkgs.wrapPython
     wrapGAppsHook
@@ -61,9 +65,11 @@ in stdenv.mkDerivation {
     ctags
     flatpak
     gnome3.devhelp
-    gnome3.libgit2-glib
-    gnome3.libpeas
-    gnome3.vte
+    glade
+    libgit2-glib
+    libpeas
+    libportal
+    vte
     gspell
     gtk3
     gtksourceview4
@@ -73,11 +79,17 @@ in stdenv.mkDerivation {
     libxml2
     ostree
     pcre
+    pcre2
     python3
     sysprof
     template-glib
     vala
     webkitgtk
+  ];
+
+  checkInputs = [
+    dbus
+    xvfb_run
   ];
 
   outputs = [ "out" "devdoc" ];
@@ -88,19 +100,25 @@ in stdenv.mkDerivation {
 
   mesonFlags = [
     "-Dpython_libprefix=${python3.libPrefix}"
-    "-Dwith_docs=true"
+    "-Ddocs=true"
 
     # Making the build system correctly detect clang header and library paths
     # is difficult. Somebody should look into fixing this.
-    "-Dwith_clang=false"
+    "-Dplugin_clang=false"
+
+    # Do not try to check if appstream images exist
+    "-Dnetwork_tests=false"
   ];
 
   # Some tests fail due to being unable to find the Vte typelib, and I don't
   # understand why. Somebody should look into fixing this.
-  doCheck = false;
+  doCheck = true;
 
-  preInstall = ''
-    export LC_ALL="en_US.utf-8"
+  checkPhase = ''
+    export NO_AT_BRIDGE=1
+    xvfb-run -s '-screen 0 800x600x24' dbus-run-session \
+      --config-file=${dbus.daemon}/share/dbus-1/session.conf \
+      meson test --print-errorlogs
   '';
 
   pythonPath = with python3.pkgs; requiredPythonModules [ pygobject3 ];
@@ -119,7 +137,7 @@ in stdenv.mkDerivation {
 
   passthru.updateScript = gnome3.updateScript { packageName = pname; };
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "An IDE for writing GNOME-based software";
     longDescription = ''
       Global search, auto-completion, source code map, documentation
@@ -131,9 +149,9 @@ in stdenv.mkDerivation {
       currently recommend running gnome-builder inside a nix-shell with
       appropriate dependencies loaded.
     '';
-    homepage = https://wiki.gnome.org/Apps/Builder;
+    homepage = "https://wiki.gnome.org/Apps/Builder";
     license = licenses.gpl3Plus;
-    maintainers = gnome3.maintainers;
+    maintainers = teams.gnome.members;
     platforms = platforms.linux;
   };
 }

@@ -26,9 +26,10 @@ stdenv.mkDerivation rec {
     mkdir -p $out/lib
     cp -rL src/sandbox/include/ $out/
     cp libsystem_sandbox.dylib $out/lib/
-  '';
 
-  # buildInputs = [ cmake bison flex ];
+    mkdir -p $out/include
+    cp src/libaks/include/* $out/include
+  '';
 
   meta = with lib; {
     maintainers = with maintainers; [ matthewbauer ];

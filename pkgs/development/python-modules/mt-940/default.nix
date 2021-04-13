@@ -1,37 +1,31 @@
-{ buildPythonPackage, stdenv, pyyaml, pytest, enum34
-, pytestpep8, pytestflakes, fetchFromGitHub, isPy3k, lib, glibcLocales
+{ lib, buildPythonPackage, fetchPypi, isPy3k
+, enum34, pyyaml, pytest
 }:
 
 buildPythonPackage rec {
-  version = "4.12.2";
+  version = "4.23.0";
   pname = "mt-940";
 
-  src = fetchFromGitHub {
-    owner = "WoLpH";
-    repo = "mt940";
-    rev = "v${version}";
-    sha256 = "0l7q8v00dhpbc9mh6baaaqc55kf44rszygx28dq3pwp5b5x33nir";
+  src = fetchPypi {
+    inherit pname version;
+    sha256 = "9274bc8298b2d4b69cb3936bdcda315b50e45975789f519a237bdec58346b8d7";
   };
-
-  postPatch = ''
-    # No coverage report
-    sed -i "/--\(no-\)\?cov/d" pytest.ini
-  '';
 
   propagatedBuildInputs = lib.optional (!isPy3k) enum34;
 
-  LC_ALL="en_US.UTF-8";
+  checkInputs = [ pyyaml pytest ];
 
-  checkInputs = [ pyyaml pytestpep8 pytestflakes pytest glibcLocales ];
-
-  # See https://github.com/WoLpH/mt940/issues/64 for the disabled test
+  # requires tests files that are not present
+  doCheck = false;
   checkPhase = ''
-    py.test -k "not mt940.models.FixedOffset"
+    py.test
   '';
 
-  meta = with stdenv.lib; {
+  pythonImportsCheck = [ "mt940" ];
+
+  meta = with lib; {
     description = "A library to parse MT940 files and returns smart Python collections for statistics and manipulation";
-    inherit (src.meta) homepage;
+    homepage = "https://github.com/WoLpH/mt940";
     license = licenses.bsd3;
   };
 }

@@ -1,20 +1,22 @@
-{ stdenv, fetchurl, pkgconfig, python3, alsaSupport, alsaLib ? null, bluez, systemdSupport, systemd ? null }:
+{ lib, stdenv, fetchurl, pkg-config, python3, bluez
+, alsaSupport ? stdenv.isLinux, alsaLib ? null
+, systemdSupport ? stdenv.isLinux, systemd ? null }:
 
 assert alsaSupport -> alsaLib != null;
 assert systemdSupport -> systemd != null;
 
 stdenv.mkDerivation rec {
-  name = "brltty-5.6";
+  name = "brltty-6.1";
 
   src = fetchurl {
     url = "http://brltty.com/archive/${name}.tar.gz";
-    sha256 = "06by51n35w0jq14w1vimxk3ssrlmiiw49wpxw29rasc106mpysfn";
+    sha256 = "0nk54chr7z2w579vyiak9xk2avhnvrx7x2l5sk8nyw2zplchkx9q";
   };
 
-  nativeBuildInputs = [ pkgconfig python3.pkgs.cython ];
+  nativeBuildInputs = [ pkg-config python3.pkgs.cython ];
   buildInputs = [ bluez ]
-    ++ stdenv.lib.optional alsaSupport alsaLib
-    ++ stdenv.lib.optional systemdSupport systemd;
+    ++ lib.optional alsaSupport alsaLib
+    ++ lib.optional systemdSupport systemd;
 
   meta = {
     description = "Access software for a blind person using a braille display";
@@ -24,10 +26,10 @@ stdenv.mkDerivation rec {
       It drives the braille display, and provides complete screen review functionality.
       Some speech capability has also been incorporated.
     '';
-    homepage = http://www.brltty.com/;
-    license = stdenv.lib.licenses.gpl2;
-    maintainers = [ stdenv.lib.maintainers.bramd ];
-    platforms = stdenv.lib.platforms.all;
+    homepage = "http://www.brltty.com/";
+    license = lib.licenses.gpl2;
+    maintainers = [ lib.maintainers.bramd ];
+    platforms = lib.platforms.all;
   };
 
   makeFlags = [ "PYTHON_PREFIX=$(out)" ];

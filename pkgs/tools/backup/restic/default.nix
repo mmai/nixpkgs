@@ -1,38 +1,47 @@
-{ lib, buildGoPackage, fetchFromGitHub }:
+{ stdenv, lib, buildGoModule, fetchFromGitHub, installShellFiles, makeWrapper
+, nixosTests, rclone }:
 
-buildGoPackage rec {
-  name = "restic-${version}";
-  version = "0.9.2";
-
-  goPackagePath = "github.com/restic/restic";
+buildGoModule rec {
+  pname = "restic";
+  version = "0.12.0";
 
   src = fetchFromGitHub {
     owner = "restic";
     repo = "restic";
     rev = "v${version}";
-    sha256 = "0kl8yk636i3y7f2kd43pydjh4pv7hhq09p5k54jlysnrbf2kjb4h";
+    sha256 = "07gxf56g45gj2arvdnrr9656i9ykhy1y6k6zdlni1sa3aa2x2bbf";
   };
 
-  buildPhase = ''
-    cd go/src/${goPackagePath}
-    go run build.go
+  patches = [
+    # The TestRestoreWithPermissionFailure test fails in Nix’s build sandbox
+    ./0001-Skip-testing-restore-with-permission-failure.patch
+  ];
+
+  vendorSha256 = "14z22lmdd681rn61alpqbn3i9fn0kcc74321vjvhz2ix2mch3c1z";
+
+  subPackages = [ "cmd/restic" ];
+
+  nativeBuildInputs = [ installShellFiles makeWrapper ];
+
+  passthru.tests.restic = nixosTests.restic;
+
+  postPatch = ''
+    rm cmd/restic/integration_fuse_test.go
   '';
 
-  installPhase = ''
-    mkdir -p \
-      $bin/bin \
-      $bin/etc/bash_completion.d \
-      $bin/share/zsh/vendor-completions \
-      $bin/share/man/man1
-    cp restic $bin/bin/
-    $bin/bin/restic generate \
-      --bash-completion $bin/etc/bash_completion.d/restic.sh \
-      --zsh-completion $bin/share/zsh/vendor-completions/_restic \
-      --man $bin/share/man/man1
+  postInstall = ''
+    wrapProgram $out/bin/restic --prefix PATH : '${rclone}/bin'
+  '' + lib.optionalString (stdenv.hostPlatform == stdenv.buildPlatform) ''
+    $out/bin/restic generate \
+      --bash-completion restic.bash \
+      --zsh-completion restic.zsh \
+      --man .
+    installShellCompletion restic.{bash,zsh}
+    installManPage *.1
   '';
 
   meta = with lib; {
-    homepage = https://restic.net;
+    homepage = "https://restic.net";
     description = "A backup program that is fast, efficient and secure";
     platforms = platforms.linux ++ platforms.darwin;
     license = licenses.bsd2;

@@ -1,26 +1,26 @@
 { lib
 , fetchPypi
 , buildPythonPackage
-, pytest, pytestrunner, pytestcov
+, pytestCheckHook, pytestrunner, pytestcov
 , isPy3k
 }:
 
 buildPythonPackage rec {
   pname = "multidict";
-  version = "4.4.2";
+  version = "5.1.0";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "3c11e92c3dfc321014e22fb442bc9eb70e01af30d6ce442026b0c35723448c66";
+    sha256 = "25b4e5f22d3a37ddf3effc0710ba692cfc792c2b9edfb9c05aefe823256e84d5";
   };
 
-  checkInputs = [ pytest pytestrunner pytestcov ];
+  checkInputs = [ pytestCheckHook pytestrunner pytestcov ];
 
   disabled = !isPy3k;
 
   meta = with lib; {
     description = "Multidict implementation";
-    homepage = https://github.com/aio-libs/multidict/;
+    homepage = "https://github.com/aio-libs/multidict/";
     license = licenses.asl20;
     maintainers = with maintainers; [ dotlambda ];
   };

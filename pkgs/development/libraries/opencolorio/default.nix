@@ -1,22 +1,22 @@
-{ stdenv, lib, fetchFromGitHub, cmake, boost, pkgconfig, lcms2, tinyxml, git }:
+{ stdenv, lib, fetchFromGitHub, cmake, boost, pkg-config, lcms2, tinyxml, git }:
 
 with lib;
 
 stdenv.mkDerivation rec {
-  name = "opencolorio-${version}";
-  version = "1.1.0";
+  pname = "opencolorio";
+  version = "1.1.1";
 
   src = fetchFromGitHub {
     owner = "imageworks";
     repo = "OpenColorIO";
     rev = "v${version}";
-    sha256 = "0cjsyn681xsg89lirlll5pqlsqg2vnk1278iiicmzjy2a2v8x7zq";
+    sha256 = "12srvxca51czpfjl0gabpidj9n84mw78ivxy5w75qhq2mmc798sb";
   };
 
   outputs = [ "bin" "out" "dev" ];
 
   # TODO: Investigate whether git can be dropped: It's only used to apply patches
-  nativeBuildInputs = [ cmake pkgconfig git ];
+  nativeBuildInputs = [ cmake pkg-config git ];
 
   buildInputs = [ lcms2 tinyxml ] ++ optional stdenv.isDarwin boost;
 
@@ -37,8 +37,8 @@ stdenv.mkDerivation rec {
     mkdir -p $bin/bin; mv $out/bin $bin/
   '';
 
-  meta = with stdenv.lib; {
-    homepage = http://opencolorio.org;
+  meta = with lib; {
+    homepage = "https://opencolorio.org";
     description = "A color management framework for visual effects and animation";
     license = licenses.bsd3;
     maintainers = [ maintainers.goibhniu ];

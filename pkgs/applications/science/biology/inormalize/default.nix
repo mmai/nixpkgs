@@ -1,5 +1,5 @@
-{ stdenv, fetchFromGitHub, cmake, makeWrapper,
-  perl, GetoptTabular, MNI-Perllib,
+{ lib, stdenv, fetchFromGitHub, cmake, makeWrapper,
+  perlPackages,
   libminc, EBTKS }:
 
 stdenv.mkDerivation rec {
@@ -17,9 +17,9 @@ stdenv.mkDerivation rec {
 
   nativeBuildInputs = [ cmake makeWrapper ];
   buildInputs = [ libminc EBTKS ];
-  propagatedBuildInputs = [ perl GetoptTabular MNI-Perllib ];
+  propagatedBuildInputs = with perlPackages; [ perl GetoptTabular MNI-Perllib ];
 
-  cmakeFlags = [ "-DLIBMINC_DIR=${libminc}/lib/" "-DEBTKS_DIR=${EBTKS}/lib/" ];
+  cmakeFlags = [ "-DLIBMINC_DIR=${libminc}/lib/cmake" "-DEBTKS_DIR=${EBTKS}/lib/" ];
 
   postFixup = ''
     for p in $out/bin/*; do
@@ -27,7 +27,7 @@ stdenv.mkDerivation rec {
     done
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://github.com/BIC-MNI/${pname}";
     description = "Program to normalize intensity of MINC files";
     maintainers = with maintainers; [ bcdarwin ];

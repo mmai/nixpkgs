@@ -1,24 +1,30 @@
-{ stdenv, pkgs, fetchFromGitLab, cmake, gfortran, perl
+{ lib, stdenv, fetchFromGitLab, cmake, gfortran, perl
 , openblas, hdf5-cpp, python3, texlive
-, armadillo, openmpi, globalarrays, openssh
-, makeWrapper
+, armadillo, mpi, globalarrays, openssh
+, makeWrapper, fetchpatch
 } :
 
 let
-  version = "18.09";
+  version = "20.10";
   gitLabRev = "v${version}";
 
   python = python3.withPackages (ps : with ps; [ six pyparsing ]);
 
 in stdenv.mkDerivation {
-  name = "openmolcas-${version}";
+  pname = "openmolcas";
+  inherit version;
 
   src = fetchFromGitLab {
     owner = "Molcas";
     repo = "OpenMolcas";
     rev = gitLabRev;
-    sha256 = "1di1ygifx7ycfpwh25mv76xlv15wqfdmqzjsg5nani2d5z0arri2";
+    sha256 = "0xr9plgb0cfmxxqmd3wrhvl0hv2jqqfqzxwzs1jysq2m9cxl314v";
   };
+
+  patches = [
+    # Required to handle openblas multiple outputs
+    ./openblasPath.patch
+];
 
   nativeBuildInputs = [ perl cmake texlive.combined.scheme-minimal makeWrapper ];
   buildInputs = [
@@ -27,12 +33,10 @@ in stdenv.mkDerivation {
     hdf5-cpp
     python
     armadillo
-    openmpi
+    mpi
     globalarrays
     openssh
   ];
-
-  enableParallelBuilding = true;
 
   cmakeFlags = [
     "-DOPENMP=ON"
@@ -42,7 +46,7 @@ in stdenv.mkDerivation {
     "-DTOOLS=ON"
     "-DHDF5=ON"
     "-DFDE=ON"
-    "-DOPENBLASROOT=${openblas}"
+    "-DOPENBLASROOT=${openblas.dev}"
   ];
 
   GAROOT=globalarrays;
@@ -61,12 +65,12 @@ in stdenv.mkDerivation {
     wrapProgram $out/bin/pymolcas --set MOLCAS $out
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Advanced quantum chemistry software package";
-    homepage = https://gitlab.com/Molcas/OpenMolcas;
+    homepage = "https://gitlab.com/Molcas/OpenMolcas";
     maintainers = [ maintainers.markuskowa ];
-    license = licenses.lgpl21;
-    platforms = platforms.linux;
+    license = licenses.lgpl21Only;
+    platforms = [ "x86_64-linux" ];
   };
 }
 

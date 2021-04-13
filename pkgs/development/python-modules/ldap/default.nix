@@ -1,31 +1,40 @@
 { buildPythonPackage, fetchPypi
-, pyasn1, pyasn1-modules, pytest
-, openldap, cyrus_sasl, stdenv }:
+, pyasn1, pyasn1-modules
+, pythonAtLeast, pytestCheckHook
+, openldap, cyrus_sasl, lib, stdenv }:
 
 buildPythonPackage rec {
   pname = "python-ldap";
-  version = "3.1.0";
+  version = "3.3.1";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "41975e79406502c092732c57ef0c2c2eb318d91e8e765f81f5d4ab6c1db727c5";
+    sha256 = "198as30xy6p760niqps2zdvq2xcmr765h06pmda8fa9y077wl4a7";
   };
 
   propagatedBuildInputs = [ pyasn1 pyasn1-modules ];
 
+  checkInputs = [ pytestCheckHook ];
   buildInputs = [ openldap cyrus_sasl ];
 
-  checkInputs = [ pytest ];
-
-  checkPhase = ''
+  preCheck = ''
     # Needed by tests to setup a mockup ldap server.
     export BIN="${openldap}/bin"
     export SBIN="${openldap}/bin"
     export SLAPD="${openldap}/libexec/slapd"
     export SCHEMA="${openldap}/etc/schema"
-
-    py.test
   '';
 
+  disabledTests = lib.optionals (pythonAtLeast "3.9") [
+    # See https://github.com/python-ldap/python-ldap/issues/407
+    "test_simple_bind_noarg"
+  ];
+
   doCheck = !stdenv.isDarwin;
+
+  meta = with lib; {
+    description = "Python modules for implementing LDAP clients";
+    homepage = "https://www.python-ldap.org/";
+    license = licenses.psfl;
+  };
 }

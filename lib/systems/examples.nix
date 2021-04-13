@@ -7,7 +7,6 @@ let
 
   riscv = bits: {
     config = "riscv${bits}-unknown-linux-gnu";
-    platform = platforms.riscv-multiplatform bits;
   };
 in
 
@@ -17,84 +16,84 @@ rec {
   #
   powernv = {
     config = "powerpc64le-unknown-linux-gnu";
-    platform = platforms.powernv;
   };
   musl-power = {
     config = "powerpc64le-unknown-linux-musl";
-    platform = platforms.powernv;
   };
 
-  sheevaplug = rec {
+  ppc64 = {
+    config = "powerpc64-unknown-linux-gnu";
+    gcc = { abi = "elfv2"; }; # for gcc configuration
+  };
+  ppc64-musl = {
+    config = "powerpc64-unknown-linux-musl";
+    gcc = { abi = "elfv2"; }; # for gcc configuration
+  };
+
+  sheevaplug = {
     config = "armv5tel-unknown-linux-gnueabi";
-    platform = platforms.sheevaplug;
-  };
+  } // platforms.sheevaplug;
 
-  raspberryPi = rec {
+  raspberryPi = {
     config = "armv6l-unknown-linux-gnueabihf";
-    platform = platforms.raspberrypi;
-  };
+  } // platforms.raspberrypi;
 
-  armv7l-hf-multiplatform = rec {
+  remarkable1 = {
     config = "armv7l-unknown-linux-gnueabihf";
-    platform = platforms.armv7l-hf-multiplatform;
+  } // platforms.zero-gravitas;
+
+  remarkable2 = {
+    config = "armv7l-unknown-linux-gnueabihf";
+  } // platforms.zero-sugar;
+
+  armv7l-hf-multiplatform = {
+    config = "armv7l-unknown-linux-gnueabihf";
   };
 
-  aarch64-multiplatform = rec {
+  aarch64-multiplatform = {
     config = "aarch64-unknown-linux-gnu";
-    platform = platforms.aarch64-multiplatform;
   };
 
-  armv5te-android-prebuilt = rec {
-    config = "armv5tel-unknown-linux-androideabi";
-    sdkVer = "21";
-    ndkVer = "18b";
-    platform = platforms.armv5te-android;
-    useAndroidPrebuilt = true;
-  };
-
-  armv7a-android-prebuilt = rec {
+  armv7a-android-prebuilt = {
     config = "armv7a-unknown-linux-androideabi";
-    sdkVer = "24";
-    ndkVer = "18b";
-    platform = platforms.armv7a-android;
+    rustc.config = "armv7-linux-androideabi";
+    sdkVer = "29";
+    ndkVer = "21";
     useAndroidPrebuilt = true;
-  };
+  } // platforms.armv7a-android;
 
-  aarch64-android-prebuilt = rec {
+  aarch64-android-prebuilt = {
     config = "aarch64-unknown-linux-android";
-    sdkVer = "24";
-    ndkVer = "18b";
-    platform = platforms.aarch64-multiplatform;
+    rustc.config = "aarch64-linux-android";
+    sdkVer = "29";
+    ndkVer = "21";
     useAndroidPrebuilt = true;
   };
 
-  scaleway-c1 = armv7l-hf-multiplatform // rec {
-    platform = platforms.scaleway-c1;
-    inherit (platform.gcc) fpu;
-  };
+  scaleway-c1 = armv7l-hf-multiplatform // platforms.scaleway-c1;
 
-  pogoplug4 = rec {
+  pogoplug4 = {
     config = "armv5tel-unknown-linux-gnueabi";
-    platform = platforms.pogoplug4;
-  };
+  } // platforms.pogoplug4;
 
-  ben-nanonote = rec {
+  ben-nanonote = {
     config = "mipsel-unknown-linux-uclibc";
-    platform = platforms.ben_nanonote;
-  };
+  } // platforms.ben_nanonote;
 
-  fuloongminipc = rec {
+  fuloongminipc = {
     config = "mipsel-unknown-linux-gnu";
-    platform = platforms.fuloong2f_n32;
-  };
+  } // platforms.fuloong2f_n32;
 
   muslpi = raspberryPi // {
     config = "armv6l-unknown-linux-musleabihf";
   };
 
-  aarch64-multiplatform-musl = aarch64-multiplatform // {
+  aarch64-multiplatform-musl = {
     config = "aarch64-unknown-linux-musl";
   };
+
+  gnu64 = { config = "x86_64-unknown-linux-gnu"; };
+  gnu32  = { config = "i686-unknown-linux-gnu"; };
 
   musl64 = { config = "x86_64-unknown-linux-musl"; };
   musl32  = { config = "i686-unknown-linux-musl"; };
@@ -102,8 +101,38 @@ rec {
   riscv64 = riscv "64";
   riscv32 = riscv "32";
 
+  riscv64-embedded = {
+    config = "riscv64-none-elf";
+    libc = "newlib";
+  };
+
+  riscv32-embedded = {
+    config = "riscv32-none-elf";
+    libc = "newlib";
+  };
+
+  mmix = {
+    config = "mmix-unknown-mmixware";
+    libc = "newlib";
+  };
+
+  msp430 = {
+    config = "msp430-elf";
+    libc = "newlib";
+  };
+
   avr = {
     config = "avr";
+  };
+
+  vc4 = {
+    config = "vc4-elf";
+    libc = "newlib";
+  };
+
+  or1k = {
+    config = "or1k-elf";
+    libc = "newlib";
   };
 
   arm-embedded = {
@@ -113,13 +142,19 @@ rec {
   armhf-embedded = {
     config = "arm-none-eabihf";
     libc = "newlib";
+    # GCC8+ does not build without this
+    # (https://www.mail-archive.com/gcc-bugs@gcc.gnu.org/msg552339.html):
+    gcc = {
+      arch = "armv5t";
+      fpu = "vfp";
+    };
   };
 
   aarch64-embedded = {
     config = "aarch64-none-elf";
     libc = "newlib";
   };
-  
+
   aarch64be-embedded = {
     config = "aarch64_be-none-elf";
     libc = "newlib";
@@ -129,14 +164,9 @@ rec {
     config = "powerpc-none-eabi";
     libc = "newlib";
   };
-  
+
   ppcle-embedded = {
     config = "powerpcle-none-eabi";
-    libc = "newlib";
-  };
-  
-  alpha-embedded = {
-    config = "alpha-elf";
     libc = "newlib";
   };
 
@@ -151,47 +181,52 @@ rec {
   };
 
   #
+  # Redox
+  #
+
+  x86_64-unknown-redox = {
+    config = "x86_64-unknown-redox";
+    libc = "relibc";
+  };
+
+  #
   # Darwin
   #
 
   iphone64 = {
     config = "aarch64-apple-ios";
     # config = "aarch64-apple-darwin14";
-    sdkVer = "10.2";
-    xcodeVer = "8.2";
+    sdkVer = "14.3";
+    xcodeVer = "12.3";
     xcodePlatform = "iPhoneOS";
     useiOSPrebuilt = true;
-    platform = {};
   };
 
   iphone32 = {
     config = "armv7a-apple-ios";
     # config = "arm-apple-darwin10";
-    sdkVer = "10.2";
-    xcodeVer = "8.2";
+    sdkVer = "14.3";
+    xcodeVer = "12.3";
     xcodePlatform = "iPhoneOS";
     useiOSPrebuilt = true;
-    platform = {};
   };
 
   iphone64-simulator = {
     config = "x86_64-apple-ios";
     # config = "x86_64-apple-darwin14";
-    sdkVer = "10.2";
-    xcodeVer = "8.2";
+    sdkVer = "14.3";
+    xcodeVer = "12.3";
     xcodePlatform = "iPhoneSimulator";
     useiOSPrebuilt = true;
-    platform = {};
   };
 
   iphone32-simulator = {
     config = "i686-apple-ios";
     # config = "i386-apple-darwin11";
-    sdkVer = "10.2";
-    xcodeVer = "8.2";
+    sdkVer = "14.3";
+    xcodeVer = "12.3";
     xcodePlatform = "iPhoneSimulator";
     useiOSPrebuilt = true;
-    platform = {};
   };
 
   #
@@ -200,16 +235,35 @@ rec {
 
   # 32 bit mingw-w64
   mingw32 = {
-    config = "i686-pc-mingw32";
+    config = "i686-w64-mingw32";
     libc = "msvcrt"; # This distinguishes the mingw (non posix) toolchain
-    platform = {};
   };
 
   # 64 bit mingw-w64
   mingwW64 = {
     # That's the triplet they use in the mingw-w64 docs.
-    config = "x86_64-pc-mingw32";
+    config = "x86_64-w64-mingw32";
     libc = "msvcrt"; # This distinguishes the mingw (non posix) toolchain
-    platform = {};
+  };
+
+  # BSDs
+
+  amd64-netbsd = {
+    config = "x86_64-unknown-netbsd";
+    libc = "nblibc";
+  };
+
+  #
+  # WASM
+  #
+
+  wasi32 = {
+    config = "wasm32-unknown-wasi";
+    useLLVM = true;
+  };
+
+  # Ghcjs
+  ghcjs = {
+    config = "js-unknown-ghcjs";
   };
 }

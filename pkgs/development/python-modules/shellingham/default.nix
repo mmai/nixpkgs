@@ -1,18 +1,19 @@
-{ stdenv, buildPythonPackage, fetchPypi
+{ lib, buildPythonPackage, fetchPypi
 }:
 
 buildPythonPackage rec {
   pname = "shellingham";
-  version = "1.2.8";
+  version = "1.3.2";
+  format = "pyproject";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "115k1z2klgsvyzg4q5ip0iqxyb565pkchhf2fsr846k68gqcgrjn";
+    sha256 = "576c1982bea0ba82fb46c36feb951319d7f42214a82634233f58b40d858a751e";
   };
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Tool to Detect Surrounding Shell";
-    homepage = https://github.com/sarugaku/shellingham;
+    homepage = "https://github.com/sarugaku/shellingham";
     license = licenses.isc;
     maintainers = with maintainers; [ mbode ];
   };

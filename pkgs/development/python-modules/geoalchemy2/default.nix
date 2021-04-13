@@ -1,23 +1,29 @@
-{ stdenv
+{ lib
 , buildPythonPackage
 , fetchPypi
 , sqlalchemy
 , shapely
+, setuptools_scm
+, pytest
 }:
 
 buildPythonPackage rec {
   pname = "GeoAlchemy2";
-  version = "0.5.0";
+  version = "0.8.4";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "7d66d01af82d22bc37d3ebb1e73713b87ac5e116b3bc82ea4ec0584bbaa89f89";
+    sha256 = "02jbad9vbnjx8bmfvxg77z18nymrry6li8hy9pwi0yiyvwbnycyr";
   };
 
+  nativeBuildInputs = [ setuptools_scm ];
   propagatedBuildInputs = [ sqlalchemy shapely ];
 
-  meta = with stdenv.lib; {
-    homepage =  http://geoalchemy.org/;
+  # https://github.com/geoalchemy/geoalchemy2/blob/e05a676350b11f0e73609379dae5625c5de2e868/TEST.rst
+  doCheck = false;
+
+  meta = with lib; {
+    homepage =  "http://geoalchemy.org/";
     license = licenses.mit;
     description = "Toolkit for working with spatial databases";
   };

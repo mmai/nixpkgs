@@ -1,40 +1,67 @@
-{ stdenv, meson, ninja, gettext, fetchurl
-, pkgconfig, gtk3, glib, libsoup
-, itstool, libxml2, python3Packages
-, gnome3, gdk_pixbuf, libnotify, gobject-introspection, wrapGAppsHook }:
+{ lib
+, meson
+, ninja
+, fetchurl
+, gdk-pixbuf
+, gettext
+, glib
+, gnome3
+, gobject-introspection
+, gsettings-desktop-schemas
+, gtk3
+, itstool
+, libhandy_0
+, libnotify
+, libsoup
+, libxml2
+, pkg-config
+, python3Packages
+, wrapGAppsHook }:
 
-let
+python3Packages.buildPythonApplication rec {
   pname = "gnome-tweaks";
-  version = "3.30.2";
-in stdenv.mkDerivation rec {
-  name = "${pname}-${version}";
+  version = "3.34.1";
+  format = "other";
+  strictDeps = false; # https://github.com/NixOS/nixpkgs/issues/56943
 
   src = fetchurl {
-    url = "mirror://gnome/sources/${pname}/${stdenv.lib.versions.majorMinor version}/${name}.tar.xz";
-    sha256 = "0j63siy1i5pl2g6di1r9vjn54m9ahh42wj20j6689pza2lamay1z";
+    url = "mirror://gnome/sources/${pname}/${lib.versions.majorMinor version}/${pname}-${version}.tar.xz";
+    sha256 = "19y62dj4n5i6v4zpjllxl51dch6ndy8xs45v5aqmmq9xyfrqk5yq";
   };
 
   nativeBuildInputs = [
-    meson ninja pkgconfig gettext itstool libxml2 wrapGAppsHook python3Packages.python
+    gettext
+    gobject-introspection
+    itstool
+    libxml2
+    meson
+    ninja
+    pkg-config
+    wrapGAppsHook
   ];
+
   buildInputs = [
-    gtk3 glib gnome3.gsettings-desktop-schemas
-    gdk_pixbuf gnome3.defaultIconTheme
-    libnotify gnome3.gnome-shell python3Packages.pygobject3
-    libsoup gnome3.gnome-settings-daemon gnome3.nautilus
-    gnome3.mutter gnome3.gnome-desktop gobject-introspection
-    gnome3.nautilus
+    gdk-pixbuf
+    glib
+    gnome3.gnome-desktop
+    gnome3.gnome-settings-daemon
+    gnome3.gnome-shell
     # Makes it possible to select user themes through the `user-theme` extension
     gnome3.gnome-shell-extensions
+    gnome3.mutter
+    gsettings-desktop-schemas
+    gtk3
+    libhandy_0
+    libnotify
+    libsoup
+  ];
+
+  propagatedBuildInputs = with python3Packages; [
+    pygobject3
   ];
 
   postPatch = ''
     patchShebangs meson-postinstall.py
-  '';
-
-  preFixup = ''
-    gappsWrapperArgs+=(
-      --prefix PYTHONPATH : "$out/${python3Packages.python.sitePackages}:$PYTHONPATH")
   '';
 
   passthru = {
@@ -44,10 +71,10 @@ in stdenv.mkDerivation rec {
     };
   };
 
-  meta = with stdenv.lib; {
-    homepage = https://wiki.gnome.org/action/show/Apps/GnomeTweakTool;
+  meta = with lib; {
+    homepage = "https://wiki.gnome.org/action/show/Apps/GnomeTweakTool";
     description = "A tool to customize advanced GNOME 3 options";
-    maintainers = gnome3.maintainers;
+    maintainers = teams.gnome.members;
     license = licenses.gpl3;
     platforms = platforms.linux;
   };

@@ -1,19 +1,19 @@
-{ stdenv, fetchFromGitHub, pkgconfig, gettext, makeWrapper
+{ lib, stdenv, fetchFromGitHub, pkg-config, gettext, makeWrapper
 , ncurses, libdrm, libpciaccess, libxcb }:
 
 stdenv.mkDerivation rec {
-  name = "radeontop-${version}";
-  version = "2018-03-25";
+  pname = "radeontop";
+  version = "1.3";
 
   src = fetchFromGitHub {
-    sha256 = "0s41xy9nrzxmimkdg23fr86rqcfiw6iqh99zpph0j990l8yzmv9b";
-    rev = "v1.1";
+    sha256 = "sha256-tnIxM0+RfOIt714fEUWRP/4rEPHaOuCZFit9/RPdxis=";
+    rev = "v${version}";
     repo = "radeontop";
     owner = "clbr";
   };
 
   buildInputs = [ ncurses libdrm libpciaccess libxcb ];
-  nativeBuildInputs = [ pkgconfig gettext makeWrapper ];
+  nativeBuildInputs = [ pkg-config gettext makeWrapper ];
 
   enableParallelBuilding = true;
 
@@ -28,7 +28,7 @@ stdenv.mkDerivation rec {
       --prefix LD_LIBRARY_PATH : $out/lib
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Top-like tool for viewing AMD Radeon GPU utilization";
     longDescription = ''
       View GPU utilization, both for the total activity percent and individual
@@ -37,7 +37,7 @@ stdenv.mkDerivation rec {
       is also valid for OpenCL loads; the other blocks are only useful for GL
       loads. Requires root rights or other permissions to read /dev/mem.
     '';
-    homepage = https://github.com/clbr/radeontop;
+    homepage = "https://github.com/clbr/radeontop";
     platforms = platforms.linux;
     license = licenses.gpl3;
     maintainers = with maintainers; [ rycee ];

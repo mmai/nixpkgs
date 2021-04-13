@@ -1,13 +1,15 @@
-{ stdenv, fetchurl, unzip, makeWrapper, libX11, zlib, libSM, libICE
+{ lib, stdenv, fetchurl, unzip, makeWrapper, libX11, zlib, libSM, libICE
 , libXext , freetype, libXrender, fontconfig, libXft, libXinerama
 , libXfixes, libXScrnSaver, libnotify, glib , gtk3, libappindicator-gtk3
 , curl }:
 
 let
 
-  version = "1.3.1-ff75f26";
+  data = builtins.fromJSON (builtins.readFile ./revision.json);
 
-  rpath = stdenv.lib.makeLibraryPath
+  inherit (data) version url sha256;
+
+  rpath = lib.makeLibraryPath
     [ libX11 zlib libSM libICE libXext freetype libXrender fontconfig libXft
       libXinerama stdenv.cc.cc.lib libnotify glib gtk3 libappindicator-gtk3
       curl libXfixes libXScrnSaver ];
@@ -15,12 +17,10 @@ let
 in
 
 stdenv.mkDerivation {
-  name = "hubstaff-${version}";
+  pname = "hubstaff";
+  inherit version;
 
-  src = fetchurl {
-    url = "https://hubstaff-production.s3.amazonaws.com/downloads/HubstaffClient/Builds/Release/${version}/Hubstaff-${version}.sh";
-    sha256 = "0jm5l34r6lkfkg8vsdfqbr0axngxznhagwcl9y184lnyji91fmdl";
-  };
+  src = fetchurl { inherit sha256 url; };
 
   nativeBuildInputs = [ unzip makeWrapper ];
 
@@ -56,11 +56,11 @@ stdenv.mkDerivation {
     ln -s $opt/data/resources $opt/x86_64/resources
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Time tracking software";
-    homepage = https://hubstaff.com/;
+    homepage = "https://hubstaff.com/";
     license = licenses.unfree;
     platforms = [ "x86_64-linux" ];
-    maintainers = [ maintainers.michalrus ];
+    maintainers = with maintainers; [ michalrus srghma ];
   };
 }

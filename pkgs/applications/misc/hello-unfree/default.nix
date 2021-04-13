@@ -1,7 +1,7 @@
-{ stdenv }:
+{ lib, stdenv, runtimeShell }:
 
-stdenv.mkDerivation rec {
-  name = "example-unfree-package-${version}";
+stdenv.mkDerivation {
+  pname = "example-unfree-package";
   version = "1.0";
 
   phases = [ "installPhase" "fixupPhase" ];
@@ -9,7 +9,7 @@ stdenv.mkDerivation rec {
   installPhase = ''
     mkdir -p $out/bin
     cat > $out/bin/hello-unfree << EOF
-    #!/bin/sh
+    #!${runtimeShell}
     echo "Hello, you are running an unfree system!"
     EOF
     chmod +x $out/bin/hello-unfree
@@ -17,7 +17,7 @@ stdenv.mkDerivation rec {
 
   meta = {
     description = "An example package with unfree license (for testing)";
-    license = stdenv.lib.licenses.unfree;
-    maintainers = [ stdenv.lib.maintainers.oxij ];
+    license = lib.licenses.unfree;
+    maintainers = [ lib.maintainers.oxij ];
   };
 }

@@ -12,17 +12,15 @@ let
 
 in
 
-{ # We combine legacy `system` and `platform` into `localSystem`, if
-  # `localSystem` was not passed. Strictly speaking, this is pure desugar, but
-  # it is most convient to do so before the impure `localSystem.system` default,
-  # so we do it now.
-  localSystem ? builtins.intersectAttrs { system = null; platform = null; } args
+{ # We put legacy `system` into `localSystem`, if `localSystem` was not passed.
+  # If neither is passed, assume we are building packages on the current
+  # (build, in GNU Autotools parlance) platform.
+  localSystem ? { system = args.system or builtins.currentSystem; }
 
-, # These are needed only because nix's `--arg` command-line logic doesn't work
-  # with unnamed parameters allowed by ...
-  system ? localSystem.system
-, platform ? localSystem.platform
-, crossSystem ? null
+# These are needed only because nix's `--arg` command-line logic doesn't work
+# with unnamed parameters allowed by ...
+, system ? localSystem.system
+, crossSystem ? localSystem
 
 , # Fallback: The contents of the configuration file found at $NIXPKGS_CONFIG or
   # $HOME/.config/nixpkgs/config.nix.
@@ -52,37 +50,36 @@ in
           map (n: import (path + ("/" + n)))
             (builtins.filter (n: builtins.match ".*\\.nix" n != null || pathExists (path + ("/" + n + "/default.nix")))
               (attrNames content))
-        else 
+        else
           # it's a file, so the result is the contents of the file itself
           import path;
     in
       if pathOverlays != "" && pathExists pathOverlays then overlays pathOverlays
-      else if pathExists homeOverlaysFile && pathExists homeOverlaysDir then 
+      else if pathExists homeOverlaysFile && pathExists homeOverlaysDir then
         throw ''
           Nixpkgs overlays can be specified with ${homeOverlaysFile} or ${homeOverlaysDir}, but not both.
           Please remove one of them and try again.
         ''
-      else if pathExists homeOverlaysFile then 
-        if isDir homeOverlaysFile then 
+      else if pathExists homeOverlaysFile then
+        if isDir homeOverlaysFile then
           throw (homeOverlaysFile + " should be a file")
         else overlays homeOverlaysFile
       else if pathExists homeOverlaysDir then
-        if !(isDir homeOverlaysDir) then 
+        if !(isDir homeOverlaysDir) then
           throw (homeOverlaysDir + " should be a directory")
         else overlays homeOverlaysDir
       else []
 
+, crossOverlays ? []
+
 , ...
 } @ args:
 
-# If `localSystem` was explicitly passed, legacy `system` and `platform` should
-# not be passed.
-assert args ? localSystem -> !(args ? system || args ? platform);
+# If `localSystem` was explicitly passed, legacy `system` should
+# not be passed, and vice-versa.
+assert args ? localSystem -> !(args ? system);
+assert args ? system -> !(args ? localSystem);
 
-import ./. (builtins.removeAttrs args [ "system" "platform" ] // {
-  inherit config overlays crossSystem;
-  # Fallback: Assume we are building packages on the current (build, in GNU
-  # Autotools parlance) system.
-  localSystem = (if args ? localSystem then {}
-                 else { system = builtins.currentSystem; }) // localSystem;
+import ./. (builtins.removeAttrs args [ "system" ] // {
+  inherit config overlays localSystem;
 })

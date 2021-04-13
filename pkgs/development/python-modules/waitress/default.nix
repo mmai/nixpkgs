@@ -1,24 +1,24 @@
-{ stdenv
+{ lib
 , buildPythonPackage
 , fetchPypi
 }:
 
 buildPythonPackage rec {
   pname = "waitress";
-  version = "1.1.0";
+  version = "1.4.4";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "d33cd3d62426c0f1b3cd84ee3d65779c7003aae3fc060dee60524d10a57f05a9";
+    sha256 = "1bb436508a7487ac6cb097ae7a7fe5413aefca610550baf58f0940e51ecfb261";
   };
 
   doCheck = false;
 
-  meta = with stdenv.lib; {
-     homepage = https://github.com/Pylons/waitress;
+  meta = with lib; {
+     homepage = "https://github.com/Pylons/waitress";
      description = "Waitress WSGI server";
      license = licenses.zpl20;
-     maintainers = with maintainers; [ garbas domenkozar ];
+     maintainers = with maintainers; [ domenkozar ];
   };
 
 }

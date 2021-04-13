@@ -1,4 +1,4 @@
-{ stdenv, fetchFromGitHub, cmake, clang, python, v8_static, coreutils }:
+{ lib, stdenv, fetchFromGitHub, cmake, clang, python, v8, coreutils }:
 
 let
   sexpr_wasm_prototype = stdenv.mkDerivation {
@@ -14,7 +14,8 @@ let
       # set this to nonempty string to disable default cmake configure
     '';
 
-    buildInputs = [ cmake clang python ];
+    nativeBuildInputs = [ cmake ];
+    buildInputs = [ clang python ];
 
     buildPhase = "make clang-debug-no-tests";
 
@@ -45,15 +46,16 @@ stdenv.mkDerivation {
   installPhase = ''
     export DESTDIR=$out
     export MKTEMPDIR=${coreutils}/bin
-    export D8DIR=${v8_static}/bin
+    export D8DIR=${v8}/bin
     export SWDIR=${sexpr_wasm_prototype}/bin
     make install
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "wasm runs WebAssembly from the command line";
     maintainers = with maintainers; [ proglodyte ];
     platforms = platforms.linux;
     license = licenses.asl20;
+    broken = true;
   };
 }

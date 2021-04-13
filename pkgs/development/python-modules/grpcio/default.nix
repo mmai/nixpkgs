@@ -1,28 +1,46 @@
-{ stdenv, buildPythonPackage, fetchPypi, lib, darwin
-, six, protobuf, enum34, futures, isPy27, isPy34, pkgconfig }:
+{ lib, stdenv
+, buildPythonPackage
+, grpc
+, six
+, protobuf
+, enum34
+, futures
+, isPy27
+, pkg-config
+, cython
+, c-ares
+, openssl
+, zlib
+}:
 
-with stdenv.lib;
 buildPythonPackage rec {
+  inherit (grpc) src version;
   pname = "grpcio";
-  version = "1.16.1";
 
-  src = fetchPypi {
-    inherit pname version;
-    sha256 = "0am76f8r4v5kcvbar593n2c1mp25cxi67cxigjhd0rnncmk4bgs1";
-  };
+  outputs = [ "out" "dev" ];
 
-  nativeBuildInputs = [ pkgconfig ] ++ optional stdenv.isDarwin darwin.cctools;
+  nativeBuildInputs = [ cython pkg-config ];
 
+  buildInputs = [ c-ares openssl zlib ];
   propagatedBuildInputs = [ six protobuf ]
-                        ++ lib.optionals (isPy27 || isPy34) [ enum34 ]
-                        ++ lib.optionals (isPy27) [ futures ];
+    ++ lib.optionals (isPy27) [ enum34 futures ];
 
-  preBuild = optionalString stdenv.isDarwin "unset AR";
+  preBuild = lib.optionalString stdenv.isDarwin "unset AR";
 
-  meta = with stdenv.lib; {
+  GRPC_BUILD_WITH_BORING_SSL_ASM = "";
+  GRPC_PYTHON_BUILD_SYSTEM_OPENSSL = 1;
+  GRPC_PYTHON_BUILD_SYSTEM_ZLIB = 1;
+  GRPC_PYTHON_BUILD_SYSTEM_CARES = 1;
+
+  # does not contain any tests
+  doCheck = false;
+
+  pythonImportsCheck = [ "grpc" ];
+
+  meta = with lib; {
     description = "HTTP/2-based RPC framework";
-    license = lib.licenses.asl20;
+    license = licenses.asl20;
     homepage = "https://grpc.io/grpc/python/";
-    maintainers = with maintainers; [ vanschelven ];
+    maintainers = with maintainers; [ SuperSandro2000 ];
   };
 }

@@ -1,23 +1,30 @@
-{ stdenv
+{ lib
 , buildPythonPackage
 , fetchPypi
-, nose
+, pytestrunner
+, pytest
 }:
 
 buildPythonPackage rec {
-  version = "1.5.2";
+  version = "2.1.1";
   pname = "PasteDeploy";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "d5858f89a255e6294e63ed46b73613c56e3b9a2d82a42f1df4d06c8421a9e3cb";
+    sha256 = "6dead6ab9823a85d585ef27f878bc647f787edb9ca8da0716aa9f1261b464817";
   };
 
-  buildInputs = [ nose ];
+  buildInputs = [ pytestrunner ];
 
-  meta = with stdenv.lib; {
+  checkInputs = [ pytest ];
+
+  # no tests in PyPI tarball
+  # should be included with versions > 2.0.1
+  doCheck = false;
+
+  meta = with lib; {
     description = "Load, configure, and compose WSGI applications and servers";
-    homepage = http://pythonpaste.org/deploy/;
+    homepage = "http://pythonpaste.org/deploy/";
     license = licenses.mit;
   };
 

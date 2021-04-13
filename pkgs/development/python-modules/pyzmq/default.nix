@@ -1,6 +1,6 @@
 { buildPythonPackage
 , fetchPypi
-, pytest
+, pytestCheckHook
 , tornado
 , zeromq
 , py
@@ -9,25 +9,38 @@
 
 buildPythonPackage rec {
   pname = "pyzmq";
-  version = "17.1.2";
+  version = "20.0.0";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "a72b82ac1910f2cf61a49139f4974f994984475f771b0faa730839607eeedddf";
+    sha256 = "824ad5888331aadeac772bce27e1c2fbcab82fade92edbd234542c4e12f0dca9";
   };
 
-  checkInputs = [  pytest tornado ];
+  checkInputs = [
+    pytestCheckHook
+    tornado
+  ];
   buildInputs = [ zeromq ];
   propagatedBuildInputs = [ py ];
 
-  # test_socket.py seems to be hanging
-  # others fail
-  checkPhase = ''
-    py.test $out/${python.sitePackages}/zmq/ -k "not test_socket \
-      and not test_current \
-      and not test_instance \
-      and not test_callable_check \
-      and not test_on_recv_basic \
-      and not test_on_recv_wake"
-  '';
+  # failing tests
+  disabledTests = [
+    "test_socket" # hangs
+    "test_current"
+    "test_instance"
+    "test_callable_check"
+    "test_on_recv_basic"
+    "test_on_recv_wake"
+    "test_monitor" # https://github.com/zeromq/pyzmq/issues/1272
+    "test_cython"
+    "test_asyncio" # hangs
+    "test_mockable" # fails
+  ];
+
+  pytestFlagsArray = [
+    "$out/${python.sitePackages}/zmq/tests/" # Folder with tests
+  ];
+
+  # Some of the tests use localhost networking.
+  __darwinAllowLocalNetworking = true;
 }

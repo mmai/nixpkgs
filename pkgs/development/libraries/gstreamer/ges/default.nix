@@ -1,35 +1,75 @@
-{ stdenv, fetchurl, fetchpatch, meson, ninja
-, pkgconfig, python, gst-plugins-base, libxml2
-, flex, perl, gettext, gobject-introspection
+{ lib, stdenv
+, fetchurl
+, meson
+, ninja
+, pkg-config
+, python3
+, bash-completion
+, gst-plugins-base
+, gst-plugins-bad
+, gst-devtools
+, libxml2
+, flex
+, gettext
+, gobject-introspection
 }:
 
 stdenv.mkDerivation rec {
-  name = "gstreamer-editing-services-${version}";
-  version = "1.14.4";
+  pname = "gst-editing-services";
+  version = "1.18.2";
 
-  meta = with stdenv.lib; {
-    description = "Library for creation of audio/video non-linear editors";
-    homepage    = "https://gstreamer.freedesktop.org";
-    license     = licenses.lgpl2Plus;
-    platforms   = platforms.unix;
-  };
+  outputs = [
+    "out"
+    "dev"
+    # "devdoc" # disabled until `hotdoc` is packaged in nixpkgs
+  ];
 
   src = fetchurl {
-    url = "${meta.homepage}/src/gstreamer-editing-services/${name}.tar.xz";
-    sha256 = "0pxk65jib3mqszjkyvlzklwia4kbdj6j2b6jw1d502b06mdx5lak";
+    url = "https://gstreamer.freedesktop.org/src/${pname}/${pname}-${version}.tar.xz";
+    sha256 = "0pv2k8zlpn3vv2sdlspi3m63ixcwzi90pjly2ypbkg59ab97rb15";
   };
 
-  outputs = [ "out" "dev" ];
-
-  nativeBuildInputs = [ meson ninja pkgconfig gettext gobject-introspection python flex perl ];
-
-  propagatedBuildInputs = [ gst-plugins-base libxml2 ];
-
   patches = [
-    (fetchpatch {
-        url = "https://bug794856.bugzilla-attachments.gnome.org/attachment.cgi?id=370413";
-        sha256 = "1xcgbs18g6n5p7z7kqj7ffakwmkxq7ijajyvhyl7p3zvqll9dc7x";
-    })
     ./fix_pkgconfig_includedir.patch
   ];
+
+  nativeBuildInputs = [
+    meson
+    ninja
+    pkg-config
+    gettext
+    gobject-introspection
+    gst-devtools
+    python3
+    flex
+
+    # documentation
+    # TODO add hotdoc here
+  ];
+
+  buildInputs = [
+    bash-completion
+    libxml2
+  ];
+
+  propagatedBuildInputs = [
+    gst-plugins-base
+    gst-plugins-bad
+  ];
+
+  mesonFlags = [
+    "-Ddoc=disabled" # `hotdoc` not packaged in nixpkgs as of writing
+  ];
+
+  postPatch = ''
+    patchShebangs \
+      scripts/extract-release-date-from-doap-file.py
+  '';
+
+  meta = with lib; {
+    description = "Library for creation of audio/video non-linear editors";
+    homepage = "https://gstreamer.freedesktop.org";
+    license = licenses.lgpl2Plus;
+    platforms = platforms.unix;
+  };
 }

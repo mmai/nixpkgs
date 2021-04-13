@@ -1,55 +1,28 @@
-{ stdenv, newScope, makeWrapper
-, wrapGAppsHook, gnome3, glib
-, electron, xdg_utils, makeDesktopItem
-, auth0ClientID ? "0spuNKfIGeLAQ_Iki9t3fGxbfJl3k8SU"
-, auth0Domain ? "nixpkgs.auth0.com" }:
+{ stdenv, callPackage, fetchurl, lib }:
 
 let
-  callPackage = newScope self;
-  self = {
-    fetchNodeModules = callPackage ./fetchNodeModules.nix {};
-    rambox-bare = callPackage ./bare.nix {
-      inherit auth0ClientID auth0Domain;
+  mkRambox = opts: callPackage (import ./rambox.nix opts) { };
+in mkRambox rec {
+  pname = "rambox";
+  version = "0.7.7";
+
+  src = {
+    x86_64-linux = fetchurl {
+      url = "https://github.com/ramboxapp/community-edition/releases/download/${version}/Rambox-${version}-linux-x86_64.AppImage";
+      sha256 = "0f82hq0dzcjicdz6lkzj8889y100yqciqrwh8wjjy9pxkhjcdini";
     };
-    sencha = callPackage ./sencha {};
+    i686-linux = fetchurl {
+      url = "https://github.com/ramboxapp/community-edition/releases/download/${version}/Rambox-${version}-linux-i386.AppImage";
+      sha256 = "1nhgqjha10jvyf9nsghvlkibg7byj8qz140639ygag9qlpd52rfs";
+    };
+  }.${stdenv.system} or (throw "Unsupported system: ${stdenv.system}");
+
+  meta = with lib; {
+    description = "Free and Open Source messaging and emailing app that combines common web applications into one";
+    homepage = "https://rambox.pro";
+    license = licenses.mit;
+    maintainers = with maintainers; [ gnidorah ma27 ];
+    platforms = ["i686-linux" "x86_64-linux"];
+    hydraPlatforms = [];
   };
-  desktopItem = makeDesktopItem rec {
-    name = "Rambox";
-    exec = "rambox";
-    icon = "${self.rambox-bare}/resources/Icon.png";
-    desktopName = name;
-    genericName = "Rambox messenger";
-    categories = "Network;";
-  };
-in
-
-with self;
-
-stdenv.mkDerivation {
-  name = "rambox-${rambox-bare.version}";
-
-  nativeBuildInputs = [ makeWrapper wrapGAppsHook ];
-
-  buildInputs = [ glib gnome3.gsettings_desktop_schemas ];
-  unpackPhase = ":";
-
-  dontWrapGApps = true; # we only want $gappsWrapperArgs here
-
-  installPhase = ''
-    runHook preInstall
-    mkdir -p $out/share/applications
-    ln -s ${desktopItem}/share/applications/* $out/share/applications
-    runHook postInstall
-  '';
-
-  postFixup = ''
-    makeWrapper ${electron}/bin/electron $out/bin/rambox \
-      --add-flags "${rambox-bare} --without-update" \
-      "''${gappsWrapperArgs[@]}" \
-      --prefix PATH : ${xdg_utils}/bin
-  '';
-
-  inherit (rambox-bare.meta // {
-    platforms = [ "i686-linux" "x86_64-linux" ];
-  });
 }

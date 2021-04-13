@@ -1,11 +1,11 @@
-{ stdenv, fetchurl, cmake, alsaLib, freepats }:
+{ lib, stdenv, fetchurl, cmake, alsaLib, freepats }:
 
 stdenv.mkDerivation rec {
-  name = "wildmidi-0.4.2";
+  name = "wildmidi-0.4.3";
 
   src = fetchurl {
     url = "https://github.com/Mindwerks/wildmidi/archive/${name}.tar.gz";
-    sha256 = "178hm2wh5h7apkcb1a0dyla2ia8569php8ikz62rh0g6dp5l67am";
+    sha256 = "1igkxv4axnqap59d8pjgqj94x0khn3fdd2hq6wdvkd2v8nb5m3j9";
   };
 
   nativeBuildInputs = [ cmake ];
@@ -23,13 +23,13 @@ stdenv.mkDerivation rec {
     echo "source ${freepats}/freepats.cfg" >> "$out"/etc/wildmidi.cfg
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Software MIDI player and library";
     longDescription = ''
       WildMIDI is a simple software midi player which has a core softsynth
       library that can be use with other applications.
     '';
-    homepage = http://wildmidi.sourceforge.net/;
+    homepage = "http://wildmidi.sourceforge.net/";
     # The library is LGPLv3, the wildmidi executable is GPLv3
     license = licenses.lgpl3;
     platforms = platforms.linux;

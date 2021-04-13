@@ -1,38 +1,69 @@
-{ stdenv, fetchurl, pkgconfig, glib, gpm, file, e2fsprogs
-, libX11, libICE, perl, zip, unzip, gettext, slang, libssh2, openssl}:
+{ lib, stdenv
+, fetchurl
+, pkg-config
+, glib
+, gpm
+, file
+, e2fsprogs
+, libX11
+, libICE
+, perl
+, zip
+, unzip
+, gettext
+, slang
+, libssh2
+, openssl
+, coreutils
+, autoreconfHook
+}:
 
 stdenv.mkDerivation rec {
-  name = "mc-${version}";
-  version = "4.8.21";
+  pname = "mc";
+  version = "4.8.26";
 
   src = fetchurl {
-    url = "http://www.midnight-commander.org/downloads/${name}.tar.xz";
-    sha256 = "130lzrcmazinznnnpf00lcizdlmjdhfiqfx00g1cjcbwmi3fadwg";
+    url = "https://www.midnight-commander.org/downloads/${pname}-${version}.tar.xz";
+    sha256 = "sha256-xt6txQWV8tmiLcbCmanyizk+NYNG6/bKREqEadwWbCc=";
   };
 
-  nativeBuildInputs = [ pkgconfig ];
+  nativeBuildInputs = [ pkg-config autoreconfHook unzip ];
 
   buildInputs = [
-    perl glib slang zip unzip file gettext libX11 libICE libssh2 openssl
-  ] ++ stdenv.lib.optionals (!stdenv.isDarwin) [ e2fsprogs gpm ];
+    file
+    gettext
+    glib
+    libICE
+    libX11
+    libssh2
+    openssl
+    perl
+    slang
+    zip
+  ] ++ lib.optionals (!stdenv.isDarwin) [ e2fsprogs gpm ];
 
   enableParallelBuilding = true;
 
   configureFlags = [ "--enable-vfs-smb" ];
 
-  postFixup = ''
+  postPatch = ''
+    substituteInPlace src/filemanager/ext.c \
+      --replace /bin/rm ${coreutils}/bin/rm
+  '';
+
+  preFixup = ''
     # remove unwanted build-dependency references
     sed -i -e "s!PKG_CONFIG_PATH=''${PKG_CONFIG_PATH}!PKG_CONFIG_PATH=$(echo "$PKG_CONFIG_PATH" | sed -e 's/./0/g')!" $out/bin/mc
   '';
 
-  meta = {
+  meta = with lib; {
     description = "File Manager and User Shell for the GNU Project";
-    homepage = http://www.midnight-commander.org;
-    downloadPage = "http://www.midnight-commander.org/downloads/";
-    repositories.git = git://github.com/MidnightCommander/mc.git;
-    license = stdenv.lib.licenses.gpl2Plus;
-    maintainers = [ stdenv.lib.maintainers.sander ];
-    platforms = with stdenv.lib.platforms; linux ++ darwin;
+    downloadPage = "https://www.midnight-commander.org/downloads/";
+    homepage = "https://www.midnight-commander.org";
+    license = licenses.gpl2Plus;
+    maintainers = with maintainers; [ sander ];
+    platforms = with platforms; linux ++ darwin;
+    repositories.git = "https://github.com/MidnightCommander/mc.git";
     updateWalker = true;
   };
 }

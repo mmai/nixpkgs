@@ -1,24 +1,24 @@
-{ stdenv
+{ lib
 , buildPythonPackage
 , fetchPypi
 }:
 
 buildPythonPackage rec {
   pname = "process-tests";
-  version = "2.0.0";
+  version = "2.1.1";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "dd731906f8fc0b803ffe2dd5c5e4b103ec24b1f962a7b835d9533d7e9b2ca36c";
+    sha256 = "15yrgr1hb7i0fq31dh6k8hmc3jnk6yn5nh4xh3gmszk9vag5zrqk";
   };
 
   # No tests
   doCheck = false;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Tools for testing processes";
     license = licenses.bsd2;
-    homepage = https://github.com/ionelmc/python-process-tests;
+    homepage = "https://github.com/ionelmc/python-process-tests";
   };
 
 }

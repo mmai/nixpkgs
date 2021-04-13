@@ -1,49 +1,61 @@
-{ stdenv, fetchFromGitHub, python3, cmake, boost }:
+{ lib, stdenv, fetchFromGitHub
+, python3, boost
+, cmake
+}:
 
-let
-  trellisdb = fetchFromGitHub {
-    owner = "SymbiFlow";
-    repo  = "prjtrellis-db";
-    rev   = "06b429ddb7fd8ec1e3f2b35de2e94b4853cf2835";
-    sha256 = "07bsgw5x3gq0jcn9j4g7q9xvibvz6j2arjnvgyrxnrg30ri9q173";
-  };
-in
 stdenv.mkDerivation rec {
-  name = "trellis-${version}";
-  version = "2018.08.01";
+  pname = "trellis";
+  version = "2021.01.02";
 
-  buildInputs = [
-    (boost.override { python = python3; enablePython = true; })
+  # git describe --tags
+  realVersion = with lib; with builtins;
+    "1.0-482-g${substring 0 7 (elemAt srcs 0).rev}";
+
+  srcs = [
+    (fetchFromGitHub {
+       owner  = "YosysHQ";
+       repo   = "prjtrellis";
+       rev    = "60c05b3f4e71fd78d4fba5c31f9974694245199e";
+       sha256 = "1k37mxwxv9fpm6xnrxlqqap7zqh2dvgqncphj3asi2rz0kh07ppf";
+       name   = "trellis";
+     })
+
+    (fetchFromGitHub {
+      owner  = "YosysHQ";
+      repo   = "prjtrellis-db";
+      rev    = "2cf058e7a3ba36134d21e34823e9b2ecaaceac2c";
+      sha256 = "1hjaw5jkwiaiznm2z0smy88m2cdz63cd51z4nibajfih7ikvkj6g";
+      name   = "trellis-database";
+    })
+  ];
+  sourceRoot = "trellis";
+
+  buildInputs = [ boost ];
+  nativeBuildInputs = [ cmake python3 ];
+  cmakeFlags = [
+    "-DCURRENT_GIT_VERSION=${realVersion}"
+    # TODO: should this be in stdenv instead?
+    "-DCMAKE_INSTALL_DATADIR=${placeholder "out"}/share"
   ];
 
-  nativeBuildInputs = [
-    cmake python3
-  ];
+  preConfigure = with builtins; ''
+    rmdir database && ln -sfv ${elemAt srcs 1} ./database
 
-  src = fetchFromGitHub {
-    owner  = "SymbiFlow";
-    repo   = "prjtrellis";
-    rev    = "fff9532fe59bf9e38b44f029ce4a06c607a9ee78";
-    sha256 = "0ycw9fjf6428sf5x8x5szn8fha79610nf7nn8kmibgmz9868yv30";
-  };
-
-  preConfigure = ''
     source environment.sh
-    cp -RT "${trellisdb}" database
     cd libtrellis
   '';
 
-  meta = {
-    description = "Documentation and tools for Lattice ECP5 FPGAs";
+  meta = with lib; {
+    description     = "Documentation and bitstream tools for Lattice ECP5 FPGAs";
     longDescription = ''
       Project Trellis documents the Lattice ECP5 architecture
       to enable development of open-source tools. Its goal is
       to provide sufficient information to develop a free and
       open Verilog to bitstream toolchain for these devices.
     '';
-    homepage = https://github.com/SymbiFlow/prjtrellis;
-    license = stdenv.lib.licenses.isc;
-    maintainers = with stdenv.lib.maintainers; [ q3k ];
-    platforms = stdenv.lib.platforms.linux;
+    homepage    = "https://github.com/SymbiFlow/prjtrellis";
+    license     = lib.licenses.isc;
+    maintainers = with maintainers; [ q3k thoughtpolice emily ];
+    platforms   = lib.platforms.all;
   };
 }

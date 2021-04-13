@@ -4,259 +4,529 @@
 
 To update the list of packages from MELPA,
 
-1. Clone https://github.com/ttuegel/emacs2nix.
-2. Clone https://github.com/milkypostman/melpa.
-3. Run `./melpa-packages.sh --melpa PATH_TO_MELPA_CLONE` from emacs2nix.
-4. Copy the new `melpa-generated.nix` file into Nixpkgs.
-5. Check for evaluation errors: `nix-instantiate ./. -A emacsPackagesNg.melpaPackages`.
-6. `git add pkgs/applications/editors/emacs-modes/melpa-generated.nix && git commit -m "melpa-packages $(date -Idate)"`
+1. Run ./update-melpa
+2. Check for evaluation errors:
+env NIXPKGS_ALLOW_BROKEN=1 nix-instantiate --show-trace ../../../../ -A emacs.pkgs..melpaStablePackages
+env NIXPKGS_ALLOW_BROKEN=1 nix-instantiate --show-trace ../../../../ -A emacs.pkgs..melpaPackages
+3. `git commit -m "melpa-packages: $(date -Idate)" recipes-archive-melpa.json`
+
+## Update from overlay
+
+Alternatively, run the following command:
+
+./update-from-overlay
+
+It will update both melpa and elpa packages using
+https://github.com/nix-community/emacs-overlay. It's almost
+instantenous and formats commits for you.
 
 */
 
-{ lib, external }:
-
-self:
-
-  let
-    imported = import ./melpa-generated.nix { inherit (self) callPackage; };
-    super = builtins.removeAttrs imported [
-      "swbuff-x" # required dependency swbuff is missing
-    ];
-
-    dontConfigure = pkg: pkg.override (args: {
+{ lib, pkgs }: variant: self:
+let
+  dontConfigure = pkg:
+    if pkg != null then pkg.override (args: {
       melpaBuild = drv: args.melpaBuild (drv // {
-        configureScript = "true";
+        dontConfigure = true;
       });
-    });
+    }) else null;
 
-    markBroken = pkg: pkg.override (args: {
+  markBroken = pkg:
+    if pkg != null then pkg.override (args: {
       melpaBuild = drv: args.melpaBuild (drv // {
-        meta = (drv.meta or {}) // { broken = true; };
+        meta = (drv.meta or { }) // { broken = true; };
       });
-    });
+    }) else null;
 
-    overrides = {
-      # Expects bash to be at /bin/bash
-      ac-rtags = markBroken super.ac-rtags;
+  externalSrc = pkg: epkg:
+    if pkg != null then pkg.override (args: {
+      melpaBuild = drv: args.melpaBuild (drv // {
+        inherit (epkg) src version;
 
-      # upstream issue: mismatched filename
-      ack-menu = markBroken super.ack-menu;
-
-      airline-themes = super.airline-themes.override {
-        inherit (self.melpaPackages) powerline;
-      };
-
-      # upstream issue: missing file header
-      bufshow = markBroken super.bufshow;
-
-      # part of a larger package
-      caml = dontConfigure super.caml;
-
-      # Expects bash to be at /bin/bash
-      company-rtags = markBroken super.company-rtags;
-
-      easy-kill-extras = super.easy-kill-extras.override {
-        inherit (self.melpaPackages) easy-kill;
-      };
-
-      egg = super.egg.overrideAttrs (attrs: {
-        # searches for Git at build time
-        nativeBuildInputs =
-          (attrs.nativeBuildInputs or []) ++ [ external.git ];
+        propagatedUserEnvPkgs = [ epkg ];
       });
+    }) else null;
 
-      # upstream issue: missing file header
-      elmine = markBroken super.elmine;
+  buildWithGit = pkg: pkg.overrideAttrs (attrs: {
+    nativeBuildInputs =
+      (attrs.nativeBuildInputs or [ ]) ++ [ pkgs.git ];
+  });
 
-      ess-R-data-view = super.ess-R-data-view.override {
-        inherit (self.melpaPackages) ess ctable popup;
-      };
+  fix-rtags = pkg:
+    if pkg != null then dontConfigure (externalSrc pkg pkgs.rtags)
+    else null;
 
-      evil-magit = super.evil-magit.overrideAttrs (attrs: {
-        # searches for Git at build time
-        nativeBuildInputs =
-          (attrs.nativeBuildInputs or []) ++ [ external.git ];
-      });
+  generateMelpa = lib.makeOverridable ({ archiveJson ? ./recipes-archive-melpa.json
+                                       }:
+    let
+      inherit (import ./libgenerated.nix lib self) melpaDerivation;
+      super = (
+        lib.listToAttrs (builtins.filter
+          (s: s != null)
+          (map
+            (melpaDerivation variant)
+            (lib.importJSON archiveJson)
+          )
+        )
+      );
 
-      # missing dependencies
-      evil-search-highlight-persist = super.evil-search-highlight-persist.overrideAttrs (attrs: {
-        packageRequires = with self; [ evil highlight ];
-      });
+      overrides = {
+        # Expects bash to be at /bin/bash
+        ac-rtags = fix-rtags super.ac-rtags;
 
-      # missing OCaml
-      flycheck-ocaml = markBroken super.flycheck-ocaml;
+        airline-themes = super.airline-themes.override {
+          inherit (self.melpaPackages) powerline;
+        };
 
-      # Expects bash to be at /bin/bash
-      flycheck-rtags = markBroken super.flycheck-rtags;
-
-      # build timeout
-      graphene = markBroken super.graphene;
-
-      # upstream issue: mismatched filename
-      helm-lobsters = markBroken super.helm-lobsters;
-
-      # Expects bash to be at /bin/bash
-      helm-rtags = markBroken super.helm-rtags;
-
-      # Build same version as Haskell package
-      hindent = super.hindent.overrideAttrs (attrs: {
-        version = external.hindent.version;
-        src = external.hindent.src;
-        packageRequires = [ self.haskell-mode ];
-        propagatedUserEnvPkgs = [ external.hindent ];
-      });
-
-      # upstream issue: missing file header
-      ido-complete-space-or-hyphen = markBroken super.ido-complete-space-or-hyphen;
-
-      # upstream issue: missing file header
-      initsplit = super.initsplit;
-
-      # tries to write a log file to $HOME
-      insert-shebang = super.insert-shebang.overrideAttrs (attrs: {
-        HOME = "/tmp";
-      });
-
-      # Expects bash to be at /bin/bash
-      ivy-rtags = markBroken super.ivy-rtags;
-
-      # upstream issue: missing file header
-      jsfmt = markBroken super.jsfmt;
-
-      # upstream issue: missing file header
-      maxframe = markBroken super.maxframe;
-
-      magit =
-        (super.magit.override {
-          # version of magit-popup needs to match magit
-          # https://github.com/magit/magit/issues/3286
-          inherit (self.melpaPackages) magit-popup;
-        }).overrideAttrs (attrs: {
-          # searches for Git at build time
-          nativeBuildInputs =
-            (attrs.nativeBuildInputs or []) ++ [ external.git ];
+        auto-complete-clang-async = super.auto-complete-clang-async.overrideAttrs (old: {
+          buildInputs = old.buildInputs ++ [ pkgs.llvmPackages.llvm ];
+          CFLAGS = "-I${pkgs.llvmPackages.clang}/include";
+          LDFLAGS = "-L${pkgs.llvmPackages.clang}/lib";
         });
 
-      magit-annex = super.magit-annex.overrideAttrs (attrs: {
-        # searches for Git at build time
-        nativeBuildInputs =
-          (attrs.nativeBuildInputs or []) ++ [ external.git ];
-      });
+        # part of a larger package
+        caml = dontConfigure super.caml;
 
-      magit-gitflow = super.magit-gitflow.overrideAttrs (attrs: {
-        # searches for Git at build time
-        nativeBuildInputs =
-          (attrs.nativeBuildInputs or []) ++ [ external.git ];
-      });
+        # part of a larger package
+        # upstream issue: missing package version
+        cmake-mode = dontConfigure super.cmake-mode;
 
-      magithub = super.magithub.overrideAttrs (attrs: {
-        # searches for Git at build time
-        nativeBuildInputs =
-          (attrs.nativeBuildInputs or []) ++ [ external.git ];
-      });
+        company-rtags = fix-rtags super.company-rtags;
 
-      magit-svn = super.magit-svn.overrideAttrs (attrs: {
-        # searches for Git at build time
-        nativeBuildInputs =
-          (attrs.nativeBuildInputs or []) ++ [ external.git ];
-      });
+        easy-kill-extras = super.easy-kill-extras.override {
+          inherit (self.melpaPackages) easy-kill;
+        };
 
-      magit-todos = super.magit-todos.overrideAttrs (attrs: {
-        # searches for Git at build time
-        nativeBuildInputs =
-          (attrs.nativeBuildInputs or []) ++ [ external.git ];
-      });
+        dune = dontConfigure super.dune;
 
-      magit-filenotify = super.magit-filenotify.overrideAttrs (attrs: {
-        # searches for Git at build time
-        nativeBuildInputs =
-          (attrs.nativeBuildInputs or []) ++ [ external.git ];
-      });
+        emacsql-sqlite = super.emacsql-sqlite.overrideAttrs (old: {
+          buildInputs = old.buildInputs ++ [ pkgs.sqlite ];
 
-      # missing OCaml
-      merlin = markBroken super.merlin;
+          postBuild = ''
+            cd source/sqlite
+            make
+            cd -
+          '';
 
-      mhc = super.mhc.override {
-        inherit (self.melpaPackages) calfw;
-      };
+          postInstall = ''
+            install -m=755 -D source/sqlite/emacsql-sqlite \
+              $out/share/emacs/site-lisp/elpa/emacsql-sqlite-${old.version}/sqlite/emacsql-sqlite
+          '';
 
-      # missing .NET
-      nemerle = markBroken super.nemerle;
+          stripDebugList = [ "share" ];
+        });
 
-      # part of a larger package
-      notmuch = dontConfigure super.notmuch;
+        # https://github.com/syl20bnr/evil-escape/pull/86
+        evil-escape = super.evil-escape.overrideAttrs (attrs: {
+          postPatch = ''
+            substituteInPlace evil-escape.el \
+              --replace ' ;;; evil' ';;; evil'
+          '';
+          packageRequires = with self; [ evil ];
+        });
 
-      # missing OCaml
-      ocp-indent = markBroken super.ocp-indent;
+        ess-R-data-view = super.ess-R-data-view.override {
+          inherit (self.melpaPackages) ess ctable popup;
+        };
 
-      orgit =
-        (super.orgit.overrideAttrs (attrs: {
+        flycheck-rtags = fix-rtags super.flycheck-rtags;
+
+        pdf-tools = super.pdf-tools.overrideAttrs (old: {
+          nativeBuildInputs = [
+            pkgs.autoconf
+            pkgs.automake
+            pkgs.pkg-config
+            pkgs.removeReferencesTo
+          ];
+          buildInputs = old.buildInputs ++ [ pkgs.libpng pkgs.zlib pkgs.poppler ];
+          preBuild = ''
+            make server/epdfinfo
+            remove-references-to ${lib.concatStringsSep " " (
+              map (output: "-t " + output) (
+                [
+                  pkgs.glib.dev
+                  pkgs.libpng.dev
+                  pkgs.poppler.dev
+                  pkgs.zlib.dev
+                  pkgs.cairo.dev
+                ]
+                ++ lib.optional pkgs.stdenv.isLinux pkgs.stdenv.cc.libc.dev
+              )
+            )} server/epdfinfo
+          '';
+          recipe = pkgs.writeText "recipe" ''
+            (pdf-tools
+            :repo "politza/pdf-tools" :fetcher github
+            :files ("lisp/pdf-*.el" "server/epdfinfo"))
+          '';
+        });
+
+        # Build same version as Haskell package
+        hindent = (externalSrc super.hindent pkgs.haskellPackages.hindent).overrideAttrs (attrs: {
+          packageRequires = [ self.haskell-mode ];
+        });
+
+        irony = super.irony.overrideAttrs (old: {
+          cmakeFlags = old.cmakeFlags or [ ] ++ [ "-DCMAKE_INSTALL_BINDIR=bin" ];
+          NIX_CFLAGS_COMPILE = "-UCLANG_RESOURCE_DIR";
+          preConfigure = ''
+            cd server
+          '';
+          preBuild = ''
+            make
+            install -D bin/irony-server $out/bin/irony-server
+            cd ..
+          '';
+          checkPhase = ''
+            cd source/server
+            make check
+            cd ../..
+          '';
+          preFixup = ''
+            rm -rf $out/share/emacs/site-lisp/elpa/*/server
+          '';
+          dontUseCmakeBuildDir = true;
+          doCheck = true;
+          packageRequires = [ self.emacs ];
+          nativeBuildInputs = [ pkgs.cmake pkgs.llvmPackages.llvm pkgs.llvmPackages.clang ];
+        });
+
+        # tries to write a log file to $HOME
+        insert-shebang = super.insert-shebang.overrideAttrs (attrs: {
+          HOME = "/tmp";
+        });
+
+        ivy-rtags = fix-rtags super.ivy-rtags;
+
+        libgit = super.libgit.overrideAttrs(attrs: {
+          nativeBuildInputs = (attrs.nativeBuildInputs or []) ++ [ pkgs.cmake ];
+          buildInputs = attrs.buildInputs ++ [ pkgs.libgit2 ];
+          dontUseCmakeBuildDir = true;
+          postPatch = ''
+            sed -i s/'add_subdirectory(libgit2)'// CMakeLists.txt
+          '';
+          postBuild = ''
+            pushd working/libgit
+            make
+            popd
+          '';
+          postInstall = ''
+            outd=$(echo $out/share/emacs/site-lisp/elpa/libgit-**)
+            mkdir $outd/build
+            install -m444 -t $outd/build ./source/src/libegit2.so
+            rm -r $outd/src $outd/Makefile $outd/CMakeLists.txt
+          '';
+        });
+
+        evil-magit = buildWithGit super.evil-magit;
+
+        eopengrok = buildWithGit super.eopengrok;
+
+        forge = buildWithGit super.forge;
+
+        magit = buildWithGit super.magit;
+
+        magit-find-file = buildWithGit super.magit-find-file;
+
+        magit-gh-pulls = buildWithGit super.magit-gh-pulls;
+
+        magit-imerge = buildWithGit super.magit-imerge;
+
+        magit-lfs = buildWithGit super.magit-lfs;
+
+        magit-org-todos = buildWithGit super.magit-org-todos;
+
+        magit-tbdiff = buildWithGit super.magit-tbdiff;
+
+        magit-topgit = buildWithGit super.magit-topgit;
+
+        magit-vcsh = buildWithGit super.magit-vcsh;
+
+        magit-gerrit = buildWithGit super.magit-gerrit;
+
+        magit-annex = buildWithGit super.magit-annex;
+
+        magit-todos = buildWithGit super.magit-todos;
+
+        magit-filenotify = buildWithGit super.magit-filenotify;
+
+        magit-gitflow = buildWithGit super.magit-gitflow;
+
+        magithub = buildWithGit super.magithub;
+
+        magit-svn = buildWithGit super.magit-svn;
+
+        kubernetes = buildWithGit super.kubernetes;
+
+        kubernetes-evil = buildWithGit super.kubernetes-evil;
+
+        egg = buildWithGit super.egg;
+
+        kapacitor = buildWithGit super.kapacitor;
+
+        gerrit = buildWithGit super.gerrit;
+
+        gerrit-download = buildWithGit super.gerrit-download;
+
+        github-pullrequest = buildWithGit super.github-pullrequest;
+
+        jist = buildWithGit super.jist;
+
+        mandoku = buildWithGit super.mandoku;
+
+        mandoku-tls = buildWithGit super.mandoku-tls;
+
+        magit-p4 = buildWithGit super.magit-p4;
+
+        magit-rbr = buildWithGit super.magit-rbr;
+
+        magit-diff-flycheck = buildWithGit super.magit-diff-flycheck;
+
+        magit-reviewboard = buildWithGit super.magit-reviewboard;
+
+        magit-patch-changelog = buildWithGit super.magit-patch-changelog;
+
+        magit-circleci = buildWithGit super.magit-circleci;
+
+        magit-delta = buildWithGit super.magit-delta;
+
+        orgit = buildWithGit super.orgit;
+
+        orgit-forge = buildWithGit super.orgit-forge;
+
+        # upstream issue: missing file header
+        mhc = super.mhc.override {
+          inherit (self.melpaPackages) calfw;
+        };
+
+        # missing .NET
+        nemerle = markBroken super.nemerle;
+
+        # part of a larger package
+        notmuch = dontConfigure super.notmuch;
+
+        rtags = dontConfigure (externalSrc super.rtags pkgs.rtags);
+
+        rtags-xref = dontConfigure super.rtags;
+
+        shm = super.shm.overrideAttrs (attrs: {
+          propagatedUserEnvPkgs = [ pkgs.haskellPackages.structured-haskell-mode ];
+        });
+
+        # Telega has a server portion for it's network protocol
+        telega = super.telega.overrideAttrs (old: {
+          buildInputs = old.buildInputs ++ [ pkgs.tdlib ];
+          nativeBuildInputs = [ pkgs.pkg-config ];
+
+          patches = [
+            (pkgs.fetchpatch {
+              name = "telega-server-bin-store-prefer.patch";
+              url = "https://github.com/zevlg/telega.el/commit/72550f984ca869309d197203ef7de99182d71729.patch";
+              sha256 = "18xvz53bygksak6h5f8cz79y83p2va15i8qz7n4s3g9gsklmkj2p";
+            })
+          ];
+
+          postPatch = ''
+            substituteInPlace telega-customize.el \
+              --replace 'defcustom telega-server-command "telega-server"' \
+                        "defcustom telega-server-command \"$out/bin/telega-server\""
+
+            substituteInPlace telega-sticker.el --replace '"dwebp"' '"${pkgs.libwebp}/bin/dwebp"'
+
+            substituteInPlace telega-vvnote.el --replace '"ffmpeg' '"${pkgs.ffmpeg}/bin/ffmpeg'
+          '';
+
+          postBuild = ''
+            cd source/server
+            make
+            cd -
+          '';
+
+          postInstall = ''
+            mkdir -p $out/bin
+            install -m755 -Dt $out/bin ./source/server/telega-server
+          '';
+        });
+
+        treemacs-magit = super.treemacs-magit.overrideAttrs (attrs: {
           # searches for Git at build time
           nativeBuildInputs =
-            (attrs.nativeBuildInputs or []) ++ [ external.git ];
-         }));
+            (attrs.nativeBuildInputs or [ ]) ++ [ pkgs.git ];
+        });
 
-      # tries to write to $HOME
-      php-auto-yasnippets = super.php-auto-yasnippets.overrideAttrs (attrs: {
-        HOME = "/tmp";
-      });
-
-      # upstream issue: mismatched filename
-      processing-snippets = markBroken super.processing-snippets;
-
-      # upstream issue: missing file header
-      qiita = markBroken super.qiita;
-
-      # upstream issue: missing file footer
-      seoul256-theme = markBroken super.seoul256-theme;
-
-      spaceline = super.spaceline.override {
-        inherit (self.melpaPackages) powerline;
-      };
-
-      # upstream issue: missing file header
-      speech-tagger = markBroken super.speech-tagger;
-
-      # upstream issue: missing file header
-      stgit = markBroken super.stgit;
-
-      # upstream issue: missing file header
-      tawny-mode = markBroken super.tawny-mode;
-
-      # upstream issue: missing file header
-      textmate = markBroken super.textmate;
-
-      # missing OCaml
-      utop = markBroken super.utop;
-
-      vdiff-magit =
-        (super.vdiff-magit.overrideAttrs (attrs: {
+        vdiff-magit = super.vdiff-magit.overrideAttrs (attrs: {
           nativeBuildInputs =
-            (attrs.nativeBuildInputs or []) ++ [ external.git ];
-        }));
+            (attrs.nativeBuildInputs or [ ]) ++ [ pkgs.git ];
+        });
 
-      # upstream issue: missing file header
-      voca-builder = markBroken super.voca-builder;
+        zmq = super.zmq.overrideAttrs (old: {
+          stripDebugList = [ "share" ];
+          preBuild = ''
+            make
+          '';
+          nativeBuildInputs = [
+            pkgs.autoconf
+            pkgs.automake
+            pkgs.pkg-config
+            pkgs.libtool
+            (pkgs.zeromq.override { enableDrafts = true; })
+          ];
+          postInstall = ''
+            mv $out/share/emacs/site-lisp/elpa/zmq-*/src/.libs/emacs-zmq.so $out/share/emacs/site-lisp/elpa/zmq-*
+            rm -r $out/share/emacs/site-lisp/elpa/zmq-*/src
+            rm $out/share/emacs/site-lisp/elpa/zmq-*/Makefile
+          '';
+        });
 
-      # upstream issue: missing file header
-      window-numbering = markBroken super.window-numbering;
+        # Map legacy renames from emacs2nix since code generation was ported to emacs lisp
+        _0blayout = super."0blayout";
+        desktop-plus = super."desktop+";
+        ghub-plus = super."ghub+";
+        git-gutter-plus = super."git-gutter+";
+        git-gutter-fringe-plus = super."git-gutter-fringe+";
+        ido-completing-read-plus = super."ido-completing-read+";
+        image-plus = super."image+";
+        image-dired-plus = super."image-dired+";
+        markdown-mode-plus = super."markdown-mode+";
+        package-plus = super."package+";
+        rect-plus = super."rect+";
 
-      w3m = super.w3m.override (args: {
-        melpaBuild = drv: args.melpaBuild (drv // {
-          prePatch =
-            let w3m = "${lib.getBin external.w3m}/bin/w3m"; in ''
-              substituteInPlace w3m.el \
+        # upstream issue: missing file header
+        bufshow = markBroken super.bufshow;
+
+        # upstream issue: missing file header
+        connection = markBroken super.connection;
+
+        # upstream issue: missing file header
+        dictionary = markBroken super.dictionary;
+
+        # upstream issue: missing file header
+        elmine = markBroken super.elmine;
+
+        # upstream issue: missing file header
+        ido-complete-space-or-hyphen = markBroken super.ido-complete-space-or-hyphen;
+
+        # upstream issue: missing file header
+        initsplit = markBroken super.initsplit;
+
+        # upstream issue: missing file header
+        instapaper = markBroken super.instapaper;
+
+        # upstream issue: missing file header
+        jsfmt = markBroken super.jsfmt;
+
+        # upstream issue: missing file header
+        maxframe = markBroken super.maxframe;
+
+        # upstream issue: doesn't build
+        magit-stgit = markBroken super.magit-stgit;
+
+        # upstream issue: missing file header
+        melancholy-theme = markBroken super.melancholy-theme;
+
+        # upstream issue: doesn't build
+        eterm-256color = markBroken super.eterm-256color;
+
+        # upstream issue: doesn't build
+        per-buffer-theme = markBroken super.per-buffer-theme;
+
+        # upstream issue: missing file header
+        qiita = markBroken super.qiita;
+
+        # upstream issue: missing file header
+        speech-tagger = markBroken super.speech-tagger;
+
+        # upstream issue: missing file header
+        sql-presto = markBroken super.sql-presto;
+
+        # upstream issue: missing file header
+        textmate = markBroken super.textmate;
+
+        # upstream issue: missing file header
+        link = markBroken super.link;
+
+        # upstream issue: missing file header
+        voca-builder = markBroken super.voca-builder;
+
+        # upstream issue: missing file header
+        window-numbering = markBroken super.window-numbering;
+
+        editorconfig = super.editorconfig.overrideAttrs (attrs: {
+          propagatedUserEnvPkgs = [ pkgs.editorconfig-core-c ];
+        });
+
+        # missing dependencies
+        evil-search-highlight-persist = super.evil-search-highlight-persist.overrideAttrs (attrs: {
+          packageRequires = with self; [ evil highlight ];
+        });
+
+        helm-rtags = fix-rtags super.helm-rtags;
+
+        # tries to write to $HOME
+        php-auto-yasnippets = super.php-auto-yasnippets.overrideAttrs (attrs: {
+          HOME = "/tmp";
+        });
+
+        racer = super.racer.overrideAttrs (attrs: {
+          postPatch = attrs.postPatch or "" + ''
+            substituteInPlace racer.el \
+              --replace /usr/local/src/rust/src ${pkgs.rustPlatform.rustcSrc}
+          '';
+        });
+
+        spaceline = super.spaceline.override {
+          inherit (self.melpaPackages) powerline;
+        };
+
+        vterm = super.vterm.overrideAttrs (old: {
+          nativeBuildInputs = [ pkgs.cmake ];
+          buildInputs = old.buildInputs ++ [ self.emacs pkgs.libvterm-neovim ];
+          cmakeFlags = [
+            "-DEMACS_SOURCE=${self.emacs.src}"
+            "-DUSE_SYSTEM_LIBVTERM=ON"
+          ];
+          # we need the proper out directory to exist, so we do this in the
+          # postInstall instead of postBuild
+          postInstall = ''
+            pushd source/build >/dev/null
+            make
+            install -m444 -t $out/share/emacs/site-lisp/elpa/vterm-** ../*.so
+            popd > /dev/null
+            rm -rf $out/share/emacs/site-lisp/elpa/vterm-**/{CMake*,build,*.c,*.h}
+          '';
+        });
+
+        w3m = super.w3m.override (args: {
+          melpaBuild = drv: args.melpaBuild (drv // {
+            prePatch =
+              let w3m = "${lib.getBin pkgs.w3m}/bin/w3m"; in
+              ''
+                substituteInPlace w3m.el \
                 --replace 'defcustom w3m-command nil' \
-                          'defcustom w3m-command "${w3m}"'
-            '';
+                'defcustom w3m-command "${w3m}"'
+              '';
+          });
         });
-      });
-    };
+      };
 
-    melpaPackages =
-      removeAttrs (super // overrides)
-      [
-        "show-marks"  # missing dependency: fm
-      ];
-  in
-    melpaPackages // { inherit melpaPackages; }
+      # Deprecated legacy aliases for backwards compat
+      aliases = lib.listToAttrs (lib.attrValues (lib.mapAttrs (n: v: { name = v; value = builtins.trace "Melpa attribute '${v}' is a legacy alias that will be removed in 21.05, use '${n}' instead" melpaPackages.${n}; }) (lib.filterAttrs (n: v: lib.hasAttr n melpaPackages) {
+        "auto-complete-clang-async" = "emacsClangCompleteAsync";
+        "vterm" = "emacs-libvterm";
+        "0xc" = "_0xc";
+        "2048-game" = "_2048-game";
+        "4clojure" = "_4clojure";
+        "@" = "at";
+        "term+" = "term-plus";
+        "term+key-intercept" = "term-plus-key-intercept";
+        "term+mux" = "term-plus-mux";
+        "xml+" = "xml-plus";
+      })));
+
+      melpaPackages = lib.mapAttrs (n: v: if lib.hasAttr n overrides then overrides.${n} else v) super;
+
+    in
+    melpaPackages // aliases);
+
+in
+generateMelpa { }

@@ -1,18 +1,18 @@
-{ stdenv, buildPythonPackage, fetchPypi }:
+{ lib, buildPythonPackage, fetchPypi }:
 
 buildPythonPackage rec {
   pname = "zc.buildout";
-  version = "2.12.2";
+  version = "2.13.4";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "ff5d7e8a1361da8dfe1025d35ef6ce55e929dd8518d2a811a1cf2c948950a043";
+    sha256 = "b978b2f9317b317ee4191f78fcc4f05b1ac41bdaaae47f0956f14c8285feef63";
   };
 
-  meta = with stdenv.lib; {
-    homepage = http://www.buildout.org;
+  meta = with lib; {
+    homepage = "http://www.buildout.org";
     description = "A software build and configuration system";
     license = licenses.zpl21;
-    maintainers = with maintainers; [ garbas ];
+    maintainers = with maintainers; [ ];
   };
 }

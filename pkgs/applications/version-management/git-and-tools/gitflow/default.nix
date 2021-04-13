@@ -1,20 +1,19 @@
-{ pkgs, stdenv, fetchFromGitHub }:
+{ pkgs, lib, stdenv, fetchFromGitHub }:
 
 with pkgs.lib;
 
 stdenv.mkDerivation rec {
   pname = "gitflow";
-  version = "1.11.0";
-  name = "${pname}-${version}";
+  version = "1.12.3";
 
   src = fetchFromGitHub {
     owner = "petervanderdoes";
     repo = pname;
     rev = version;
-    sha256 = "0zk53g0wd5n1zlhkwlfp124i6agx8kl0cwvy0dia3jh1p51vsc1q";
+    sha256 = "sha256-kHirHG/bfsU6tKyQ0khNSTyChhzHfzib+HyA3LOtBI8=";
   };
 
-  buildInputs = [ pkgs.makeWrapper ];
+  nativeBuildInputs = [ pkgs.makeWrapper ];
 
   preBuild = ''
     makeFlagsArray+=(prefix="$out")
@@ -26,8 +25,8 @@ stdenv.mkDerivation rec {
       --suffix PATH : ${pkgs.git}/bin
   '';
 
-  meta = with stdenv.lib; {
-    homepage = https://github.com/petervanderdoes/gitflow;
+  meta = with lib; {
+    homepage = "https://github.com/petervanderdoes/gitflow";
     description = "Extend git with the Gitflow branching model";
     longDescription = ''
       A set of scripts that provide high-level repository operations
@@ -37,6 +36,6 @@ stdenv.mkDerivation rec {
     '';
     license = licenses.bsd2;
     platforms = platforms.all;
-    maintainers = with maintainers; [ offline jgeerds ];
+    maintainers = with maintainers; [ offline ];
   };
 }

@@ -1,4 +1,4 @@
-{ stdenv, fetchurl, autoreconfHook, pkgconfig, perl, docbook2x
+{ lib, stdenv, fetchurl, autoreconfHook, pkg-config, perl, docbook2x
 , docbook_xml_dtd_45, python3Packages, pam
 
 # Optional Dependencies
@@ -6,18 +6,18 @@
 , libcap ? null, systemd ? null
 }:
 
-with stdenv.lib;
+with lib;
 stdenv.mkDerivation rec {
-  name = "lxc-${version}";
-  version = "3.0.2";
+  pname = "lxc";
+  version = "4.0.6";
 
   src = fetchurl {
     url = "https://linuxcontainers.org/downloads/lxc/lxc-${version}.tar.gz";
-    sha256 = "0p1gy553cm4mhwxi85fl6qiwz61rjmvysm8c8pd20qh62xxi3dva";
+    sha256 = "0qz4l7mlhq7hx53q606qgvkyzyr01glsw290v8ppzvxn1fydlrci";
   };
 
   nativeBuildInputs = [
-    autoreconfHook pkgconfig perl docbook2x python3Packages.wrapPython
+    autoreconfHook pkg-config perl docbook2x python3Packages.wrapPython
   ];
   buildInputs = [
     pam libapparmor gnutls libselinux libseccomp libcap
@@ -67,10 +67,21 @@ stdenv.mkDerivation rec {
 
   postInstall = ''
     wrapPythonPrograms
+
+    completions=(
+      lxc-attach lxc-cgroup lxc-console lxc-destroy lxc-device lxc-execute
+      lxc-freeze lxc-info lxc-monitor lxc-snapshot lxc-stop lxc-unfreeze
+    )
+    pushd $out/share/bash-completion/completions/
+      mv lxc lxc-start
+      for completion in ''${completions[@]}; do
+        ln -sfn lxc-start $completion
+      done
+    popd
   '';
 
   meta = {
-    homepage = https://linuxcontainers.org/;
+    homepage = "https://linuxcontainers.org/";
     description = "Userspace tools for Linux Containers, a lightweight virtualization system";
     license = licenses.lgpl21Plus;
 
@@ -83,6 +94,6 @@ stdenv.mkDerivation rec {
     '';
 
     platforms = platforms.linux;
-    maintainers = with maintainers; [ wkennington globin fpletz ];
+    maintainers = with maintainers; [ fpletz ];
   };
 }

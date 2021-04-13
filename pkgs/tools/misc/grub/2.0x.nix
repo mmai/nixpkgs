@@ -1,37 +1,41 @@
-{ stdenv, fetchurl, fetchpatch, flex, bison, python
-, gettext, ncurses, libusb, freetype, qemu, lvm2, unifont, pkgconfig
+{ lib, stdenv, fetchgit, flex, bison, python3, autoconf, automake, gnulib, libtool
+, gettext, ncurses, libusb-compat-0_1, freetype, qemu, lvm2, unifont, pkg-config
+, pkgsBuildBuild
+, nixosTests
 , fuse # only needed for grub-mount
+, runtimeShell
 , zfs ? null
 , efiSupport ? false
-, zfsSupport ? true
+, zfsSupport ? false
 , xenSupport ? false
+, kbdcompSupport ? false, ckbcomp
 }:
 
-with stdenv.lib;
+with lib;
 let
   pcSystems = {
-    "i686-linux".target = "i386";
-    "x86_64-linux".target = "i386";
+    i686-linux.target = "i386";
+    x86_64-linux.target = "i386";
   };
 
   efiSystemsBuild = {
-    "i686-linux".target = "i386";
-    "x86_64-linux".target = "x86_64";
-    "aarch64-linux".target = "aarch64";
+    i686-linux.target = "i386";
+    x86_64-linux.target = "x86_64";
+    aarch64-linux.target = "aarch64";
   };
 
   # For aarch64, we need to use '--target=aarch64-efi' when building,
   # but '--target=arm64-efi' when installing. Insanity!
   efiSystemsInstall = {
-    "i686-linux".target = "i386";
-    "x86_64-linux".target = "x86_64";
-    "aarch64-linux".target = "arm64";
+    i686-linux.target = "i386";
+    x86_64-linux.target = "x86_64";
+    aarch64-linux.target = "arm64";
   };
 
   canEfi = any (system: stdenv.hostPlatform.system == system) (mapAttrsToList (name: _: name) efiSystemsBuild);
   inPCSystems = any (system: stdenv.hostPlatform.system == system) (mapAttrsToList (name: _: name) pcSystems);
 
-  version = "2.02";
+  version = "2.06-rc1";
 
 in (
 
@@ -40,31 +44,42 @@ assert zfsSupport -> zfs != null;
 assert !(efiSupport && xenSupport);
 
 stdenv.mkDerivation rec {
-  name = "grub-${version}";
+  pname = "grub";
+  inherit version;
 
-  src = fetchurl {
-    url = "mirror://gnu/grub/${name}.tar.xz";
-    sha256 = "03vvdfhdmf16121v7xs8is2krwnv15wpkhkf16a4yf8nsfc3f2w1";
+  src = fetchgit {
+    url = "git://git.savannah.gnu.org/grub.git";
+    rev = "${pname}-${version}";
+    sha256 = "1ngc960g4w91rg13l724v6nlj6fq1adxp6is2mrq4bnp7sm9mysa";
   };
 
-  nativeBuildInputs = [ bison flex python pkgconfig ];
-  buildInputs = [ ncurses libusb freetype gettext lvm2 fuse ]
+  patches = [
+    ./fix-bash-completion.patch
+  ];
+
+  postPatch = if kbdcompSupport then ''
+    sed -i util/grub-kbdcomp.in -e 's@\bckbcomp\b@${ckbcomp}/bin/ckbcomp@'
+  '' else ''
+    echo '#! ${runtimeShell}' > util/grub-kbdcomp.in
+    echo 'echo "Compile grub2 with { kbdcompSupport = true; } to enable support for this command."' >> util/grub-kbdcomp.in
+  '';
+
+  nativeBuildInputs = [ bison flex python3 pkg-config autoconf automake gettext ];
+  buildInputs = [ ncurses libusb-compat-0_1 freetype lvm2 fuse libtool ]
     ++ optional doCheck qemu
     ++ optional zfsSupport zfs;
+
+  strictDeps = true;
 
   hardeningDisable = [ "all" ];
 
   # Work around a bug in the generated flex lexer (upstream flex bug?)
   NIX_CFLAGS_COMPILE = "-Wno-error";
 
-  postPatch = ''
-    substituteInPlace ./configure --replace '/usr/share/fonts/unifont' '${unifont}/share/fonts'
-  '';
-
   preConfigure =
     '' for i in "tests/util/"*.in
        do
-         sed -i "$i" -e's|/bin/bash|/bin/sh|g'
+         sed -i "$i" -e's|/bin/bash|${stdenv.shell}|g'
        done
 
        # Apparently, the QEMU executable is no longer called
@@ -80,20 +95,18 @@ stdenv.mkDerivation rec {
            -e's/qemu-system-i386/qemu-system-x86_64 -nodefaults/g'
 
       unset CPP # setting CPP intereferes with dependency calculation
+
+      patchShebangs .
+
+      ./bootstrap --no-git --gnulib-srcdir=${gnulib}
+
+      substituteInPlace ./configure --replace '/usr/share/fonts/unifont' '${unifont}/share/fonts'
     '';
 
-  patches = [
-    ./fix-bash-completion.patch
-    # This patch makes grub compatible with the XFS sparse inode
-    # feature introduced by xfsprogs-4.16.
-    # to be removed in grub-2.03
-    (fetchpatch {
-      url = https://git.savannah.gnu.org/cgit/grub.git/patch/?id=cda0a857dd7a27cd5d621747464bfe71e8727fff;
-      sha256 = "0k9qrkdxwdqk6sz05q9smqwjr6pvgc9adx1mlf0807g4im91xnm0";
-    })
-  ];
-
-  configureFlags = [ "--enable-grub-mount" ] # dep of os-prober
+  configureFlags = [
+    "--enable-grub-mount" # dep of os-prober
+    "BUILD_CC=${pkgsBuildBuild.stdenv.cc}/bin/cc"
+  ]
     ++ optional zfsSupport "--enable-libzfs"
     ++ optionals efiSupport [ "--with-platform=efi" "--target=${efiSystemsBuild.${stdenv.hostPlatform.system}.target}" "--program-prefix=" ]
     ++ optionals xenSupport [ "--with-platform=xen" "--target=${efiSystemsBuild.${stdenv.hostPlatform.system}.target}"];
@@ -109,13 +122,19 @@ stdenv.mkDerivation rec {
   enableParallelBuilding = true;
 
   postInstall = ''
-    paxmark pms $out/sbin/grub-{probe,bios-setup}
-
     # Avoid a runtime reference to gcc
     sed -i $out/lib/grub/*/modinfo.sh -e "/grub_target_cppflags=/ s|'.*'|' '|"
   '';
 
-  meta = with stdenv.lib; {
+  passthru.tests = {
+    nixos-grub = nixosTests.grub;
+    nixos-install-simple = nixosTests.installer.simple;
+    nixos-install-grub1 = nixosTests.installer.grub1;
+    nixos-install-grub-uefi = nixosTests.installer.simpleUefiGrub;
+    nixos-install-grub-uefi-spec = nixosTests.installer.simpleUefiGrubSpecialisation;
+  };
+
+  meta = with lib; {
     description = "GNU GRUB, the Grand Unified Boot Loader (2.x beta)";
 
     longDescription =
@@ -130,7 +149,7 @@ stdenv.mkDerivation rec {
          operating system (e.g., GNU).
       '';
 
-    homepage = https://www.gnu.org/software/grub/;
+    homepage = "https://www.gnu.org/software/grub/";
 
     license = licenses.gpl3Plus;
 

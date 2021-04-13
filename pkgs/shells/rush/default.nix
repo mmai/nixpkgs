@@ -1,16 +1,13 @@
-{ fetchurl, stdenv }:
+{ fetchurl, lib, stdenv }:
 
 stdenv.mkDerivation rec {
-  name = "rush-1.8";
+  pname = "rush";
+  version = "2.1";
 
   src = fetchurl {
-    url = "mirror://gnu/rush/${name}.tar.gz";
-    sha256 = "1vxdb81ify4xcyygh86250pi50krb16dkj42i5ii4ns3araiwckz";
+    url = "mirror://gnu/${pname}/${pname}-${version}.tar.gz";
+    sha256 = "17i4mggr3rnfz0xbhqvd86jqva40c535fhlwkb2l4hjcbpg8blcf";
   };
-
-  patches = [ ./fix-format-security-error.patch
-    ./intprops.patch
-  ];
 
   doCheck = true;
 
@@ -31,11 +28,11 @@ stdenv.mkDerivation rec {
          sftp-server or scp, that lack this ability.
       '';
 
-    homepage = https://www.gnu.org/software/rush/;
-    license = stdenv.lib.licenses.gpl3Plus;
+    homepage = "https://www.gnu.org/software/rush/";
+    license = lib.licenses.gpl3Plus;
 
-    maintainers = [ stdenv.lib.maintainers.bjg ];
-    platforms = stdenv.lib.platforms.all;
+    maintainers = [ lib.maintainers.bjg ];
+    platforms = lib.platforms.all;
   };
 
   passthru = {

@@ -1,11 +1,11 @@
-{ stdenv, fetchFromGitLab, pam, xmlsec, autoreconfHook, pkgconfig, libxml2, gtkdoc, perl, gengetopt, bison, help2man }:
+{ lib, stdenv, fetchFromGitLab, fetchpatch, pam, xmlsec, autoreconfHook, pkg-config, libxml2, gtk-doc, perl, gengetopt, bison, help2man }:
 
 let
   securityDependency =
     if stdenv.isDarwin then xmlsec
     else pam;
 
-in stdenv.mkDerivation rec {
+in stdenv.mkDerivation {
   name = "oath-toolkit-2.6.2";
 
   src = fetchFromGitLab {
@@ -15,9 +15,18 @@ in stdenv.mkDerivation rec {
     sha256 = "0n2sl444723f1k0sjmc0mzdwslx51yxac39c2cx2bl3ykacgfv74";
   };
 
+  patches = [
+    # fix for glibc>=2.28
+    (fetchpatch {
+      name   = "new_glibc_check.patch";
+      url    = "https://sources.debian.org/data/main/o/oath-toolkit/2.6.1-1.3/debian/patches/new-glibc-check.patch";
+      sha256 = "0h75xyy3xsl485v7w27yqkks6z9sgsjmrv6wiswy15fdj5wyciv3";
+    })
+  ];
+
   buildInputs = [ securityDependency libxml2 perl gengetopt bison ];
 
-  nativeBuildInputs = [ autoreconfHook gtkdoc help2man pkgconfig ];
+  nativeBuildInputs = [ autoreconfHook gtk-doc help2man pkg-config ];
 
   # man file generation fails when true
   enableParallelBuilding = false;
@@ -31,9 +40,9 @@ in stdenv.mkDerivation rec {
     touch ChangeLog
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Components for building one-time password authentication systems";
-    homepage = https://www.nongnu.org/oath-toolkit/;
+    homepage = "https://www.nongnu.org/oath-toolkit/";
     platforms = with platforms; linux ++ darwin;
   };
 }

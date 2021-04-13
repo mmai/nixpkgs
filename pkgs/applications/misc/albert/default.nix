@@ -4,13 +4,13 @@
 
 mkDerivation rec {
   pname = "albert";
-  version = "0.15.0";
+  version = "0.17.2";
 
   src = fetchFromGitHub {
     owner  = "albertlauncher";
     repo   = "albert";
     rev    = "v${version}";
-    sha256 = "063z9yq6bsxcsqsw1n93ks5dzhzv6i252mjz1d5mxhxvgmqlfk0v";
+    sha256 = "0lpp8rqx5b6rwdpcdldfdlw5327harr378wnfbc6rp3ajmlb4p7w";
     fetchSubmodules = true;
   };
 
@@ -18,14 +18,12 @@ mkDerivation rec {
 
   buildInputs = [ qtbase qtdeclarative qtsvg qtx11extras muparser python3 qtcharts ];
 
-  enableParallelBuilding = true;
-
   # We don't have virtualbox sdk so disable plugin
   cmakeFlags = [ "-DBUILD_VIRTUALBOX=OFF" "-DCMAKE_INSTALL_LIBDIR=libs" ];
 
   postPatch = ''
     sed -i "/QStringList dirs = {/a    \"$out/libs\"," \
-      lib/albertcore/src/core/albert.cpp
+      src/app/main.cpp
   '';
 
   preBuild = ''
@@ -37,13 +35,8 @@ mkDerivation rec {
     rm "$out/lib"
   '';
 
-  postInstall = ''
-    wrapProgram $out/bin/albert \
-      --prefix XDG_DATA_DIRS : $out/share
-  '';
-
   meta = with lib; {
-    homepage    = https://albertlauncher.github.io/;
+    homepage    = "https://albertlauncher.github.io/";
     description = "Desktop agnostic launcher";
     license     = licenses.gpl3Plus;
     maintainers = with maintainers; [ ericsagnes synthetica ];

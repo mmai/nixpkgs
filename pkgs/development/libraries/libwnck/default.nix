@@ -1,21 +1,18 @@
-{ stdenv, fetchurl, pkgconfig, gtk2, intltool, xorg }:
+{ lib, stdenv, fetchurl, pkg-config, gtk2, intltool, xorg }:
 
-let
-  ver_maj = "2.31";
-  ver_min = "0";
-in
 stdenv.mkDerivation rec {
-  name = "libwnck-${ver_maj}.${ver_min}";
+  pname = "libwnck";
+  version = "2.31.0";
 
   src = fetchurl {
-    url = "mirror://gnome/sources/libwnck/${ver_maj}/${name}.tar.xz";
+    url = "mirror://gnome/sources/${pname}/${lib.versions.majorMinor version}/${pname}-${version}.tar.xz";
     sha256 = "17isfjvrzgj5znld2a7zsk9vd39q9wnsysnw5jr8iz410z935xw3";
   };
 
   outputs = [ "out" "dev" "devdoc" ];
   outputBin = "dev";
 
-  nativeBuildInputs = [ pkgconfig ];
+  nativeBuildInputs = [ pkg-config ];
   buildInputs = [ gtk2 intltool xorg.libX11 xorg.libXres ];
   # ?another optional: startup-notification
 
@@ -23,6 +20,11 @@ stdenv.mkDerivation rec {
 
   meta = {
     description = "A library for creating task lists and pagers";
-    license = stdenv.lib.licenses.lgpl21;
+    homepage = "https://gitlab.gnome.org/GNOME/libwnck";
+    license = lib.licenses.lgpl21;
+    maintainers = with lib.maintainers; [ johnazoidberg ];
+    # ./xutils.h:31:10: fatal error: 'gdk/gdkx.h' file not found
+    # #include <gdk/gdkx.h>
+    broken = stdenv.isDarwin;
   };
 }

@@ -1,15 +1,16 @@
-{stdenv, fetchurl, jre, unzip, makeWrapper}:
+{lib, stdenv, fetchurl, jre, unzip, makeWrapper}:
 
 stdenv.mkDerivation rec {
-  name = "snpeff-${version}";
-  version = "4.3q";
+  pname = "snpeff";
+  version = "4.3t";
 
   src = fetchurl {
-    url = "mirror://sourceforge/project/snpeff/snpEff_v4_3q_core.zip";
-    sha256 = "0sxz8zy8wrzcy01hyb1cirwbxqyjw30a2x3q6p4l7zmw2szi7mn1";
+    url = "mirror://sourceforge/project/snpeff/snpEff_v${builtins.replaceStrings [ "." ] [ "_" ] version}_core.zip";
+    sha256 = "0i12mv93bfv8xjwc3rs2x73d6hkvi7kgbbbx3ry984l3ly4p6nnm";
   };
 
-  buildInputs = [ unzip jre makeWrapper ];
+  nativeBuildInputs = [ makeWrapper unzip ];
+  buildInputs = [ jre ];
 
   sourceRoot = "snpEff";
 
@@ -22,10 +23,10 @@ stdenv.mkDerivation rec {
     makeWrapper ${jre}/bin/java $out/bin/snpsift --add-flags "-jar $out/libexec/snpeff/SnpSift.jar"
   '';
 
-  meta = with stdenv.lib; {
-    description = "Genetic variant annotation and effect prediction toolbox.";
+  meta = with lib; {
+    description = "Genetic variant annotation and effect prediction toolbox";
     license = licenses.lgpl3;
-    homepage = http://snpeff.sourceforge.net/;
+    homepage = "http://snpeff.sourceforge.net/";
     maintainers = with maintainers; [ jbedo ];
     platforms = platforms.all;
   };

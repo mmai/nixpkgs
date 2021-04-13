@@ -1,4 +1,4 @@
-{ stdenv, fetchurl, libibumad }:
+{ lib, stdenv, fetchurl, libibumad }:
 
 stdenv.mkDerivation rec {
   name = "libibmad-1.3.13";
@@ -10,10 +10,9 @@ stdenv.mkDerivation rec {
 
   buildInputs = [ libibumad ];
 
-  meta = with stdenv.lib; {
-    homepage = https://www.openfabrics.org/;
+  meta = with lib; {
+    homepage = "https://www.openfabrics.org/";
     license = licenses.gpl2;
     platforms = platforms.linux;
-    maintainers = with maintainers; [ wkennington ];
   };
 }

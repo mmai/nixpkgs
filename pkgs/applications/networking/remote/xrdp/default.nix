@@ -1,18 +1,18 @@
-{ stdenv, fetchFromGitHub, pkgconfig, which, perl, autoconf, automake, libtool, openssl, systemd, pam, fuse, libjpeg, libopus, nasm, xorg }:
+{ lib, stdenv, fetchFromGitHub, pkg-config, which, perl, autoconf, automake, libtool, openssl, systemd, pam, fuse, libjpeg, libopus, nasm, xorg }:
 
 let
   xorgxrdp = stdenv.mkDerivation rec {
-    name = "xorgxrdp-${version}";
-    version = "0.2.7";
+    pname = "xorgxrdp";
+    version = "0.2.9";
 
     src = fetchFromGitHub {
       owner = "neutrinolabs";
       repo = "xorgxrdp";
       rev = "v${version}";
-      sha256 = "15idwgcjgwa9in8y1bblpj67y7w0bfngc2sa0hd9hn0dinrlifrk";
+      sha256 = "1bhp5x47hajhinvglmc4vxxnpjvfjm6369njb3ghqfr7c5xypvzr";
     };
 
-    nativeBuildInputs = [ pkgconfig autoconf automake which libtool nasm ];
+    nativeBuildInputs = [ pkg-config autoconf automake which libtool nasm ];
 
     buildInputs = [ xorg.xorgserver ];
 
@@ -34,18 +34,18 @@ let
   };
 
   xrdp = stdenv.mkDerivation rec {
-    version = "0.9.7";
-    name = "xrdp-${version}";
+    version = "0.9.9";
+    pname = "xrdp";
 
     src = fetchFromGitHub {
       owner = "volth";
       repo = "xrdp";
-      rev = "refs/heads/runtime-cfg-path-${version}";  # Fixes https://github.com/neutrinolabs/xrdp/issues/609; not a patch on top of the official repo because "xorgxrdp.configureFlags" above includes "xrdp.src" which must be patched already
+      rev = "refs/tags/runtime-cfg-path-${version}";  # Fixes https://github.com/neutrinolabs/xrdp/issues/609; not a patch on top of the official repo because "xorgxrdp.configureFlags" above includes "xrdp.src" which must be patched already
       fetchSubmodules = true;
-      sha256 = "1dw2zl9zh6win1q0kxj08n9fawpcrs1krjh5978wp0jmq8sdbn7k";
+      sha256 = "0ynj6pml4f38y8571ryhifza57wfqg4frdrjcwzw3fmryiznfm1z";
     };
 
-    nativeBuildInputs = [ pkgconfig autoconf automake which libtool nasm ];
+    nativeBuildInputs = [ pkg-config autoconf automake which libtool nasm ];
 
     buildInputs = [ openssl systemd pam fuse libjpeg libopus xorg.libX11 xorg.libXfixes xorg.libXrandr ];
 
@@ -94,9 +94,9 @@ let
 
     enableParallelBuilding = true;
 
-    meta = with stdenv.lib; {
+    meta = with lib; {
       description = "An open source RDP server";
-      homepage = https://github.com/neutrinolabs/xrdp;
+      homepage = "https://github.com/neutrinolabs/xrdp";
       license = licenses.asl20;
       maintainers = [ maintainers.volth ];
       platforms = platforms.linux;

@@ -1,22 +1,26 @@
-{ stdenv, fetchurl, pkgconfig, libtool, perl }:
+{ lib, stdenv, fetchurl, pkg-config, libtool, perl }:
 
 stdenv.mkDerivation rec {
-  name = "ace-${version}";
-  version = "6.5.3";
+  pname = "ace";
+  version = "6.5.11";
 
   src = fetchurl {
     url = "http://download.dre.vanderbilt.edu/previous_versions/ACE-${version}.tar.bz2";
-    sha256 = "06lvy5ylcg4vsc58p1yqr5607n542a57n0whpchmrlab74bagmmi";
+    sha256 = "0fbbysy6aymys30zh5m2bygs84dwwjnbsdl9ipj1rvfrhq8jbylb";
   };
 
   enableParallelBuilding = true;
 
-  nativeBuildInputs = [ pkgconfig libtool ];
+  nativeBuildInputs = [ pkg-config libtool ];
   buildInputs = [ perl ];
+
+  NIX_CFLAGS_COMPILE = [
+    "-Wno-error=format-security"
+  ];
 
   patchPhase = ''substituteInPlace ./MPC/prj_install.pl \
     --replace /usr/bin/perl "${perl}/bin/perl"'';
-  
+
   preConfigure = ''
     export INSTALL_PREFIX=$out
     export ACE_ROOT=$(pwd)
@@ -26,9 +30,9 @@ stdenv.mkDerivation rec {
     > include/makeinclude/platform_macros.GNU
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "ADAPTIVE Communication Environment";
-    homepage = http://www.dre.vanderbilt.edu/~schmidt/ACE.html;
+    homepage = "http://www.dre.vanderbilt.edu/~schmidt/ACE.html";
     license = licenses.doc;
     platforms = platforms.linux;
     maintainers = [ maintainers.nico202 ];

@@ -1,38 +1,37 @@
-{ stdenv
-, buildPythonPackage
-, fetchPypi
-, xmltodict
-, datamodeldict
-, numpy
-, matplotlib
-, scipy
-, pandas
+{ lib, buildPythonPackage, fetchFromGitHub, isPy27
 , cython
+, datamodeldict
+, matplotlib
 , numericalunits
+, numpy
+, pandas
 , pytest
+, scipy
+, toolz
+, xmltodict
 }:
 
 buildPythonPackage rec {
-  version = "1.2.3";
+  version = "1.3.0";
   pname = "atomman";
+  disabled = isPy27;
 
-  src = fetchPypi {
-    inherit pname version;
-    sha256 = "9eb6acc5497263cfa89be8d0f383a9a69f0726b4ac6798c1b1d96f26705ec09c";
+  src = fetchFromGitHub {
+    owner = "usnistgov";
+    repo  = "atomman";
+    rev = "v${version}";
+    sha256 = "09pfykd96wmw00s3kgabghykjn8b4yjml4ybpi7kwy7ygdmzcx51";
   };
 
   checkInputs = [ pytest ];
-  propagatedBuildInputs = [ xmltodict datamodeldict numpy matplotlib scipy pandas cython numericalunits ];
-
-  # tests not included with Pypi release
-  doCheck = false;
+  propagatedBuildInputs = [ xmltodict datamodeldict numpy matplotlib scipy pandas cython numericalunits toolz ];
 
   checkPhase = ''
-    py.test tests
+    py.test tests -k 'not test_atomic'
   '';
 
-  meta = with stdenv.lib; {
-    homepage = https://github.com/usnistgov/atomman/;
+  meta = with lib; {
+    homepage = "https://github.com/usnistgov/atomman/";
     description = "Atomistic Manipulation Toolkit";
     license = licenses.mit;
     maintainers = [ maintainers.costrouc ];

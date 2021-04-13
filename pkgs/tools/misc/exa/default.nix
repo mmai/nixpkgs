@@ -1,46 +1,40 @@
-{ stdenv, fetchFromGitHub, rustPlatform, cmake, perl, pkgconfig, zlib
-, darwin, libiconv
+{ lib, stdenv, fetchFromGitHub, rustPlatform, cmake, pandoc, pkg-config, zlib
+, Security, libiconv, installShellFiles
 }:
 
-with rustPlatform;
+rustPlatform.buildRustPackage rec {
+  pname = "exa";
+  version = "0.10.0";
 
-buildRustPackage rec {
-  name = "exa-${version}";
-  version = "0.8.0";
-
-  cargoSha256 = "08zzn3a32xfjkmpawcjppn1mr26ws3iv40cckiz8ldz4qc8y9gdh";
+  cargoSha256 = "sha256-hslQZkmZ023gKxBbfgwqazBPUk0qWyy51uRJtr3QvWE=";
 
   src = fetchFromGitHub {
     owner = "ogham";
-    repo = "exa";
+    repo = pname;
     rev = "v${version}";
-    sha256 = "0jy11a3xfnfnmyw1kjmv4ffavhijs8c940kw24vafklnacx5n88m";
+    sha256 = "sha256-xolanu4zhAwsbSPdGKgY2/uHtP30DSpr/7Vv1z4jEnQ=";
   };
 
-  nativeBuildInputs = [ cmake pkgconfig perl ];
+  nativeBuildInputs = [ cmake pkg-config installShellFiles pandoc ];
   buildInputs = [ zlib ]
-  ++ stdenv.lib.optionals stdenv.isDarwin [
-    libiconv darwin.apple_sdk.frameworks.Security ]
-  ;
+    ++ lib.optionals stdenv.isDarwin [ libiconv Security ];
+
+  outputs = [ "out" "man" ];
 
   postInstall = ''
-    mkdir -p $out/share/man/man1
-    cp contrib/man/exa.1 $out/share/man/man1/
-
-    mkdir -p $out/share/bash-completion/completions
-    cp contrib/completions.bash $out/share/bash-completion/completions/exa
-
-    mkdir -p $out/share/fish/vendor_completions.d
-    cp contrib/completions.fish $out/share/fish/vendor_completions.d/exa.fish
-
-    mkdir -p $out/share/zsh/site-functions
-    cp contrib/completions.zsh $out/share/zsh/site-functions/_exa
+    pandoc --standalone -f markdown -t man man/exa.1.md > man/exa.1
+    pandoc --standalone -f markdown -t man man/exa_colors.5.md > man/exa_colors.5
+    installManPage man/exa.1 man/exa_colors.5
+    installShellCompletion \
+      --name exa completions/completions.bash \
+      --name exa.fish completions/completions.fish \
+      --name _exa completions/completions.zsh
   '';
 
   # Some tests fail, but Travis ensures a proper build
   doCheck = false;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Replacement for 'ls' written in Rust";
     longDescription = ''
       exa is a modern replacement for ls. It uses colours for information by
@@ -50,8 +44,8 @@ buildRustPackage rec {
       for a directory, or recursing into directories with a tree view. exa is
       written in Rust, so it’s small, fast, and portable.
     '';
-    homepage = https://the.exa.website;
+    homepage = "https://the.exa.website";
     license = licenses.mit;
-    maintainers = [ maintainers.ehegnes ];
+    maintainers = with maintainers; [ ehegnes lilyball globin fortuneteller2k ];
   };
 }

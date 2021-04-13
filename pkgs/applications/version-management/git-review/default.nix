@@ -1,30 +1,27 @@
-{ stdenv, fetchurl, pythonPackages} :
+{ lib, fetchurl, buildPythonApplication, pbr, requests, setuptools }:
 
-pythonPackages.buildPythonApplication rec {
-  name = "git-review-${version}";
-  version = "1.27.0";
+buildPythonApplication rec {
+  pname = "git-review";
+  version = "2.0.0";
 
   # Manually set version because prb wants to get it from the git
   # upstream repository (and we are installing from tarball instead)
-  PBR_VERSION = "${version}";
+  PBR_VERSION = version;
 
-  postPatch = ''
-    sed -i -e '/argparse/d' requirements.txt
-  '';
-
-  src = fetchurl rec {
-    url = "https://github.com/openstack-infra/git-review/archive/${version}.tar.gz";
-    sha256 = "0smdkps9avnj58izyfc5m0amq8nafgs9iqlyaf7ncrlvypia1f3q";
+  src = fetchurl {
+    url = "https://opendev.org/opendev/${pname}/archive/${version}.tar.gz";
+    sha256 = "0dkyd5g2xmvsa114is3cd9qmki3hi6c06wjnra0f4xq3aqm0ajnj";
   };
 
-  propagatedBuildInputs = with pythonPackages; [ pbr requests setuptools ];
+  propagatedBuildInputs = [ pbr requests setuptools ];
 
   # Don't do tests because they require gerrit which is not packaged
   doCheck = false;
 
-  meta = {
-    homepage = https://github.com/openstack-infra/git-review;
+  meta = with lib; {
+    homepage = "https://opendev.org/opendev/git-review";
     description = "Tool to submit code to Gerrit";
-    license = stdenv.lib.licenses.asl20;
+    license = licenses.asl20;
+    maintainers = with maintainers; [ metadark ];
   };
 }

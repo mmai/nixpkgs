@@ -1,20 +1,20 @@
-{ stdenv, fetchurl, libcap, libnl, readline, net_snmp, less, perl, texinfo,
-  pkgconfig, c-ares }:
+{ lib, stdenv, fetchurl, libcap, libnl, readline, net-snmp, less, perl, texinfo,
+  pkg-config, c-ares }:
 
 stdenv.mkDerivation rec {
-  name = "quagga-${version}";
+  pname = "quagga";
   version = "1.2.4";
 
   src = fetchurl {
-    url = "mirror://savannah/quagga/${name}.tar.gz";
+    url = "mirror://savannah/quagga/${pname}-${version}.tar.gz";
     sha256 = "1lsksqxij5f1llqn86pkygrf5672kvrqn1kvxghi169hqf1c0r73";
   };
 
   buildInputs =
-    [ readline net_snmp c-ares ]
-    ++ stdenv.lib.optionals stdenv.isLinux [ libcap libnl ];
+    [ readline net-snmp c-ares ]
+    ++ lib.optionals stdenv.isLinux [ libcap libnl ];
 
-  nativeBuildInputs = [ pkgconfig perl texinfo ];
+  nativeBuildInputs = [ pkg-config perl texinfo ];
 
   configureFlags = [
     "--sysconfdir=/etc/quagga"
@@ -48,7 +48,7 @@ stdenv.mkDerivation rec {
 
   enableParallelBuilding = true;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Quagga BGP/OSPF/ISIS/RIP/RIPNG routing daemon suite";
     longDescription = ''
       GNU Quagga is free software which manages TCP/IP based routing protocols.
@@ -65,7 +65,7 @@ stdenv.mkDerivation rec {
       It is more than a routed replacement, it can be used as a Route Server and
       a Route Reflector.
     '';
-    homepage = https://www.nongnu.org/quagga/;
+    homepage = "https://www.nongnu.org/quagga/";
     license = licenses.gpl2;
     platforms = platforms.unix;
     maintainers = with maintainers; [ tavyc ];

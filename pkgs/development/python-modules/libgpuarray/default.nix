@@ -18,7 +18,6 @@ assert cudaSupport -> nvidia_x11 != null
 buildPythonPackage rec {
   pname = "libgpuarray";
   version = "0.7.5";
-  name = pname + "-" + version;
 
   src = fetchFromGitHub {
     owner = "Theano";
@@ -49,7 +48,7 @@ buildPythonPackage rec {
 
   postFixup = ''
     rm $out/lib/libgpuarray-static.a
-  '' + stdenv.lib.optionalString (!stdenv.isDarwin) ''
+  '' + lib.optionalString (!stdenv.isDarwin) ''
     function fixRunPath {
       p=$(patchelf --print-rpath $1)
       patchelf --set-rpath "$p:$libraryPath" $1
@@ -64,15 +63,14 @@ buildPythonPackage rec {
     Mako
   ];
 
-  enableParallelBuilding = true;
+  nativeBuildInputs = [ cmake ];
 
   buildInputs = [
-    cmake
     cython
     nose
   ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://github.com/Theano/libgpuarray";
     description = "Library to manipulate tensors on GPU.";
     license = licenses.free;

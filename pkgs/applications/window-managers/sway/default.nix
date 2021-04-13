@@ -1,40 +1,61 @@
-{ stdenv, fetchFromGitHub
-, cmake, pkgconfig, asciidoc, libxslt, docbook_xsl
-, wayland, wlc, libxkbcommon, pcre, json_c, dbus
-, pango, cairo, libinput, libcap, pam, gdk_pixbuf, libpthreadstubs
-, libXdmcp
-, buildDocs ? true
+{ lib, stdenv, fetchFromGitHub, substituteAll, swaybg
+, meson, ninja, pkg-config, wayland, scdoc
+, libxkbcommon, pcre, json_c, dbus, libevdev
+, pango, cairo, libinput, libcap, pam, gdk-pixbuf, librsvg
+, wlroots, wayland-protocols, libdrm
 }:
 
 stdenv.mkDerivation rec {
-  name = "sway-${version}";
-  version = "0.15.2";
+  pname = "sway-unwrapped";
+  version = "1.6";
 
   src = fetchFromGitHub {
     owner = "swaywm";
     repo = "sway";
     rev = version;
-    sha256 = "1p9j5gv85lsgj4z28qja07dqyvqk41w6mlaflvvm9yxafx477g5n";
+    sha256 = "0vnplva11yafhbijrk68wy7pw0psn9jm0caaymswq1s951xsn1c8";
   };
 
-  nativeBuildInputs = [
-    cmake pkgconfig
-  ] ++ stdenv.lib.optional buildDocs [ asciidoc libxslt docbook_xsl ];
-  buildInputs = [
-    wayland wlc libxkbcommon pcre json_c dbus
-    pango cairo libinput libcap pam gdk_pixbuf libpthreadstubs
-    libXdmcp
+  patches = [
+    ./sway-config-no-nix-store-references.patch
+    ./load-configuration-from-etc.patch
+
+    (substituteAll {
+      src = ./fix-paths.patch;
+      inherit swaybg;
+    })
   ];
 
-  enableParallelBuilding = true;
+  nativeBuildInputs = [
+    meson ninja pkg-config wayland scdoc
+  ];
 
-  cmakeFlags = "-DVERSION=${version} -DLD_LIBRARY_PATH=/run/opengl-driver/lib:/run/opengl-driver-32/lib";
+  buildInputs = [
+    wayland libxkbcommon pcre json_c dbus libevdev
+    pango cairo libinput libcap pam gdk-pixbuf librsvg
+    wlroots wayland-protocols libdrm
+  ];
 
-  meta = with stdenv.lib; {
-    description = "i3-compatible window manager for Wayland";
-    homepage    = https://swaywm.org;
+  mesonFlags = [
+    "-Ddefault-wallpaper=false"
+    "-Dsd-bus-provider=libsystemd"
+  ];
+
+  meta = with lib; {
+    description = "An i3-compatible tiling Wayland compositor";
+    longDescription = ''
+      Sway is a tiling Wayland compositor and a drop-in replacement for the i3
+      window manager for X11. It works with your existing i3 configuration and
+      supports most of i3's features, plus a few extras.
+      Sway allows you to arrange your application windows logically, rather
+      than spatially. Windows are arranged into a grid by default which
+      maximizes the efficiency of your screen and can be quickly manipulated
+      using only the keyboard.
+    '';
+    homepage    = "https://swaywm.org";
+    changelog   = "https://github.com/swaywm/sway/releases/tag/${version}";
     license     = licenses.mit;
     platforms   = platforms.linux;
-    maintainers = with maintainers; [ primeos ]; # Trying to keep it up-to-date.
+    maintainers = with maintainers; [ primeos synthetica ma27 ];
   };
 }

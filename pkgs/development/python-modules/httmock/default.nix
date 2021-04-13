@@ -1,21 +1,21 @@
-{ stdenv, buildPythonPackage, fetchFromGitHub, requests }:
+{ lib, buildPythonPackage, fetchFromGitHub, requests }:
 
 buildPythonPackage rec {
   pname   = "httmock";
-  version = "1.2.6";
+  version = "1.3.0";
 
   src = fetchFromGitHub {
     owner = "patrys";
     repo = "httmock";
     rev = version;
-    sha256 = "0iya8qsb2jm03s9p6sf1yzgm1irxl3dcq0k0a9ygl0skzjz5pvab";
+    sha256 = "1dy7pjq4gz476jcnbbpzk8w8qxr9l8wwgw9x2c7lf6fzsgnf404q";
   };
 
   checkInputs = [ requests ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A mocking library for requests";
-    homepage    = https://github.com/patrys/httmock;
+    homepage    = "https://github.com/patrys/httmock";
     license     = licenses.asl20;
     maintainers = with maintainers; [ nyanloutre ];
   };

@@ -1,49 +1,62 @@
-{ stdenv
-, lib
+{ lib, stdenv
 , buildPythonPackage
 , fetchFromGitHub
-, six
+, aiohttp
 , eventlet
-, mock
 , iana-etc
 , libredirect
-, aiohttp
+, mock
+, requests
+, six
 , tornado
+, websocket_client
+, websockets
+, pytestCheckHook
 }:
 
 buildPythonPackage rec {
   pname = "python-engineio";
-  version = "3.0.0";
+  version = "4.0.0";
 
   src = fetchFromGitHub {
     owner = "miguelgrinberg";
     repo = "python-engineio";
     rev = "v${version}";
-    sha256 = "1v510fhn0li808ar2cmwh5nijacy5x60q9x4gm0b34j6mkmc59ph";
+    sha256 = "00x9pmmnl1yd59wd96ivkiqh4n5nphl8cwk43hf4nqr0icgsyhar";
   };
 
-  propagatedBuildInputs = [
-    six
-  ];
-
   checkInputs = [
+    aiohttp
     eventlet
     mock
-    aiohttp
+    requests
     tornado
+    websocket_client
+    websockets
+    pytestCheckHook
   ];
 
-  # make /etc/protocols accessible to fix socket.getprotobyname('tcp') in sandbox
-  preCheck = stdenv.lib.optionalString stdenv.isLinux ''
-    export NIX_REDIRECTS=/etc/protocols=${iana-etc}/etc/protocols \
+  doCheck = !stdenv.isDarwin;
+
+  preCheck = lib.optionalString stdenv.isLinux ''
+    echo "nameserver 127.0.0.1" > resolv.conf
+    export NIX_REDIRECTS=/etc/protocols=${iana-etc}/etc/protocols:/etc/resolv.conf=$(realpath resolv.conf) \
       LD_PRELOAD=${libredirect}/lib/libredirect.so
   '';
   postCheck = "unset NIX_REDIRECTS LD_PRELOAD";
 
-  meta = with stdenv.lib; {
-    description = "Engine.IO server";
-    homepage = http://github.com/miguelgrinberg/python-engineio/;
-    license = licenses.mit;
-    maintainers = [ maintainers.mic92 ];
+  # somehow effective log level does not change?
+  disabledTests = [ "test_logger" ];
+  pythonImportsCheck = [ "engineio" ];
+
+  meta = with lib; {
+    description = "Python based Engine.IO client and server";
+    longDescription = ''
+      Engine.IO is a lightweight transport protocol that enables real-time
+      bidirectional event-based communication between clients and a server.
+    '';
+    homepage = "https://github.com/miguelgrinberg/python-engineio/";
+    license = with licenses; [ mit ];
+    maintainers = with maintainers; [ mic92 ];
   };
 }

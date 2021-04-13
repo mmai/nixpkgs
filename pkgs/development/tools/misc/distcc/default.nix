@@ -1,5 +1,6 @@
-{ stdenv, fetchFromGitHub, popt, avahi, pkgconfig, python, gtk2, runCommand
+{ lib, stdenv, fetchFromGitHub, popt, avahi, pkg-config, python3, gtk2, runCommand
 , gcc, autoconf, automake, which, procps, libiberty_static
+, runtimeShell
 , sysconfDir ? ""   # set this parameter to override the default value $out/etc
 , static ? false
 }:
@@ -16,8 +17,8 @@ let
       sha256 = "1vj31wcdas8wy52hy6749mlrca9v6ynycdiigx5ay8pnya9z73c6";
     };
 
-  nativeBuildInputs = [ pkgconfig ];
-    buildInputs = [popt avahi pkgconfig python gtk2 autoconf automake which procps libiberty_static];
+  nativeBuildInputs = [ pkg-config ];
+    buildInputs = [popt avahi pkg-config python3 gtk2 autoconf automake which procps libiberty_static];
     preConfigure =
     ''
       export CPATH=$(ls -d ${gcc.cc}/lib/gcc/*/${gcc.cc.version}/plugin/include)
@@ -53,7 +54,7 @@ let
           mkdir -p $out/bin
           if [ -x "${gcc.cc}/bin/gcc" ]; then
             cat > $out/bin/gcc << EOF
-            #!/bin/sh
+            #!${runtimeShell}
             ${extraConfig}
             exec ${distcc}/bin/distcc gcc "\$@"
           EOF
@@ -61,7 +62,7 @@ let
           fi
           if [ -x "${gcc.cc}/bin/g++" ]; then
             cat > $out/bin/g++ << EOF
-            #!/bin/sh
+            #!${runtimeShell}
             ${extraConfig}
             exec ${distcc}/bin/distcc g++ "\$@"
           EOF
@@ -72,11 +73,11 @@ let
 
     meta = {
       description = "A fast, free distributed C/C++ compiler";
-      homepage = http://distcc.org;
+      homepage = "http://distcc.org";
       license = "GPL";
 
-      platforms = stdenv.lib.platforms.linux;
-      maintainers = with stdenv.lib.maintainers; [ anderspapitto ];
+      platforms = lib.platforms.linux;
+      maintainers = with lib.maintainers; [ anderspapitto ];
     };
   };
 in

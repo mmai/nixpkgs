@@ -1,25 +1,28 @@
-{ stdenv, fetchurl }:
+{ lib, stdenv, fetchFromGitHub }:
 
 let
-  version = "2.8.1";
+  version = "2.9.4";
 in stdenv.mkDerivation {
-  name = "http-parser-${version}";
+  pname = "http-parser";
+  inherit version;
 
-  src = fetchurl {
-    url = "https://github.com/joyent/http-parser/archive/v${version}.tar.gz";
-    sha256 = "15ids8k2f0xhnnxh4m85w2f78pg5ndiwrpl24kyssznnp1l5yqai";
+  src = fetchFromGitHub {
+    owner = "nodejs";
+    repo = "http-parser";
+    rev = "v${version}";
+    sha256 = "1vda4dp75pjf5fcph73sy0ifm3xrssrmf927qd1x8g3q46z0cv6c";
   };
 
   NIX_CFLAGS_COMPILE = "-Wno-error";
   patches = [ ./build-shared.patch ];
   makeFlags = [ "DESTDIR=" "PREFIX=$(out)" ];
-  buildFlags = "library";
+  buildFlags = [ "library" ];
   doCheck = true;
   checkTarget = "test";
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "An HTTP message parser written in C";
-    homepage = https://github.com/joyent/http-parser;
+    homepage = "https://github.com/nodejs/http-parser";
     maintainers = with maintainers; [ matthewbauer ];
     license = licenses.mit;
     platforms = platforms.unix;

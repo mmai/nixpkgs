@@ -1,14 +1,14 @@
 { stdenv, fetchFromGitHub, lib, ... }:
 
 stdenv.mkDerivation rec {
-  name = "kubetail-${version}";
-  version = "1.6.5";
+  pname = "kubetail";
+  version = "1.6.12";
 
   src = fetchFromGitHub {
     owner = "johanhaleby";
     repo = "kubetail";
-    rev = "${version}";
-    sha256 = "0q8had1bi1769wd6h1c43gq0cvr5qj1fvyglizlyq1gm8qi2dx7n";
+    rev = version;
+    sha256 = "0hayfd7yvdhd2klfmhvl04hfqk0nfsimjyg3kbq8c5dbgbpz05nd";
   };
 
   installPhase = ''
@@ -25,7 +25,7 @@ stdenv.mkDerivation rec {
       multiple pods into one stream. This is the same as running "kubectl logs
       -f " but for multiple pods.
     '';
-    homepage = https://github.com/johanhaleby/kubetail;
+    homepage = "https://github.com/johanhaleby/kubetail";
     license = licenses.asl20;
     maintainers = with maintainers; [ kalbasit ];
     platforms = platforms.all;

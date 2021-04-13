@@ -1,4 +1,4 @@
-{ stdenv
+{ lib
 , buildPythonPackage
 , fetchPypi
 , pytest
@@ -13,14 +13,14 @@ buildPythonPackage rec {
     sha256 = "1bswbmhlbqdxlgbxlb6xrlm4k253sg8nvpl1whgsys8p3fg0cw2m";
   };
 
-  buildInputs = [ pytest ];
+  checkInputs = [ pytest ];
 
   checkPhase = ''
     py.test
   '';
 
-  meta = with stdenv.lib; {
-    homepage = http://pydispatcher.sourceforge.net/;
+  meta = with lib; {
+    homepage = "http://pydispatcher.sourceforge.net/";
     description = "Signal-registration and routing infrastructure for use in multiple contexts";
     license = licenses.bsd3;
   };

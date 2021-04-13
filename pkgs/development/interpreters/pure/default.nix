@@ -11,8 +11,10 @@ stdenv.mkDerivation rec {
     sha256="0px6x5ivcdbbp2pz5n1r1cwg1syadklhjw8piqhl63n91i4r7iyb";
   };
 
-  buildInputs = [ bison flex makeWrapper ];
+  nativeBuildInputs = [ makeWrapper ];
+  buildInputs = [ bison flex ];
   propagatedBuildInputs = [ llvm gmp mpfr readline ];
+  NIX_LDFLAGS = "-lLLVMJIT";
 
   postPatch = ''
     for f in expr.cc matcher.cc printer.cc symtable.cc parserdefs.hh; do
@@ -23,7 +25,7 @@ stdenv.mkDerivation rec {
   configureFlags = [ "--enable-release" ];
   doCheck = true;
   checkPhase = ''
-    LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${llvm}/lib make check
+    LD_LIBRARY_PATH=$LD_LIBRARY_PATH''${LD_LIBRARY_PATH:+:}${llvm}/lib make check
   '';
   postInstall = ''
     wrapProgram $out/bin/pure --prefix LD_LIBRARY_PATH : ${llvm}/lib
@@ -39,5 +41,6 @@ stdenv.mkDerivation rec {
     platforms = with lib.platforms;
       linux;
     license = lib.licenses.gpl3Plus;
+    broken = true;
   };
 }

@@ -7,14 +7,24 @@ with lib;
 let
   cfg = config.services.urxvtd;
 in {
+  options.services.urxvtd = {
+    enable = mkOption {
+      type = types.bool;
+      default = false;
+      description = ''
+        Enable urxvtd, the urxvt terminal daemon. To use urxvtd, run
+        "urxvtc".
+      '';
+    };
 
-  options.services.urxvtd.enable = mkOption {
-    type = types.bool;
-    default = false;
-    description = ''
-      Enable urxvtd, the urxvt terminal daemon. To use urxvtd, run
-      "urxvtc".
-    '';
+    package = mkOption {
+      default = pkgs.rxvt-unicode;
+      defaultText = "pkgs.rxvt-unicode";
+      description = ''
+        Package to install. Usually pkgs.rxvt-unicode.
+      '';
+      type = types.package;
+    };
   };
 
   config = mkIf cfg.enable {
@@ -24,15 +34,17 @@ in {
       partOf = [ "graphical-session.target" ];
       path = [ pkgs.xsel ];
       serviceConfig = {
-        ExecStart = "${pkgs.rxvt_unicode-with-plugins}/bin/urxvtd -o";
+        ExecStart = "${cfg.package}/bin/urxvtd -o";
         Environment = "RXVT_SOCKET=%t/urxvtd-socket";
         Restart = "on-failure";
         RestartSec = "5s";
       };
     };
 
-    environment.systemPackages = [ pkgs.rxvt_unicode-with-plugins ];
+    environment.systemPackages = [ cfg.package ];
     environment.variables.RXVT_SOCKET = "/run/user/$(id -u)/urxvtd-socket";
   };
+
+  meta.maintainers = with lib.maintainers; [ rnhmjoj ];
 
 }

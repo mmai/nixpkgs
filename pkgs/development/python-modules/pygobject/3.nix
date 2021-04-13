@@ -1,26 +1,24 @@
-{ stdenv, fetchurl, buildPythonPackage, pkgconfig, glib, gobject-introspection,
+{ lib, stdenv, fetchurl, buildPythonPackage, pkg-config, glib, gobject-introspection,
 pycairo, cairo, which, ncurses, meson, ninja, isPy3k, gnome3 }:
 
 buildPythonPackage rec {
   pname = "pygobject";
-  version = "3.30.2";
+  version = "3.38.0";
+
+  disabled = ! isPy3k;
 
   format = "other";
 
   src = fetchurl {
-    url = "mirror://gnome/sources/${pname}/${stdenv.lib.versions.majorMinor version}/${pname}-${version}.tar.xz";
-    sha256 = "15zd4w43js048y7fd1kdi6wpvccz1njjy60xw1ckvfy1qhikbz54";
+    url = "mirror://gnome/sources/${pname}/${lib.versions.majorMinor version}/${pname}-${version}.tar.xz";
+    sha256 = "A3LRu5Ei/Bn1AKJJsfOMK7Z0hQAPWIdJe0sgWz5whNU=";
   };
 
   outputs = [ "out" "dev" ];
 
-  mesonFlags = [
-    "-Dpython=python${if isPy3k then "3" else "2" }"
-  ];
-
-  nativeBuildInputs = [ pkgconfig meson ninja ];
+  nativeBuildInputs = [ pkg-config meson ninja gobject-introspection ];
   buildInputs = [ glib gobject-introspection ]
-                 ++ stdenv.lib.optionals stdenv.isDarwin [ which ncurses ];
+                 ++ lib.optionals stdenv.isDarwin [ which ncurses ];
   propagatedBuildInputs = [ pycairo cairo ];
 
   passthru = {
@@ -30,8 +28,8 @@ buildPythonPackage rec {
     };
   };
 
-  meta = with stdenv.lib; {
-    homepage = https://pygobject.readthedocs.io/;
+  meta = with lib; {
+    homepage = "https://pygobject.readthedocs.io/";
     description = "Python bindings for Glib";
     license = licenses.gpl2;
     maintainers = with maintainers; [ jtojnar ];

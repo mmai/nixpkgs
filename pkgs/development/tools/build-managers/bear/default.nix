@@ -1,33 +1,66 @@
-{ stdenv, fetchFromGitHub, cmake, python }:
+{ lib, stdenv
+, fetchFromGitHub
+, cmake
+, pkg-config
+, grpc
+, protobuf
+, openssl
+, nlohmann_json
+, gtest
+, fmt
+, spdlog
+, c-ares
+, abseil-cpp
+, zlib
+, sqlite
+, re2
+}:
 
 stdenv.mkDerivation rec {
-  name = "bear-${version}";
-  version = "2.3.13";
+  pname = "bear";
+  version = "3.0.9";
 
   src = fetchFromGitHub {
     owner = "rizsotto";
-    repo = "Bear";
+    repo = pname;
     rev = version;
-    sha256 = "0imvvs22gyr1v6ydgp5yn2nq8fb8llmz0ra1m733ikjaczl3jm7z";
+    sha256 = "xac8PYo3qYjtQbDy8piOz5BQQpcVlAvMCv1qHrVZmPQ=";
   };
 
-  nativeBuildInputs = [ cmake ];
-  buildInputs = [ python ]; # just for shebang of bin/bear
+  nativeBuildInputs = [ cmake pkg-config ];
 
-  doCheck = false; # all fail
+  buildInputs = [
+    grpc
+    protobuf
+    openssl
+    nlohmann_json
+    gtest
+    fmt
+    spdlog
+    c-ares
+    abseil-cpp
+    zlib
+    sqlite
+    re2
+  ];
 
-  patches = [ ./ignore_wrapper.patch ./cmakepaths.patch ];
+  patches = [
+    # Default libexec would be set to /nix/store/*-bear//nix/store/*-bear/libexec/...
+    ./no-double-relative.patch
+  ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Tool that generates a compilation database for clang tooling";
     longDescription = ''
       Note: the bear command is very useful to generate compilation commands
       e.g. for YouCompleteMe.  You just enter your development nix-shell
       and run `bear make`.  It's not perfect, but it gets a long way.
     '';
-    homepage = https://github.com/rizsotto/Bear;
+    homepage = "https://github.com/rizsotto/Bear";
     license = licenses.gpl3Plus;
     platforms = platforms.unix;
-    maintainers = [ maintainers.vcunat maintainers.babariviere ];
+    maintainers = [ maintainers.babariviere ];
+    # ld: symbol(s) not found for architecture x86_64
+    broken = stdenv.isDarwin;
   };
 }

@@ -1,19 +1,22 @@
-{ stdenv
+{ lib
 , buildPythonPackage
 , fetchPypi
 , pytest
+, setuptools_scm
 }:
 
 buildPythonPackage rec {
   pname = "lazy-object-proxy";
-  version = "1.3.1";
+  version = "1.5.2";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "eb91be369f945f10d3a49f5f9be8b3d0b93a4c2be8f8a5b83b0571b8123e0a7a";
+    sha256 = "5944a9b95e97de1980c65f03b79b356f30a43de48682b8bdd90aa5089f0ec1f4";
   };
 
-  buildInputs = [ pytest ];
+  nativeBuildInputs = [ setuptools_scm ];
+
+  checkInputs = [ pytest ];
   checkPhase = ''
     py.test tests
   '';
@@ -21,9 +24,9 @@ buildPythonPackage rec {
   # Broken tests. Seem to be fixed upstream according to Travis.
   doCheck = false;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A fast and thorough lazy object proxy";
-    homepage = https://github.com/ionelmc/python-lazy-object-proxy;
+    homepage = "https://github.com/ionelmc/python-lazy-object-proxy";
     license = with licenses; [ bsd2 ];
   };
 

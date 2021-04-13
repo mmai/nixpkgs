@@ -1,38 +1,43 @@
-{ stdenv, fetchurl, fetchpatch, pkgconfig, gnum4, glib, libsigcxx }:
+{ lib, stdenv, fetchurl, pkg-config, gnum4, glib, libsigcxx, gnome3, darwin, meson, ninja }:
 
-let
-  ver_maj = "2.56";
-  ver_min = "0";
-in
 stdenv.mkDerivation rec {
-  name = "glibmm-${ver_maj}.${ver_min}";
+  pname = "glibmm";
+  version = "2.64.5";
 
   src = fetchurl {
-    url = "mirror://gnome/sources/glibmm/${ver_maj}/${name}.tar.xz";
-    sha256 = "1abrkqhca5p8n6ly3vp1232rny03s7lrd8f8iz2m2m141nxgqx3f";
+    url = "mirror://gnome/sources/${pname}/${lib.versions.majorMinor version}/${pname}-${version}.tar.xz";
+    sha256 = "sha256-UI/IbiyRQRmKoWwiWxb9a5EZF8DTgXYCZShE0Jc+o4Y=";
   };
 
   outputs = [ "out" "dev" ];
 
-  patchFlags = "-p0";
-  patches = [
-    (fetchpatch {
-      url = "https://raw.githubusercontent.com/macports/macports-ports/e864b2340be9ef003d8ff4aef92e7151d06287dd/devel/glibmm/files/0001-ustring-Fix-wchar-conversion-on-macOS-with-libc.patch";
-      sha256 = "02qvnailw1i59cjbj3cy7y02kfcivsvkdjrf4njkp4plarayyqp9";
-    })
+  nativeBuildInputs = [
+    meson
+    pkg-config
+    ninja
+    gnum4
+    glib # for glib-compile-schemas
   ];
 
-  nativeBuildInputs = [ pkgconfig gnum4 ];
+  buildInputs = lib.optionals stdenv.isDarwin (with darwin.apple_sdk.frameworks; [
+    Cocoa
+  ]);
   propagatedBuildInputs = [ glib libsigcxx ];
 
   enableParallelBuilding = true;
 
   doCheck = false; # fails. one test needs the net, another /etc/fstab
 
-  meta = with stdenv.lib; {
+  passthru = {
+    updateScript = gnome3.updateScript {
+      packageName = pname;
+    };
+  };
+
+  meta = with lib; {
     description = "C++ interface to the GLib library";
 
-    homepage = https://gtkmm.org/;
+    homepage = "https://gtkmm.org/";
 
     license = licenses.lgpl2Plus;
 

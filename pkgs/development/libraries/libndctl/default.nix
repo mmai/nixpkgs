@@ -1,27 +1,28 @@
-{ stdenv, fetchFromGitHub, autoreconfHook
-, asciidoctor, pkgconfig, xmlto, docbook_xsl, docbook_xml_dtd_45, libxslt
-, json_c, kmod, which, file, utillinux, systemd
+{ lib, stdenv, fetchFromGitHub, autoreconfHook
+, asciidoctor, pkg-config, xmlto, docbook_xsl, docbook_xml_dtd_45, libxslt
+, json_c, kmod, which, util-linux, udev, keyutils
 }:
 
 stdenv.mkDerivation rec {
-  name = "libndctl-${version}";
-  version = "63";
+  pname = "libndctl";
+  version = "71.1";
 
   src = fetchFromGitHub {
     owner  = "pmem";
     repo   = "ndctl";
     rev    = "v${version}";
-    sha256 = "060nsza8xic769bxj3pvl70a9885bwrc0myw16l095i3z6w7yzwq";
+    sha256 = "sha256-osux3DiKRh8ftHwyfFI+WSFx20+yJsg1nVx5nuoKJu4=";
   };
 
   outputs = [ "out" "lib" "man" "dev" ];
 
   nativeBuildInputs =
-    [ autoreconfHook asciidoctor pkgconfig xmlto docbook_xml_dtd_45 docbook_xsl libxslt
+    [ autoreconfHook asciidoctor pkg-config xmlto docbook_xml_dtd_45 docbook_xsl libxslt
+      which
     ];
 
   buildInputs =
-    [ json_c kmod utillinux systemd
+    [ json_c kmod util-linux udev keyutils
     ];
 
   configureFlags =
@@ -31,7 +32,6 @@ stdenv.mkDerivation rec {
 
   patchPhase = ''
     patchShebangs test
-    substituteInPlace configure.ac --replace "which" "${which}/bin/which"
 
     substituteInPlace git-version --replace /bin/bash ${stdenv.shell}
     substituteInPlace git-version-gen --replace /bin/sh ${stdenv.shell}
@@ -39,9 +39,9 @@ stdenv.mkDerivation rec {
     echo "m4_define([GIT_VERSION], [${version}])" > version.m4;
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Tools for managing the Linux Non-Volatile Memory Device sub-system";
-    homepage    = https://github.com/pmem/ndctl;
+    homepage    = "https://github.com/pmem/ndctl";
     license     = licenses.lgpl21;
     maintainers = with maintainers; [ thoughtpolice ];
     platforms   = platforms.linux;

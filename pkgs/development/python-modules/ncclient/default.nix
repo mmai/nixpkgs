@@ -1,28 +1,26 @@
-{ stdenv
+{ lib
 , buildPythonPackage
 , fetchPypi
 , paramiko
 , selectors2
 , lxml
-, libxml2
-, libxslt
 , nose
 , rednose
 }:
 
 buildPythonPackage rec {
   pname = "ncclient";
-  version = "0.6.3";
+  version = "0.6.9";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "3ab58ee0d71069cb5b0e2f29a4e605d1d8417bd10af45b73ee3e817fe389fadc";
+    sha256 = "0112f2ad41fb658f52446d870853a63691d69299c73c7351c520d38dbd8dc0c4";
   };
 
   checkInputs = [ nose rednose ];
 
   propagatedBuildInputs = [
-    paramiko lxml libxml2 libxslt selectors2
+    paramiko lxml selectors2
   ];
 
   checkPhase = ''
@@ -32,8 +30,8 @@ buildPythonPackage rec {
   #Unfortunately the test hangs at te end
   doCheck = false;
 
-  meta = with stdenv.lib; {
-    homepage = http://ncclient.org/;
+  meta = with lib; {
+    homepage = "https://github.com/ncclient/ncclient";
     description = "Python library for NETCONF clients";
     license = licenses.asl20;
     maintainers = with maintainers; [ xnaveira ];

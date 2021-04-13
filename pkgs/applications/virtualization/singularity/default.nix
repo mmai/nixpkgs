@@ -1,62 +1,72 @@
-{ stdenv
-, fetchFromGitHub
-, autoreconfHook
-, gnutar
-, which
-, gnugrep
+{ lib
+, fetchurl
+, util-linux
+, gpgme
+, openssl
+, libuuid
 , coreutils
-, python
-, e2fsprogs
+, which
 , makeWrapper
+, cryptsetup
 , squashfsTools
-, gzip
-, gnused
-, curl
-, utillinux
-, libarchive
-, file
- }:
+, buildGoPackage}:
 
-stdenv.mkDerivation rec {
-  name = "singularity-${version}";
-  version = "2.6.0";
+with lib;
 
-  enableParallelBuilding = true;
+buildGoPackage rec {
+  pname = "singularity";
+  version = "3.7.2";
 
-  patches = [ ./env.patch ];
-
-  preConfigure = ''
-    sed -i 's/-static//g' src/Makefile.am
-    patchShebangs .
-  '';
-
-  configureFlags = [ "--localstatedir=/var" ];
-  installFlags = "CONTAINER_MOUNTDIR=dummy CONTAINER_FINALDIR=dummy CONTAINER_OVERLAY=dummy SESSIONDIR=dummy";
-
-  fixupPhase = ''
-    patchShebangs $out
-    for f in $out/libexec/singularity/helpers/help.sh $out/libexec/singularity/cli/*.exec $out/libexec/singularity/bootstrap-scripts/*.sh ; do
-      chmod a+x $f
-      sed -i 's| /sbin/| |g' $f
-      sed -i 's| /bin/bash| ${stdenv.shell}|g' $f
-      wrapProgram $f --prefix PATH : ${stdenv.lib.makeBinPath buildInputs}
-    done
-  '';
-
-  src = fetchFromGitHub {
-    owner = "singularityware";
-    repo = "singularity";
-    rev = version;
-    sha256 = "0bi7acgppbkfbra8r29s1ldq02lazdww0z2h1rfvv8spr8dzzi94";
+  src = fetchurl {
+    url = "https://github.com/hpcng/singularity/releases/download/v${version}/singularity-${version}.tar.gz";
+    sha256 = "sha256-NpFiIuJvuTRATwdm4P82jtrDbX/DHKVx9fYJRmYJBms=";
   };
 
-  nativeBuildInputs = [ autoreconfHook makeWrapper ];
-  buildInputs = [ coreutils gnugrep python e2fsprogs which gnutar squashfsTools gzip gnused curl utillinux libarchive file ];
+  goPackagePath = "github.com/sylabs/singularity";
 
-  meta = with stdenv.lib; {
-    homepage = http://singularity.lbl.gov/;
-    description = "Designed around the notion of extreme mobility of compute and reproducible science, Singularity enables users to have full control of their operating system environment";
-    license = "BSD license with 2 modifications";
+  buildInputs = [ gpgme openssl libuuid ];
+  nativeBuildInputs = [ util-linux which makeWrapper cryptsetup ];
+  propagatedBuildInputs = [ coreutils squashfsTools ];
+
+  postPatch = ''
+    substituteInPlace internal/pkg/build/files/copy.go \
+      --replace /bin/cp ${coreutils}/bin/cp
+  '';
+
+  postConfigure = ''
+    cd go/src/github.com/sylabs/singularity
+
+    patchShebangs .
+    sed -i 's|defaultPath := "[^"]*"|defaultPath := "${lib.makeBinPath propagatedBuildInputs}"|' cmd/internal/cli/actions.go
+
+    ./mconfig -V ${version} -p $out --localstatedir=/var
+
+    # Don't install SUID binaries
+    sed -i 's/-m 4755/-m 755/g' builddir/Makefile
+  '';
+
+  buildPhase = ''
+    runHook preBuild
+    make -C builddir
+    runHook postBuild
+  '';
+
+  installPhase = ''
+    runHook preInstall
+    make -C builddir install LOCALSTATEDIR=$out/var
+    chmod 755 $out/libexec/singularity/bin/starter-suid
+
+    # Explicitly configure paths in the config file
+    sed -i 's|^# mksquashfs path =.*$|mksquashfs path = ${lib.makeBinPath [squashfsTools]}/mksquashfs|' $out/etc/singularity/singularity.conf
+    sed -i 's|^# cryptsetup path =.*$|cryptsetup path = ${lib.makeBinPath [cryptsetup]}/cryptsetup|' $out/etc/singularity/singularity.conf
+
+    runHook postInstall
+  '';
+
+  meta = with lib; {
+    homepage = "http://www.sylabs.io/";
+    description = "Application containers for linux";
+    license = licenses.bsd3;
     platforms = platforms.linux;
     maintainers = [ maintainers.jbedo ];
   };

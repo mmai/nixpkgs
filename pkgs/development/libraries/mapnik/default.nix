@@ -1,19 +1,19 @@
-{ stdenv, fetchzip, fetchpatch
+{ lib, stdenv, fetchzip
 , boost, cairo, freetype, gdal, harfbuzz, icu, libjpeg, libpng, libtiff
-, libwebp, libxml2, proj, python, scons, sqlite, zlib
+, libwebp, libxml2, proj, python, sqlite, zlib
 
 # supply a postgresql package to enable the PostGIS input plugin
 , postgresql ? null
 }:
 
 stdenv.mkDerivation rec {
-  name = "mapnik-${version}";
-  version = "3.0.21";
+  pname = "mapnik";
+  version = "3.1.0";
 
   src = fetchzip {
     # this one contains all git submodules and is cheaper than fetchgit
     url = "https://github.com/mapnik/mapnik/releases/download/v${version}/mapnik-v${version}.tar.bz2";
-    sha256 = "0cq2gbmf1sssg72sq4b5s3x1z6wvl1pzxliymm06flw5bpim5as2";
+    sha256 = "sha256-qqPqN4vs3ZsqKgnx21yQhX8OzHca/0O+3mvQ/vnC5EY=";
   };
 
   # a distinct dev output makes python-mapnik fail
@@ -30,6 +30,10 @@ stdenv.mkDerivation rec {
     ];
 
   prefixKey = "PREFIX=";
+
+  preConfigure = ''
+    patchShebangs ./configure
+  '';
 
   configureFlags = [
     "BOOST_INCLUDES=${boost.dev}/include"
@@ -59,9 +63,9 @@ stdenv.mkDerivation rec {
     "XML2_LIBS=${libxml2.out}/lib"
   ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "An open source toolkit for developing mapping applications";
-    homepage = http://mapnik.org;
+    homepage = "https://mapnik.org";
     maintainers = with maintainers; [ hrdinka ];
     license = licenses.lgpl21;
     platforms = platforms.all;

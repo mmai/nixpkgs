@@ -4,8 +4,8 @@ with haskellLib;
 
 self: super: {
 
-  # This compiler version needs llvm 5.x.
-  llvmPackages = pkgs.llvmPackages_5;
+  # This compiler version needs llvm 6.x.
+  llvmPackages = pkgs.llvmPackages_6;
 
   # Disable GHC 8.6.x core libraries.
   array = null;
@@ -41,59 +41,69 @@ self: super: {
   unix = null;
   xhtml = null;
 
-  # LTS-12.x versions do not compile.
-  # base-orphans = self.base-orphans_0_8;
-  # brick = self.brick_0_45;
-  # cassava-megaparsec = doJailbreak super.cassava-megaparsec;
-  # config-ini = doJailbreak super.config-ini;   # https://github.com/aisamanra/config-ini/issues/18
-  # contravariant = self.contravariant_1_5;
-  # fgl = self.fgl_5_7_0_1;
-  # free = self.free_5_1;
-  # haddock-library = dontCheck super.haddock-library_1_7_0;
-  # HaTeX = doJailbreak super.HaTeX;
-  # hpack = self.hpack_0_31_1;
-  # hslua = self.hslua_1_0_1;
-  # hslua-module-text = self.hslua-module-text_0_2_0;
-  # hspec = self.hspec_2_6_0;
-  # hspec-contrib = self.hspec-contrib_0_5_1;
-  # hspec-core = self.hspec-core_2_6_0;
-  # hspec-discover = self.hspec-discover_2_6_0;
-  # hspec-megaparsec = doJailbreak super.hspec-megaparsec;  # newer versions need megaparsec 7.x
-  # hspec-meta = self.hspec-meta_2_6_0;
-  # JuicyPixels = self.JuicyPixels_3_3_3;
-  # lens = self.lens_4_17;
-  # megaparsec = dontCheck (doJailbreak super.megaparsec);
-  # pandoc = self.pandoc_2_5;
-  # pandoc-citeproc = self.pandoc-citeproc_0_15;
-  # pandoc-citeproc_0_15 = doJailbreak super.pandoc-citeproc_0_15;
-  # patience = markBrokenVersion "0.1.1" super.patience;
-  # polyparse = self.polyparse_1_12_1;
-  # semigroupoids = self.semigroupoids_5_3_1;
-  # tagged = self.tagged_0_8_6;
-  # vty = self.vty_5_25_1;
-  # wizards = doJailbreak super.wizards;
-  # wl-pprint-extras = doJailbreak super.wl-pprint-extras;
-  # yaml = self.yaml_0_11_0_0;
+  # Needs Cabal 3.0.x.
+  cabal-install = super.cabal-install.overrideScope (self: super: { Cabal = self.Cabal_3_2_1_0; });
+  jailbreak-cabal = super.jailbreak-cabal.override { Cabal = self.Cabal_3_2_1_0; };
 
   # https://github.com/tibbe/unordered-containers/issues/214
   unordered-containers = dontCheck super.unordered-containers;
 
   # Test suite does not compile.
-  cereal = dontCheck super.cereal;
   data-clist = doJailbreak super.data-clist;  # won't cope with QuickCheck 2.12.x
+  dates = doJailbreak super.dates; # base >=4.9 && <4.12
   Diff = dontCheck super.Diff;
+  equivalence = dontCheck super.equivalence; # test suite doesn't compile https://github.com/pa-ba/equivalence/issues/5
+  HaTeX = doJailbreak super.HaTeX; # containers >=0.4 && <0.6 is too tight; https://github.com/Daniel-Diaz/HaTeX/issues/126
+  hpc-coveralls = doJailbreak super.hpc-coveralls; # https://github.com/guillaume-nargeot/hpc-coveralls/issues/82
   http-api-data = doJailbreak super.http-api-data;
   persistent-sqlite = dontCheck super.persistent-sqlite;
-  psqueues = dontCheck super.psqueues;    # won't cope with QuickCheck 2.12.x
   system-fileio = dontCheck super.system-fileio;  # avoid dependency on broken "patience"
   unicode-transforms = dontCheck super.unicode-transforms;
-  RSA = dontCheck super.RSA; # https://github.com/GaloisInc/RSA/issues/14 
+  wl-pprint-extras = doJailbreak super.wl-pprint-extras; # containers >=0.4 && <0.6 is too tight; https://github.com/ekmett/wl-pprint-extras/issues/17
+  RSA = dontCheck super.RSA; # https://github.com/GaloisInc/RSA/issues/14
   monad-par = dontCheck super.monad-par;  # https://github.com/simonmar/monad-par/issues/66
+  github = dontCheck super.github; # hspec upper bound exceeded; https://github.com/phadej/github/pull/341
+  binary-orphans = dontCheck super.binary-orphans; # tasty upper bound exceeded; https://github.com/phadej/binary-orphans/commit/8ce857226595dd520236ff4c51fa1a45d8387b33
+  rebase = doJailbreak super.rebase; # time ==1.9.* is too low
 
   # https://github.com/jgm/skylighting/issues/55
   skylighting-core = dontCheck super.skylighting-core;
 
-  # Break out of "yaml >=0.10.4.0 && <0.11".
+  # Break out of "yaml >=0.10.4.0 && <0.11": https://github.com/commercialhaskell/stack/issues/4485
   stack = doJailbreak super.stack;
+
+  # Newer versions don't compile.
+  resolv = self.resolv_0_1_1_2;
+
+  # cabal2nix needs the latest version of Cabal, and the one
+  # hackage-db uses must match, so take the latest
+  cabal2nix = super.cabal2nix.overrideScope (self: super: { Cabal = self.Cabal_3_2_1_0; });
+
+  # cabal2spec needs a recent version of Cabal
+  cabal2spec = super.cabal2spec.overrideScope (self: super: { Cabal = self.Cabal_3_2_1_0; });
+
+  # Builds only with ghc-8.8.x and beyond.
+  policeman = markBroken super.policeman;
+
+  # https://github.com/pikajude/stylish-cabal/issues/12
+  stylish-cabal = doDistribute (markUnbroken (super.stylish-cabal.override { haddock-library = self.haddock-library_1_7_0; }));
+  haddock-library_1_7_0 = dontCheck super.haddock-library_1_7_0;
+
+  # ghc versions prior to 8.8.x needs additional dependency to compile successfully.
+  ghc-lib-parser-ex = addBuildDepend super.ghc-lib-parser-ex self.ghc-lib-parser;
+
+  # This became a core library in ghc 8.10., so we don‘t have an "exception" attribute anymore.
+  exceptions = super.exceptions_0_10_4;
+
+  # Older compilers need the latest ghc-lib to build this package.
+  hls-hlint-plugin = addBuildDepend super.hls-hlint-plugin self.ghc-lib;
+
+  # vector 0.12.2 indroduced doctest checks that don‘t work on older compilers
+  vector = dontCheck super.vector;
+
+  mmorph = super.mmorph_1_1_3;
+
+  # https://github.com/haskellari/time-compat/issues/23
+  time-compat = dontCheck super.time-compat;
 
 }

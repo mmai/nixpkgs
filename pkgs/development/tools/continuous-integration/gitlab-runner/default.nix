@@ -1,22 +1,23 @@
 { lib, buildGoPackage, fetchFromGitLab, fetchurl }:
 
 let
-  version = "11.6.0";
+  version = "13.10.0";
   # Gitlab runner embeds some docker images these are prebuilt for arm and x86_64
   docker_x86_64 = fetchurl {
     url = "https://gitlab-runner-downloads.s3.amazonaws.com/v${version}/helper-images/prebuilt-x86_64.tar.xz";
-    sha256 = "16xwj962biny18ci8lvfc6r6jq9vcdlc8vs6w7d5yzvd9x55rvwd";
+    sha256 = "0lw087xcbzf4d68mq0h0s31na7lww2d9nv43icw9qx05aknlcddv";
   };
 
   docker_arm = fetchurl {
     url = "https://gitlab-runner-downloads.s3.amazonaws.com/v${version}/helper-images/prebuilt-arm.tar.xz";
-    sha256 = "05wb7imly0c5zqmxrgdpls8izsq1g409nh31yf6j0sr76m8qkvf9";
+    sha256 = "1mf3w85ivc8r2rmb78r4b87rrxmbb1zda9pp8n4nvd0igg23xqk8";
   };
 in
 buildGoPackage rec {
   inherit version;
-  name = "gitlab-runner-${version}";
+  pname = "gitlab-runner";
   goPackagePath = "gitlab.com/gitlab-org/gitlab-runner";
+  subPackages = [ "." ];
   commonPackagePath = "${goPackagePath}/common";
   buildFlagsArray = ''
     -ldflags=
@@ -29,23 +30,22 @@ buildGoPackage rec {
     owner = "gitlab-org";
     repo = "gitlab-runner";
     rev = "v${version}";
-    sha256 = "1g9wyi9n9xvynvn7c8kjzm5pznyw7w4ziklxjniaa69idzgvbl5g";
+    sha256 = "0xy5mpcpxcmwfdrspd29z8nyn1m9i4ma7d5kbihwa2yxznylydpx";
   };
 
   patches = [ ./fix-shell-path.patch ];
 
   postInstall = ''
-    touch $bin/bin/hello
-    install -d $bin/bin/helper-images
-    ln -sf ${docker_x86_64} $bin/bin/helper-images/prebuilt-x86_64.tar.xz
-    ln -sf ${docker_arm} $bin/bin/helper-images/prebuilt-arm.tar.xz
+    install -d $out/bin/helper-images
+    ln -sf ${docker_x86_64} $out/bin/helper-images/prebuilt-x86_64.tar.xz
+    ln -sf ${docker_arm} $out/bin/helper-images/prebuilt-arm.tar.xz
   '';
 
   meta = with lib; {
     description = "GitLab Runner the continuous integration executor of GitLab";
     license = licenses.mit;
-    homepage = https://about.gitlab.com/gitlab-ci/;
+    homepage = "https://about.gitlab.com/gitlab-ci/";
     platforms = platforms.unix ++ platforms.darwin;
-    maintainers = with maintainers; [ bachp zimbatm ];
+    maintainers = with maintainers; [ bachp zimbatm globin ];
   };
 }

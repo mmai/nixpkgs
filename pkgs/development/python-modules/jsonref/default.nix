@@ -1,4 +1,4 @@
-{ stdenv, buildPythonPackage, fetchPypi
+{ lib, buildPythonPackage, fetchPypi
 , pytest, mock }:
 
 buildPythonPackage rec {
@@ -10,13 +10,13 @@ buildPythonPackage rec {
     sha256 = "15v69rg2lkcykb2spnq6vbbirv9sfq480fnwmfppw9gn3h95pi7k";
   };
 
-  buildInputs = [ pytest mock ];
+  checkInputs = [ pytest mock ];
 
   checkPhase = ''
     py.test tests.py
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "An implementation of JSON Reference for Python";
     homepage    = "https://github.com/gazpachoking/jsonref";
     license     = licenses.mit;

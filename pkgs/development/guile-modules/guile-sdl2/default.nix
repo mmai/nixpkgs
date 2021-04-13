@@ -1,20 +1,20 @@
-{ stdenv, fetchurl, guile, libtool, pkgconfig
+{ lib, stdenv, fetchurl, guile, libtool, pkg-config
 , SDL2, SDL2_image, SDL2_ttf, SDL2_mixer
 }:
 
 let
   name = "${pname}-${version}";
   pname = "guile-sdl2";
-  version = "0.3.1";
+  version = "0.5.0";
 in stdenv.mkDerivation {
   inherit name;
 
   src = fetchurl {
     url = "https://files.dthompson.us/${pname}/${name}.tar.gz";
-    sha256 = "0bw7x2lx90k4banc5k7yfkn3as93y25gr1xdr225ll7lmij21k64";
+    sha256 = "118x0cg7fzbsyrfhy5f9ab7dqp9czgia0ycgzp6sn3nlsdrcnr4m";
   };
 
-  nativeBuildInputs = [ libtool pkgconfig ];
+  nativeBuildInputs = [ libtool pkg-config ];
   buildInputs = [
     guile SDL2 SDL2_image SDL2_ttf SDL2_mixer
   ];
@@ -28,7 +28,7 @@ in stdenv.mkDerivation {
 
   makeFlags = [ "GUILE_AUTO_COMPILE=0" ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Bindings to SDL2 for GNU Guile";
     homepage = "https://dthompson.us/projects/guile-sdl2.html";
     license = licenses.lgpl3Plus;

@@ -1,14 +1,8 @@
-{ stdenv, fetchurl, pythonPackages, qt4, pkgconfig, lndir, dbus, makeWrapper }:
+{ lib, stdenv, fetchurl, buildPythonPackage, python, dbus-python, sip, qt4, pkg-config, lndir, dbus, makeWrapper }:
 
-let
+buildPythonPackage rec {
   pname = "PyQt-x11-gpl";
   version = "4.12";
-
-  inherit (pythonPackages) buildPythonPackage python dbus-python sip;
-in buildPythonPackage {
-  pname = pname;
-  name = pname + "-" + version;
-  version = version;
   format = "other";
 
   src = fetchurl {
@@ -16,33 +10,40 @@ in buildPythonPackage {
     sha256 = "1nw8r88a5g2d550yvklawlvns8gd5slw53yy688kxnsa65aln79w";
   };
 
-  configurePhase = ''
+  postPatch = ''
     mkdir -p $out
     lndir ${dbus-python} $out
     rm -rf "$out/nix-support"
 
     export PYTHONPATH=$PYTHONPATH:$out/lib/${python.libPrefix}/site-packages
-    ${stdenv.lib.optionalString stdenv.isDarwin ''
+    ${lib.optionalString stdenv.isDarwin ''
       export QMAKESPEC="unsupported/macx-clang-libc++" # macOS target after bootstrapping phase \
     ''}
 
     substituteInPlace configure.py \
       --replace 'install_dir=pydbusmoddir' "install_dir='$out/lib/${python.libPrefix}/site-packages/dbus/mainloop'" \
-    ${stdenv.lib.optionalString stdenv.isDarwin ''
+    ${lib.optionalString stdenv.isDarwin ''
       --replace "qt_macx_spec = 'macx-g++'" "qt_macx_spec = 'unsupported/macx-clang-libc++'" # for bootstrapping phase \
     ''}
 
-    configureFlagsArray=( \
-      --confirm-license --bindir $out/bin \
-      --destdir $out/${python.sitePackages} \
-      --plugin-destdir $out/lib/qt4/plugins --sipdir $out/share/sip/PyQt4 \
-      --dbus=${dbus-python}/include/dbus-1.0 --verbose)
-
-    ${python.executable} configure.py $configureFlags "''${configureFlagsArray[@]}"
+    chmod +x configure.py
+    sed -i '1i#!${python.interpreter}' configure.py
   '';
 
-  nativeBuildInputs = [ pkgconfig ];
-  buildInputs = [ makeWrapper qt4 lndir dbus ];
+  configureScript = "./configure.py";
+  dontAddPrefix = true;
+  configureFlags = [
+    "--confirm-license"
+    "--bindir=${placeholder "out"}/bin"
+    "--destdir=${placeholder "out"}/${python.sitePackages}"
+    "--plugin-destdir=${placeholder "out"}/lib/qt4/plugins"
+    "--sipdir=${placeholder "out"}/share/sip/PyQt4"
+    "--dbus=${lib.getDev dbus-python}/include/dbus-1.0"
+    "--verbose"
+  ];
+
+  nativeBuildInputs = [ pkg-config lndir makeWrapper qt4 ];
+  buildInputs = [ qt4 dbus ];
 
   propagatedBuildInputs = [ sip ];
 
@@ -58,11 +59,11 @@ in buildPythonPackage {
     qt = qt4;
   };
 
-  meta = {
+  meta = with lib; {
     description = "Python bindings for Qt";
     license = "GPL";
-    homepage = http://www.riverbankcomputing.co.uk;
-    maintainers = [ stdenv.lib.maintainers.sander ];
-    platforms = stdenv.lib.platforms.mesaPlatforms;
+    homepage = "http://www.riverbankcomputing.co.uk";
+    maintainers = [ maintainers.sander ];
+    platforms = platforms.mesaPlatforms;
   };
 }

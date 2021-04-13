@@ -1,41 +1,53 @@
-{ stdenv, rustPlatform, fetchFromGitHub, cmake, pkgconfig, zlib
-, Security, libiconv
+{ lib, stdenv
+, nixosTests
+, rustPlatform
+, fetchFromGitHub
+, pkg-config
+, less
+, Security
+, libiconv
+, installShellFiles
+, makeWrapper
 }:
 
 rustPlatform.buildRustPackage rec {
-  name    = "bat-${version}";
-  version = "0.9.0";
+  pname = "bat";
+  version = "0.18.0";
 
   src = fetchFromGitHub {
-    owner  = "sharkdp";
-    repo   = "bat";
-    rev    = "v${version}";
-    sha256 = "13c88h1m9flmx3x2h7xrnb1wy4vgdxsqahw8cqa0x61ay0019a7s";
-    fetchSubmodules = true;
+    owner = "sharkdp";
+    repo = pname;
+    rev = "v${version}";
+    sha256 = "113i11sgna82i4c4zk66qmbypmnmzh0lzp4kkgqnxxcdvyj00rb8";
   };
 
-  cargoSha256 = "1clng4rl7mq50z8d5ipmr9fapjj4qmpf4gmdnfl6vs35pq3wp9j4";
+  cargoSha256 = "12z7y303fmga91daf2w356qiqdqa7b8dz6nrrpnjdf0slyz0w3x4";
 
-  nativeBuildInputs = [ cmake pkgconfig zlib ];
+  nativeBuildInputs = [ pkg-config installShellFiles makeWrapper ];
 
-  buildInputs = stdenv.lib.optionals stdenv.isDarwin [ Security libiconv ];
+  buildInputs = lib.optionals stdenv.isDarwin [ Security libiconv ];
 
   postInstall = ''
-    install -m 444 -Dt $out/share/man/man1 doc/bat.1
-
-    install -Dm644 target/release/build/bat-*/out/_bat \
-      "$out/share/zsh/site-functions/_bat"
-    install -Dm644 target/release/build/bat-*/out/bat.bash \
-      "$out/share/bash-completions/completions/bat.bash"
-    install -Dm644 target/release/build/bat-*/out/bat.fish \
-      "$out/share/fish/vendor_completions.d/bat.fish"
+    installManPage $releaseDir/build/bat-*/out/assets/manual/bat.1
+    installShellCompletion $releaseDir/build/bat-*/out/assets/completions/bat.{fish,zsh}
   '';
 
-  meta = with stdenv.lib; {
+  # Insert Nix-built `less` into PATH because the system-provided one may be too old to behave as
+  # expected with certain flag combinations.
+  postFixup = ''
+    wrapProgram "$out/bin/bat" \
+      --prefix PATH : "${lib.makeBinPath [ less ]}"
+  '';
+
+  checkFlags = [ "--skip=pager_more" "--skip=pager_most" ];
+
+  passthru.tests = { inherit (nixosTests) bat; };
+
+  meta = with lib; {
     description = "A cat(1) clone with syntax highlighting and Git integration";
-    homepage    = https://github.com/sharkdp/bat;
-    license     = with licenses; [ asl20 /* or */ mit ];
-    maintainers = with maintainers; [ dywedir ];
-    platforms   = platforms.linux ++ platforms.darwin;
+    homepage = "https://github.com/sharkdp/bat";
+    changelog = "https://github.com/sharkdp/bat/raw/v${version}/CHANGELOG.md";
+    license = with licenses; [ asl20 /* or */ mit ];
+    maintainers = with maintainers; [ dywedir lilyball zowoq ];
   };
 }

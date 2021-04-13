@@ -1,22 +1,27 @@
-{ lib, fetchurl, buildPythonPackage, requests, six, zeroconf, protobuf }:
+{ lib, fetchPypi, buildPythonPackage, requests, zeroconf, protobuf, casttube, isPy3k }:
 
 buildPythonPackage rec {
   pname = "PyChromecast";
-  version = "2.3.0";
-  name = pname + "-" + version;
+  version = "9.1.2";
 
-  src = fetchurl {
-    url    = "mirror://pypi/p/pychromecast/${name}.tar.gz";
-    sha256 = "f385168e34d2ef47f976c8e41bad2f58f5ca004634c0ccb1a12623d8beb2fa38";
+  src = fetchPypi {
+    inherit pname version;
+    sha256 = "sha256-kHZWzqRtOdDpPsgVl5V470+29lX9i/TojmQh/NeCToU=";
   };
 
-  propagatedBuildInputs = [ requests six zeroconf protobuf ];
+  disabled = !isPy3k;
+
+  propagatedBuildInputs = [ requests zeroconf protobuf casttube ];
+
+  # no tests available
+  doCheck = false;
+  pythonImportsCheck = [ "pychromecast" ];
 
   meta = with lib; {
-    description = "Library for Python 2 and 3 to communicate with the Google Chromecast";
-    homepage    = https://github.com/balloob/pychromecast;
+    description = "Library for Python to communicate with the Google Chromecast";
+    homepage    = "https://github.com/home-assistant-libs/pychromecast";
     license     = licenses.mit;
     maintainers = with maintainers; [ abbradar ];
-    platforms   = platforms.linux;
+    platforms   = platforms.unix;
   };
 }

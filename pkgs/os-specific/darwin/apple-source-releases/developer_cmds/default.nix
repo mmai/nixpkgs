@@ -1,17 +1,27 @@
-{ stdenv, appleDerivation, xcbuildHook }:
+{ lib, appleDerivation, xcbuildHook, llvmPackages }:
 
-appleDerivation rec {
+appleDerivation {
   nativeBuildInputs = [ xcbuildHook ];
 
-  patchPhase = ''
+  patches = [
+    # The following copied from
+    # https://github.com/Homebrew/homebrew-core/commit/712ed3e948868e17f96b7e59972b5f45d4faf688
+    # is needed to build libvirt.
+    ./rpcgen-support-hyper-and-quad-types.patch
+  ];
+
+  postPatch = ''
     substituteInPlace rpcgen/rpc_main.c \
-      --replace "/usr/bin/cpp" "${stdenv.cc}/bin/cpp"
+      --replace "/usr/bin/cpp" "${llvmPackages.clang-unwrapped}/bin/clang-cpp"
   '';
 
   # temporary install phase until xcodebuild has "install" support
   installPhase = ''
-    mkdir -p $out/bin/
-    install Products/Release/* $out/bin/
+    for f in Products/Release/*; do
+      if [ -f $f ]; then
+        install -D $f $out/bin/$(basename $f)
+      fi
+    done
 
     for n in 1; do
       mkdir -p $out/share/man/man$n
@@ -20,7 +30,7 @@ appleDerivation rec {
   '';
 
   meta = {
-    platforms = stdenv.lib.platforms.darwin;
-    maintainers = with stdenv.lib.maintainers; [ matthewbauer ];
+    platforms = lib.platforms.darwin;
+    maintainers = with lib.maintainers; [ matthewbauer ];
   };
 }

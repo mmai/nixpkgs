@@ -1,8 +1,9 @@
 { stdenv, lib, fetchurl, makeWrapper, gnused, db, openssl, cyrus_sasl, libnsl
 , coreutils, findutils, gnugrep, gawk, icu, pcre, m4
+, buildPackages, nixosTests
 , withLDAP ? true, openldap
 , withPgSQL ? false, postgresql
-, withMySQL ? false, mysql
+, withMySQL ? false, libmysqlclient
 , withSQLite ? false, sqlite
 }:
 
@@ -11,7 +12,7 @@ let
     "-DUSE_TLS" "-DUSE_SASL_AUTH" "-DUSE_CYRUS_SASL" "-I${cyrus_sasl.dev}/include/sasl"
     "-DHAS_DB_BYPASS_MAKEDEFS_CHECK"
    ] ++ lib.optional withPgSQL "-DHAS_PGSQL"
-     ++ lib.optionals withMySQL [ "-DHAS_MYSQL" "-I${mysql.connector-c}/include/mysql" "-L${mysql.connector-c}/lib/mysql" ]
+     ++ lib.optionals withMySQL [ "-DHAS_MYSQL" "-I${libmysqlclient.dev}/include/mysql" "-L${libmysqlclient}/lib/mysql" ]
      ++ lib.optional withSQLite "-DHAS_SQLITE"
      ++ lib.optionals withLDAP ["-DHAS_LDAP" "-DUSE_LDAP_SASL"]);
    auxlibs = lib.concatStringsSep " " ([
@@ -23,19 +24,19 @@ let
 
 in stdenv.mkDerivation rec {
 
-  name = "postfix-${version}";
+  pname = "postfix";
 
-  version = "3.3.2";
+  version = "3.5.9";
 
   src = fetchurl {
-    url = "ftp://ftp.cs.uu.nl/mirror/postfix/postfix-release/official/${name}.tar.gz";
-    sha256 = "0nxkszdgs6fs86j6w1lf3vhxvjh1hw2jmrii5icqx9a9xqgg74rw";
+    url = "ftp://ftp.cs.uu.nl/mirror/postfix/postfix-release/official/${pname}-${version}.tar.gz";
+    sha256 = "0avn00drmk9c9mjynfvcmir72ss9s3mckdhjm3mmnhas2sixbkji";
   };
 
   nativeBuildInputs = [ makeWrapper m4 ];
   buildInputs = [ db openssl cyrus_sasl icu libnsl pcre ]
                 ++ lib.optional withPgSQL postgresql
-                ++ lib.optional withMySQL mysql.connector-c
+                ++ lib.optional withMySQL libmysqlclient
                 ++ lib.optional withSQLite sqlite
                 ++ lib.optional withLDAP openldap;
 
@@ -49,13 +50,17 @@ in stdenv.mkDerivation rec {
     ./relative-symlinks.patch
   ];
 
-  preBuild = ''
+  postPatch = lib.optionalString (stdenv.hostPlatform != stdenv.buildPlatform) ''
+    sed -e 's!bin/postconf!${buildPackages.postfix}/bin/postconf!' -i postfix-install
+  '' + ''
     sed -e '/^PATH=/d' -i postfix-install
     sed -e "s|@PACKAGE@|$out|" -i conf/post-install
 
     # post-install need skip permissions check/set on all symlinks following to /nix/store
     sed -e "s|@NIX_STORE@|$NIX_STORE|" -i conf/post-install
+  '';
 
+  postConfigure = ''
     export command_directory=$out/sbin
     export config_directory=/etc/postfix
     export meta_directory=$out/etc/postfix
@@ -69,8 +74,12 @@ in stdenv.mkDerivation rec {
     export readme_directory=$out/share/postfix/doc
     export sendmail_path=$out/bin/sendmail
 
+    makeFlagsArray+=(AR=$AR _AR=$AR RANLIB=$RANLIB _RANLIB=$RANLIB)
+
     make makefiles CCARGS='${ccargs}' AUXLIBS='${auxlibs}'
   '';
+
+  NIX_LDFLAGS = lib.optionalString withLDAP "-llber";
 
   installTargets = [ "non-interactive-package" ];
 
@@ -87,12 +96,14 @@ in stdenv.mkDerivation rec {
       --prefix PATH ":" ${lib.makeBinPath [ coreutils findutils gnugrep gawk gnused ]}
   '';
 
-  meta = {
-    homepage = http://www.postfix.org/;
+  passthru.tests = { inherit (nixosTests) postfix postfix-raise-smtpd-tls-security-level; };
+
+  meta = with lib; {
+    homepage = "http://www.postfix.org/";
     description = "A fast, easy to administer, and secure mail server";
-    license = with lib.licenses; [ ipl10 epl20 ];
-    platforms = lib.platforms.linux;
-    maintainers = [ lib.maintainers.rickynils ];
+    license = with licenses; [ ipl10 epl20 ];
+    platforms = platforms.linux;
+    maintainers = with maintainers; [ globin ];
   };
 
 }

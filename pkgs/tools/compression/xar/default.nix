@@ -1,18 +1,26 @@
-{ stdenv, fetchurl, libxml2, openssl, zlib, bzip2, fts }:
+{ lib, stdenv, fetchurl, libxml2, xz, openssl, zlib, bzip2, fts, autoconf }:
 
 stdenv.mkDerivation rec {
   version = "1.6.1";
-  name    = "xar-${version}";
+  pname = "xar";
 
   src = fetchurl {
-    url    = "https://github.com/downloads/mackyle/xar/${name}.tar.gz";
+    url    = "https://github.com/downloads/mackyle/xar/${pname}-${version}.tar.gz";
     sha256 = "0ghmsbs6xwg1092v7pjcibmk5wkyifwxw6ygp08gfz25d2chhipf";
   };
 
-  buildInputs = [ libxml2 openssl zlib bzip2 fts ];
+  buildInputs = [ libxml2 xz openssl zlib bzip2 fts autoconf ];
+
+  prePatch = ''
+    substituteInPlace configure.ac \
+      --replace 'OpenSSL_add_all_ciphers' 'OPENSSL_init_crypto' \
+      --replace 'openssl/evp.h' 'openssl/crypto.h'
+  '';
+
+  preConfigure = "./autogen.sh";
 
   meta = {
-    homepage    = https://mackyle.github.io/xar/;
+    homepage    = "https://mackyle.github.io/xar/";
     description = "Extensible Archiver";
 
     longDescription =
@@ -27,8 +35,8 @@ stdenv.mkDerivation rec {
          of content's rich meta-data.
       '';
 
-    license     = stdenv.lib.licenses.bsd3;
-    maintainers = with stdenv.lib.maintainers; [ copumpkin ];
-    platforms   = stdenv.lib.platforms.all;
+    license     = lib.licenses.bsd3;
+    maintainers = with lib.maintainers; [ copumpkin ];
+    platforms   = lib.platforms.all;
   };
 }

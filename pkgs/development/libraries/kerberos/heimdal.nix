@@ -1,26 +1,26 @@
-{ stdenv, fetchFromGitHub, autoreconfHook, pkgconfig, python2, perl, yacc, flex
+{ lib, stdenv, fetchFromGitHub, autoreconfHook, pkg-config, python3, perl, bison, flex
 , texinfo, perlPackages
 , openldap, libcap_ng, sqlite, openssl, db, libedit, pam
 , CoreFoundation, Security, SystemConfiguration
 }:
 
-with stdenv.lib;
+with lib;
 stdenv.mkDerivation rec {
-  name = "heimdal-${version}";
-  version = "7.5.0";
+  pname = "heimdal";
+  version = "7.7.0";
 
   src = fetchFromGitHub {
     owner = "heimdal";
     repo = "heimdal";
     rev = "heimdal-${version}";
-    sha256 = "1j38wjj4k0q8vx168k3d3k0fwa8j1q5q8f2688nnx1b9qgjd6w1d";
+    sha256 = "099qn9b8q20invvi5r8d8q9rnwpcm3nr89hx5rj7gj2ah2x5vgxs";
   };
 
   outputs = [ "out" "dev" "man" "info" ];
 
   patches = [ ./heimdal-make-missing-headers.patch ];
 
-  nativeBuildInputs = [ autoreconfHook pkgconfig python2 perl yacc flex texinfo ]
+  nativeBuildInputs = [ autoreconfHook pkg-config python3 perl bison flex texinfo ]
     ++ (with perlPackages; [ JSON ]);
   buildInputs = optionals (stdenv.isLinux) [ libcap_ng ]
     ++ [ db sqlite openssl libedit openldap pam]
@@ -48,7 +48,7 @@ stdenv.mkDerivation rec {
 
   postUnpack = ''
     sed -i '/^DEFAULT_INCLUDES/ s,$, -I..,' source/cf/Makefile.am.common
-    sed -i -e 's/date/date --date="@$SOURCE_DATE_EPOCH"/' source/configure.ac 
+    sed -i -e 's/date/date --date="@$SOURCE_DATE_EPOCH"/' source/configure.ac
   '';
 
   preConfigure = ''
@@ -92,7 +92,6 @@ stdenv.mkDerivation rec {
     description = "An implementation of Kerberos 5 (and some more stuff)";
     license = licenses.bsd3;
     platforms = platforms.unix;
-    maintainers = with maintainers; [ wkennington ];
   };
 
   passthru.implementation = "heimdal";

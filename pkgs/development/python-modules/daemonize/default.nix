@@ -1,20 +1,20 @@
-{ stdenv
+{ lib
 , buildPythonPackage
 , fetchPypi
 }:
 
 buildPythonPackage rec {
   pname = "daemonize";
-  version = "2.4.7";
+  version = "2.5.0";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "c0194e861826be456c7c69985825ac7b79632d8ac7ad4cde8e12fee7971468c8";
+    sha256 = "1hwbl3gf9fdds9sc14zgjyjisjvxidrvqc11xlbb0b6jz17nw0nx";
   };
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Library to enable your code run as a daemon process on Unix-like systems";
-    homepage = https://github.com/thesharp/daemonize;
+    homepage = "https://github.com/thesharp/daemonize";
     license = licenses.mit;
   };
 

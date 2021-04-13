@@ -1,14 +1,15 @@
 { stdenv, lib, buildPythonPackage, fetchPypi, makeWrapper, isPy3k,
-  python, twisted, jinja2, zope_interface, future, sqlalchemy,
-  sqlalchemy_migrate, dateutil, txaio, autobahn, pyjwt, treq, txrequests,
-  txgithub, pyjade, boto3, moto, mock, python-lz4, setuptoolsTrial, isort, pylint,
-  flake8, buildbot-worker, buildbot-pkg, glibcLocales }:
+  python, twisted, jinja2, zope_interface, sqlalchemy,
+  sqlalchemy_migrate, dateutil, txaio, autobahn, pyjwt, pyyaml, unidiff, treq,
+  txrequests, pypugjs, boto3, moto, mock, python-lz4, setuptoolsTrial,
+  isort, pylint, flake8, buildbot-worker, buildbot-pkg, buildbot-plugins,
+  parameterized, git, openssh, glibcLocales, ldap3, nixosTests }:
 
 let
   withPlugins = plugins: buildPythonPackage {
     name = "${package.name}-with-plugins";
     phases = [ "installPhase" "fixupPhase" ];
-    buildInputs = [ makeWrapper ];
+    nativeBuildInputs = [ makeWrapper ];
     propagatedBuildInputs = plugins ++ package.propagatedBuildInputs;
 
     installPhase = ''
@@ -24,11 +25,11 @@ let
 
   package = buildPythonPackage rec {
     pname = "buildbot";
-    version = "1.5.0";
+    version = "3.1.0";
 
     src = fetchPypi {
       inherit pname version;
-      sha256 = "d02a717222bcdc98205624c7d6b0b2ae24653170f2971946f26bf8cadea4fd52";
+      sha256 = "1b9m9l8bz2slkrq0l5z8zd8pd0js5w4k7dam8bdp00kv3aln4si9";
     };
 
     propagatedBuildInputs = [
@@ -36,22 +37,22 @@ let
       twisted
       jinja2
       zope_interface
-      future
       sqlalchemy
       sqlalchemy_migrate
       dateutil
       txaio
       autobahn
       pyjwt
-
+      pyyaml
+      unidiff
+    ]
       # tls
-      twisted.extras.tls
-    ];
+      ++ twisted.extras.tls;
 
     checkInputs = [
       treq
       txrequests
-      pyjade
+      pypugjs
       boto3
       moto
       mock
@@ -62,7 +63,14 @@ let
       flake8
       buildbot-worker
       buildbot-pkg
+      buildbot-plugins.www
+      parameterized
+      git
+      openssh
       glibcLocales
+      # optional dependency that was accidentally made required for tests
+      # https://github.com/buildbot/buildbot/pull/5857
+      ldap3
     ];
 
     patches = [
@@ -71,23 +79,29 @@ let
       ./skip_test_linux_distro.patch
     ];
 
-    LC_ALL = "en_US.UTF-8";
-
-    # TimeoutErrors on slow machines -> aarch64
-    doCheck = !stdenv.isAarch64;
-
     postPatch = ''
       substituteInPlace buildbot/scripts/logwatcher.py --replace '/usr/bin/tail' "$(type -P tail)"
     '';
 
+    # TimeoutErrors on slow machines -> aarch64
+    doCheck = !stdenv.isAarch64;
+
+    preCheck = ''
+      export LC_ALL="en_US.UTF-8"
+      export PATH="$out/bin:$PATH"
+    '';
+
+    disabled = !isPy3k;
+
     passthru = {
       inherit withPlugins;
+      tests.buildbot = nixosTests.buildbot;
     };
 
     meta = with lib; {
-      homepage = http://buildbot.net/;
-      description = "Buildbot is an open-source continuous integration framework for automating software build, test, and release processes";
-      maintainers = with maintainers; [ nand0p ryansydnor ];
+      homepage = "https://buildbot.net/";
+      description = "An open-source continuous integration framework for automating software build, test, and release processes";
+      maintainers = with maintainers; [ nand0p ryansydnor lopsided98 ];
       license = licenses.gpl2;
     };
   };

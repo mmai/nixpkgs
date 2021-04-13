@@ -1,11 +1,11 @@
-{ stdenv, skawarePackages }:
+{ skawarePackages }:
 
 with skawarePackages;
 
 buildPackage {
   pname = "execline";
-  version = "2.5.0.1";
-  sha256 = "0j8hwdw8wn0rv8njdza8fbgmvyjg7hqp3qlbw00i7fwskr7d21wd";
+  version = "2.8.0.0";
+  sha256 = "0vbn4pdazy6x6213vn42k0khcij5bvkbrcfg7nw6inhf8154nx77";
 
   description = "A small scripting language, to be used in place of a shell in non-interactive scripts";
 
@@ -30,6 +30,23 @@ buildPackage {
 
     mv doc $doc/share/doc/execline/html
     mv examples $doc/share/doc/execline/examples
-  '';
 
+    mv $bin/bin/execlineb $bin/bin/.execlineb-wrapped
+
+    # A wrapper around execlineb, which provides all execline
+    # tools on `execlineb`’s PATH.
+    # It is implemented as a C script, because on non-Linux,
+    # nested shebang lines are not supported.
+    # The -lskarnet has to come at the end to support static builds.
+    $CC \
+      -O \
+      -Wall -Wpedantic \
+      -D "EXECLINEB_PATH()=\"$bin/bin/.execlineb-wrapped\"" \
+      -D "EXECLINE_BIN_PATH()=\"$bin/bin\"" \
+      -I "${skalibs.dev}/include" \
+      -L "${skalibs.lib}/lib" \
+      -o "$bin/bin/execlineb" \
+      ${./execlineb-wrapper.c} \
+      -lskarnet
+  '';
 }

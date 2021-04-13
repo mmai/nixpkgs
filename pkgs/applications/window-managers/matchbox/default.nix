@@ -1,11 +1,12 @@
-{ stdenv, fetchurl, libmatchbox, pkgconfig}:
+{ lib, stdenv, fetchurl, pkg-config, libmatchbox, libX11, libXext }:
 
 stdenv.mkDerivation rec {
-  name = "matchbox-${version}";
+  pname = "matchbox";
   version = "1.2";
 
-  nativeBuildInputs = [ pkgconfig ];
+  nativeBuildInputs = [ pkg-config ];
   buildInputs = [ libmatchbox ];
+  NIX_LDFLAGS = "-lX11 -L${libX11}/lib -lXext -L${libXext}/lib";
 
   src = fetchurl {
     url = "https://downloads.yoctoproject.org/releases/matchbox/matchbox-window-manager/${version}/matchbox-window-manager-${version}.tar.bz2";
@@ -14,8 +15,8 @@ stdenv.mkDerivation rec {
 
   meta = {
     description = "X window manager for non-desktop embedded systems";
-    homepage = http://matchbox-project.org/;
-    license = stdenv.lib.licenses.gpl2Plus;
-    platforms = stdenv.lib.platforms.linux;
+    homepage = "https://www.yoctoproject.org/software-item/matchbox/";
+    license = lib.licenses.gpl2Plus;
+    platforms = lib.platforms.linux;
   };
 }

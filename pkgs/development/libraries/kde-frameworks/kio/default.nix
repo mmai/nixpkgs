@@ -1,6 +1,6 @@
 {
-  mkDerivation, lib, copyPathsToStore,
-  extra-cmake-modules, kdoctools,
+  mkDerivation, lib, fetchpatch,
+  extra-cmake-modules, kdoctools, qttools,
   karchive, kbookmarks, kcompletion, kconfig, kconfigwidgets, kcoreaddons,
   kdbusaddons, ki18n, kiconthemes, kitemviews, kjobwidgets, knotifications,
   kservice, ktextwidgets, kwallet, kwidgetsaddons, kwindowsystem, kxmlgui,
@@ -18,7 +18,11 @@ mkDerivation {
   ];
   propagatedBuildInputs = [
     kbookmarks kcompletion kconfig kcoreaddons kitemviews kjobwidgets kservice
-    kxmlgui qtbase solid
+    kxmlgui qtbase qttools solid
   ];
-  patches = (copyPathsToStore (lib.readPathsFromFile ./. ./series));
+  outputs = [ "out" "dev" ];
+  patches = [
+    ./samba-search-path.patch
+    ./kio-debug-module-loader.patch
+ ];
 }

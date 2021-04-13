@@ -1,10 +1,11 @@
-{ stdenv, fetchFromGitHub, cmake
-, zlib, libusb1
-, enableGUI ? false, qtbase ? null }:
+{ lib, stdenv, mkDerivation, fetchFromGitHub, cmake, zlib, libusb1
+, enableGUI ? false, qtbase ? null
+}:
 
-stdenv.mkDerivation rec {
+let version = "1.4.2"; in
+
+mkDerivation {
   name = "heimdall-${if enableGUI then "gui-" else ""}${version}";
-  version = "1.4.2";
 
   src = fetchFromGitHub {
     owner  = "Benjamin-Dobell";
@@ -15,16 +16,19 @@ stdenv.mkDerivation rec {
 
   buildInputs = [
     zlib libusb1
-  ] ++ stdenv.lib.optional enableGUI qtbase;
+  ] ++ lib.optional enableGUI qtbase;
   nativeBuildInputs = [ cmake ];
 
   cmakeFlags = [
     "-DDISABLE_FRONTEND=${if enableGUI then "OFF" else "ON"}"
+    "-DLIBUSB_LIBRARY=${libusb1}"
   ];
 
   preConfigure = ''
     # Give ownership of the Galaxy S USB device to the logged in user.
     substituteInPlace heimdall/60-heimdall.rules --replace 'MODE="0666"' 'TAG+="uaccess"'
+  '' + lib.optionalString stdenv.isDarwin ''
+    substituteInPlace libpit/CMakeLists.txt --replace "-std=gnu++11" ""
   '';
 
   installPhase = ''
@@ -35,10 +39,8 @@ stdenv.mkDerivation rec {
     install -m644 ../OSX/README.txt $out/share/doc/heimdall/README.osx
   '';
 
-  enableParallelBuilding = true;
-
-  meta = with stdenv.lib; {
-    homepage    = http://www.glassechidna.com.au/products/heimdall/;
+  meta = with lib; {
+    homepage    = "http://www.glassechidna.com.au/products/heimdall/";
     description = "A cross-platform tool suite to flash firmware onto Samsung Galaxy S devices";
     license     = licenses.mit;
     maintainers = with maintainers; [ peterhoeg ];

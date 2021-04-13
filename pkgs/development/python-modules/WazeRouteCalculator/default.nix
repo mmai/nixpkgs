@@ -1,13 +1,13 @@
-{ stdenv, buildPythonPackage, fetchPypi
+{ lib, buildPythonPackage, fetchPypi
 , requests }:
 
 buildPythonPackage rec {
   pname = "WazeRouteCalculator";
-  version = "0.6";
+  version = "0.12";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "0zmnw4198a2kvqvsz1i4a3aa20r4afp2lai6fxbpq1ppv120h857";
+    sha256 = "889fe753a530b258bd23def65616666d32c48d93ad8ed211dadf2ed9afcec65b";
   };
 
   propagatedBuildInputs = [ requests ];
@@ -15,9 +15,9 @@ buildPythonPackage rec {
   # there are no tests
   doCheck = false;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Calculate actual route time and distance with Waze API";
-    homepage = https://github.com/kovacsbalu/WazeRouteCalculator;
+    homepage = "https://github.com/kovacsbalu/WazeRouteCalculator";
     license = licenses.gpl3;
     maintainers = with maintainers; [ peterhoeg ];
   };

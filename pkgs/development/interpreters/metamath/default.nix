@@ -1,23 +1,19 @@
-{ stdenv, fetchFromGitHub, autoreconfHook }:
+{ lib, stdenv, fetchFromGitHub, autoreconfHook }:
 
 stdenv.mkDerivation rec {
-  name = "metamath-${version}";
-  version = "0.168";
+  pname = "metamath";
+  version = "0.196";
 
-  buildInputs = [ autoreconfHook ];
+  nativeBuildInputs = [ autoreconfHook ];
 
-  # This points to my own repository because there is no official repository
-  # for metamath; there's a download location but it gets updated in place with
-  # no permanent link. See discussion at
-  # https://groups.google.com/forum/#!topic/metamath/N4WEWQQVUfY
   src = fetchFromGitHub {
-    owner = "Taneb";
-    repo = "metamath";
-    rev = "542bfd5e53d8ce026ce5d29da9e7069ec807f5e0";
-    sha256 = "07ssgqh9ipiw1bf60snmjaxngln1an1h9q0vgszadc94wzw06zi4";
+    owner = "metamath";
+    repo = "metamath-exe";
+    rev = "v${version}";
+    sha256 = "sha256-/ofH5fq7lUxbbRBAczsLNG3UPsOMbCdcxkB3el5OPcU=";
   };
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Interpreter for the metamath proof language";
     longDescription = ''
       The metamath program is an ASCII-based ANSI C program with a command-line
@@ -25,9 +21,9 @@ stdenv.mkDerivation rec {
       in the Metamath Proof Explorer, and it generated its web pages. The *.mm
       ASCII databases (set.mm and others) are also included in this derivation.
     '';
-    homepage = http://us.metamath.org;
+    homepage = "http://us.metamath.org";
     downloadPage = "http://us.metamath.org/#downloads";
-    license = licenses.gpl2;
+    license = licenses.gpl2Plus;
     maintainers = [ maintainers.taneb ];
     platforms = platforms.all;
   };

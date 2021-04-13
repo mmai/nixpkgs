@@ -1,8 +1,7 @@
-{ stdenv
+{ lib
 , buildPythonPackage
 , fetchPypi
 , swig2
-, pkgs-box2d
 , isPy3k
 }:
 
@@ -20,13 +19,13 @@ buildPythonPackage rec {
     sed -i "s/'Box2D.tests' : 'tests'//" setup.py
   '';
 
-  buildInputs = [ swig2 pkgs-box2d ];
+  nativeBuildInputs = [ swig2 ];
 
   # tests not included with pypi release
   doCheck = false;
 
-  meta = with stdenv.lib; {
-    homepage = https://github.com/pybox2d/pybox2d;
+  meta = with lib; {
+    homepage = "https://github.com/pybox2d/pybox2d";
     description = ''
       A 2D game physics library for Python under
       the very liberal zlib license

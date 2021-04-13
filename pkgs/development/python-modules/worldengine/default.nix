@@ -1,15 +1,16 @@
-{ stdenv
+{ lib
 , buildPythonPackage
+, pythonOlder
+, isPy27
 , fetchFromGitHub
-, nose
 , noise
 , numpy
 , pyplatec
 , protobuf
 , purepng
-, argparse
 , h5py
 , gdal
+, pytestCheckHook
 }:
 
 buildPythonPackage rec {
@@ -34,8 +35,7 @@ buildPythonPackage rec {
     ln -s ${src-data} worldengine-data
   '';
 
-  buildInputs = [ nose ];
-  propagatedBuildInputs = [ noise numpy pyplatec protobuf purepng argparse h5py gdal ];
+  propagatedBuildInputs = [ noise numpy pyplatec protobuf purepng h5py gdal ];
 
   prePatch = ''
     substituteInPlace setup.py \
@@ -47,14 +47,15 @@ buildPythonPackage rec {
       --replace 'PyPlatec==1.4.0' 'PyPlatec' \
   '';
 
-  doCheck = true;
+  doCheck = !isPy27; # google namespace clash
+  checkInputs = [ pytestCheckHook ];
 
-  postCheck = ''
-    nosetests tests
-  '';
+  disabledTests = [
+    "TestSerialization"
+  ];
 
-  meta = with stdenv.lib; {
-    homepage = http://world-engine.org;
+  meta = with lib; {
+    homepage = "http://world-engine.org";
     description = "World generator using simulation of plates, rain shadow, erosion, etc";
     license = licenses.mit;
     maintainers = with maintainers; [ rardiol ];

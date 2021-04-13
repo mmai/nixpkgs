@@ -1,22 +1,22 @@
-{ stdenv, fetchFromGitHub, autoreconfHook, pkgconfig
+{ lib, stdenv, fetchFromGitHub, autoreconfHook, pkg-config
 , doxygen, perl, valgrind
 , curl, geoip, libxml2, lmdb, lua, pcre, yajl }:
 
 stdenv.mkDerivation rec {
-  name = "libmodsecurity-${version}";
-  version = "3.0.2";
+  pname = "libmodsecurity";
+  version = "3.0.3";
 
   src = fetchFromGitHub {
     owner = "SpiderLabs";
     repo = "ModSecurity";
     fetchSubmodules = true;
     rev = "v${version}";
-    sha256 = "0jhyqsvcjxq9ybndcinc08awknrg3sbkaby5w3qw03aqbfjkpywc";
+    sha256 = "00g2407g2679zv73q67zd50z0f1g1ij734ssv2pp77z4chn5dzib";
   };
 
-  nativeBuildInputs = [ autoreconfHook pkgconfig ];
+  nativeBuildInputs = [ autoreconfHook pkg-config doxygen ];
 
-  buildInputs = [ doxygen perl valgrind curl geoip libxml2 lmdb lua pcre yajl];
+  buildInputs = [ perl valgrind curl geoip libxml2 lmdb lua pcre yajl ];
 
   configureFlags = [
     "--enable-static"
@@ -26,7 +26,9 @@ stdenv.mkDerivation rec {
     "--with-yajl=${yajl}"
   ];
 
-  meta = with stdenv.lib; {
+  enableParallelBuilding = true;
+
+  meta = with lib; {
     description = ''
       ModSecurity v3 library component.
     '';
@@ -38,7 +40,7 @@ stdenv.mkDerivation rec {
       the ModSecurity SecRules format and apply them to HTTP content provided
       by your application via Connectors.
     '';
-    homepage = https://modsecurity.org/;
+    homepage = "https://modsecurity.org/";
     license = licenses.asl20;
     platforms = platforms.all;
     maintainers = with maintainers; [ izorkin ];

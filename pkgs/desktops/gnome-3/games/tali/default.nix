@@ -1,29 +1,37 @@
-{ stdenv, fetchurl, pkgconfig, gtk3, gnome3, gdk_pixbuf
-, librsvg, intltool, itstool, libxml2, wrapGAppsHook }:
+{ lib, stdenv, fetchurl, pkg-config, gtk3, gnome3, gdk-pixbuf
+, librsvg, libgnome-games-support, gettext, itstool, libxml2, wrapGAppsHook
+, meson, ninja, python3, desktop-file-utils
+}:
 
 stdenv.mkDerivation rec {
-  name = "tali-${version}";
-  version = "3.22.0";
+  pname = "tali";
+  version = "3.38.3";
 
   src = fetchurl {
-    url = "mirror://gnome/sources/tali/${stdenv.lib.versions.majorMinor version}/${name}.tar.xz";
-    sha256 = "5ba17794d6fb06b794daaffa62a6aaa372b7de8886ce5ec596c37e62bb71728b";
+    url = "mirror://gnome/sources/tali/${lib.versions.majorMinor version}/${pname}-${version}.tar.xz";
+    sha256 = "AhVCi1DEoIJ/sN4uTmum5WZ4+bp22NJbfuyoUhXyWjk=";
   };
 
   passthru = {
     updateScript = gnome3.updateScript { packageName = "tali"; attrPath = "gnome3.tali"; };
   };
 
-  nativeBuildInputs = [ pkgconfig ];
-  buildInputs = [ gtk3 gnome3.defaultIconTheme gdk_pixbuf librsvg
-                  libxml2 itstool intltool wrapGAppsHook ];
+  nativeBuildInputs = [
+    meson ninja python3 desktop-file-utils
+    pkg-config gnome3.adwaita-icon-theme
+    libxml2 itstool gettext wrapGAppsHook
+  ];
+  buildInputs = [ gtk3 gdk-pixbuf librsvg libgnome-games-support ];
 
-  enableParallelBuilding = true;
+  postPatch = ''
+    chmod +x build-aux/meson_post_install.py
+    patchShebangs build-aux/meson_post_install.py
+  '';
 
-  meta = with stdenv.lib; {
-    homepage = https://wiki.gnome.org/Apps/Tali;
+  meta = with lib; {
+    homepage = "https://wiki.gnome.org/Apps/Tali";
     description = "Sort of poker with dice and less money";
-    maintainers = gnome3.maintainers;
+    maintainers = teams.gnome.members;
     license = licenses.gpl2;
     platforms = platforms.linux;
   };

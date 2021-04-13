@@ -1,34 +1,31 @@
-{ stdenv, fetchFromGitHub, fetchpatch, vala_0_40, pkgconfig, meson, ninja, python3, granite, gtk3
-, gnome3, desktop-file-utils, json-glib, libsoup, poppler, gobject-introspection, wrapGAppsHook }:
+{ lib, stdenv, vala, fetchFromGitHub, nix-update-script, pantheon, pkg-config, meson, ninja, python3, gtk3
+, desktop-file-utils, json-glib, libsoup, libgee, poppler, wrapGAppsHook, fetchpatch }:
 
 stdenv.mkDerivation rec {
   pname = "aesop";
-  version = "1.0.7";
-
-  name = "${pname}-${version}";
+  version = "1.2.5";
 
   src = fetchFromGitHub {
     owner = "lainsce";
     repo = pname;
     rev = version;
-    sha256 = "17hjg4qcy8q9xl170yapbhn9vdsn3jf537jsggq51pp0fnhvsnqs";
+    sha256 = "1zxyyxl959rqhyz871dyyccqga2ydybkfcpyjq4vmvdn2g9mvmb0";
   };
 
   nativeBuildInputs = [
     desktop-file-utils
-    gobject-introspection
     meson
     ninja
-    pkgconfig
+    pkg-config
     python3
-    vala_0_40 # should be `elementary.vala` when elementary attribute set is merged
+    vala
     wrapGAppsHook
   ];
 
   buildInputs = [
-    gnome3.defaultIconTheme # should be `elementary.defaultIconTheme`when elementary attribute set is merged
-    gnome3.libgee
-    granite
+    pantheon.elementary-icon-theme
+    libgee
+    pantheon.granite
     gtk3
     json-glib
     libsoup
@@ -40,11 +37,17 @@ stdenv.mkDerivation rec {
     patchShebangs meson/post_install.py
   '';
 
-  meta = with stdenv.lib; {
+  passthru = {
+    updateScript = nix-update-script {
+      attrPath = pname;
+    };
+  };
+
+  meta = with lib; {
     description = "The simplest PDF viewer around";
-    homepage = https://github.com/lainsce/aesop;
+    homepage = "https://github.com/lainsce/aesop";
     license = licenses.gpl2Plus;
-    maintainers = with maintainers; [ worldofpeace ];
+    maintainers = pantheon.maintainers;
     platforms = platforms.linux;
   };
 }

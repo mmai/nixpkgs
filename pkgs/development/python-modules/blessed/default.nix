@@ -1,25 +1,28 @@
-{ stdenv, buildPythonPackage, fetchPypi, six, wcwidth, pytest, mock
-, glibcLocales }:
+{ lib, buildPythonPackage, fetchPypi, fetchpatch, six
+, wcwidth, pytest, mock, glibcLocales
+}:
 
 buildPythonPackage rec {
   pname = "blessed";
-  version = "1.15.0";
+  version = "1.17.12";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "777b0b6b5ce51f3832e498c22bc6a093b6b5f99148c7cbf866d26e2dec51ef21";
+    sha256 = "580429e7e0c6f6a42ea81b0ae5a4993b6205c6ccbb635d034b4277af8175753e";
   };
 
   checkInputs = [ pytest mock glibcLocales ];
 
+  # Default tox.ini parameters not needed
   checkPhase = ''
-    LANG=en_US.utf-8 py.test blessed/tests
+    rm tox.ini
+    pytest
   '';
 
   propagatedBuildInputs = [ wcwidth six ];
 
-  meta = with stdenv.lib; {
-    homepage = https://github.com/jquast/blessed;
+  meta = with lib; {
+    homepage = "https://github.com/jquast/blessed";
     description = "A thin, practical wrapper around terminal capabilities in Python.";
     maintainers = with maintainers; [ eqyiel ];
     license = licenses.mit;

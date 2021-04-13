@@ -1,16 +1,21 @@
-{ stdenv, fetchPypi, buildPythonPackage, isPyPy, python, libev, greenlet }:
+{ lib, fetchPypi, buildPythonPackage, isPyPy, python, libev, greenlet
+, zope_interface
+}:
 
 buildPythonPackage rec {
   pname = "gevent";
-  version = "1.3.7";
+  version = "20.9.0";
+  format = "pyproject";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "3f06f4802824c577272960df003a304ce95b3e82eea01dad2637cc8609c80e2c";
+    sha256 = "13aw9x6imsy3b369kfjblqiwfni69pp32m4r13n62r9k3l2lhvaz";
   };
 
   buildInputs = [ libev ];
-  propagatedBuildInputs = stdenv.lib.optionals (!isPyPy) [ greenlet ];
+  propagatedBuildInputs = [
+    zope_interface
+  ] ++ lib.optionals (!isPyPy) [ greenlet ];
 
   checkPhase = ''
     cd greentest
@@ -20,9 +25,9 @@ buildPythonPackage rec {
   # Bunch of failures.
   doCheck = false;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Coroutine-based networking library";
-    homepage = http://www.gevent.org/;
+    homepage = "http://www.gevent.org/";
     license = licenses.mit;
     platforms = platforms.unix;
     maintainers = with maintainers; [ bjornfor ];

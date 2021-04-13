@@ -1,7 +1,7 @@
-{ stdenv, lib, fetchurl, callPackage, substituteAll, python3, pkgconfig
-, xorg, gtk3, glib, pango, cairo, gdk_pixbuf, atk
-, wrapGAppsHook, xorgserver, getopt, xauth, utillinux, which
-, ffmpeg, x264, libvpx, libwebp
+{ lib, fetchurl, callPackage, substituteAll, python3, pkg-config, writeText
+, xorg, gtk3, glib, pango, cairo, gdk-pixbuf, atk
+, wrapGAppsHook, xorgserver, getopt, xauth, util-linux, which
+, ffmpeg, x264, libvpx, libwebp, x265
 , libfakeXinerama
 , gst_all_1, pulseaudio, gobject-introspection
 , pam }:
@@ -11,35 +11,56 @@ with lib;
 let
   inherit (python3.pkgs) cython buildPythonApplication;
 
-  xf86videodummy = callPackage ./xf86videodummy { };
+  xf86videodummy = xorg.xf86videodummy.overrideDerivation (p: {
+    patches = [
+      ./0002-Constant-DPI.patch
+      ./0003-fix-pointer-limits.patch
+      ./0005-support-for-30-bit-depth-in-dummy-driver.patch
+    ];
+  });
+
+  xorgModulePaths = writeText "module-paths" ''
+    Section "Files"
+      ModulePath "${xorgserver}/lib/xorg/modules"
+      ModulePath "${xorgserver}/lib/xorg/modules/extensions"
+      ModulePath "${xorgserver}/lib/xorg/modules/drivers"
+      ModulePath "${xf86videodummy}/lib/xorg/modules/drivers"
+    EndSection
+  '';
+
 in buildPythonApplication rec {
   pname = "xpra";
-  version = "2.3.4";
+  version = "4.0.6";
 
   src = fetchurl {
     url = "https://xpra.org/src/${pname}-${version}.tar.xz";
-    sha256 = "0wa3kx54himy3i1b2801hlzfilh3cf4kjk40k1cjl0ds28m5hija";
+    sha256 = "nGcvbZFGYd2nQ75LL4YN+xcWb7UsViA3OAqpcrTwieg=";
   };
 
   patches = [
     (substituteAll {
       src = ./fix-paths.patch;
       inherit (xorg) xkeyboardconfig;
+      inherit libfakeXinerama;
     })
+    ./fix-41106.patch
   ];
 
-  nativeBuildInputs = [ pkgconfig gobject-introspection wrapGAppsHook ];
-  buildInputs = [
+  postPatch = ''
+    substituteInPlace setup.py --replace '/usr/include/security' '${pam}/include/security'
+  '';
+
+  nativeBuildInputs = [ pkg-config wrapGAppsHook ];
+  buildInputs = with xorg; [
+    libX11 xorgproto libXrender libXi
+    libXtst libXfixes libXcomposite libXdamage
+    libXrandr libxkbfile
+    ] ++ [
     cython
 
-    xorg.libX11 xorg.renderproto xorg.libXrender xorg.libXi xorg.inputproto xorg.kbproto
-    xorg.randrproto xorg.damageproto xorg.compositeproto xorg.xextproto xorg.recordproto
-    xorg.xproto xorg.fixesproto xorg.libXtst xorg.libXfixes xorg.libXcomposite xorg.libXdamage
-    xorg.libXrandr xorg.libxkbfile
+    pango cairo gdk-pixbuf atk.out gtk3 glib
 
-    pango cairo gdk_pixbuf atk gtk3 glib
-
-    ffmpeg libvpx x264 libwebp
+    ffmpeg libvpx x264 libwebp x265
 
     gst_all_1.gstreamer
     gst_all_1.gst-plugins-base
@@ -48,46 +69,59 @@ in buildPythonApplication rec {
     gst_all_1.gst-libav
 
     pam
+    gobject-introspection
   ];
-
   propagatedBuildInputs = with python3.pkgs; [
     pillow rencode pycrypto cryptography pycups lz4 dbus-python
-    netifaces numpy websockify pygobject3 pycairo gst-python pam
+    netifaces numpy pygobject3 pycairo gst-python pam
+    pyopengl paramiko opencv4 python-uinput pyxdg
+    ipaddress idna
   ];
 
-  NIX_CFLAGS_COMPILE = [
     # error: 'import_cairo' defined but not used
-    "-Wno-error=unused-function"
-  ];
+  NIX_CFLAGS_COMPILE = "-Wno-error=unused-function";
 
   setupPyBuildFlags = [
     "--with-Xdummy"
     "--without-strict"
     "--with-gtk3"
-    "--without-gtk2"
+    # Override these, setup.py checks for headers in /usr/* paths
+    "--with-pam"
+    "--with-vsock"
   ];
 
+  dontWrapGApps = true;
   preFixup = ''
-    gappsWrapperArgs+=(
+    makeWrapperArgs+=(
+      "''${gappsWrapperArgs[@]}"
       --set XPRA_INSTALL_PREFIX "$out"
+      --set XPRA_COMMAND "$out/bin/xpra"
       --prefix LD_LIBRARY_PATH : ${libfakeXinerama}/lib
-      --prefix PATH : ${stdenv.lib.makeBinPath [ getopt xorgserver xauth which utillinux pulseaudio ]}
+      --prefix PATH : ${lib.makeBinPath [ getopt xorgserver xauth which util-linux pulseaudio ]}
     )
+  '';
+
+  # append module paths to xorg.conf
+  postInstall = ''
+    cat ${xorgModulePaths} >> $out/etc/xpra/xorg.conf
   '';
 
   doCheck = false;
 
-  passthru = { inherit xf86videodummy; };
+  enableParallelBuilding = true;
+
+  passthru = {
+    inherit xf86videodummy;
+    updateScript = ./update.sh;
+  };
 
   meta = {
-    homepage = http://xpra.org/;
+    homepage = "http://xpra.org/";
     downloadPage = "https://xpra.org/src/";
     downloadURLRegexp = "xpra-.*[.]tar[.]xz$";
     description = "Persistent remote applications for X";
     platforms = platforms.linux;
     license = licenses.gpl2;
-    # https://github.com/NixOS/nixpkgs/pull/48872#issuecomment-433559636
-    broken = true;
     maintainers = with maintainers; [ tstrobel offline numinit ];
   };
 }

@@ -1,27 +1,32 @@
-{ stdenv, fetchurl, boost, libxml2, pkgconfig, curl, autoreconfHook }:
+{ lib, stdenv, fetchFromGitHub, boost, libxml2, pkg-config, docbook2x, curl, autoreconfHook, cppunit }:
 
 stdenv.mkDerivation rec {
-  name = "libcmis-${version}";
-  version = "0.5.0";
+  pname = "libcmis";
+  version = "0.5.2";
 
-  src = fetchurl {
-    url = "mirror://sourceforge/libcmis/${name}.tar.gz";
-    sha256 = "1dprvk4fibylv24l7gr49gfqbkfgmxynvgssvdcycgpf7n8h4zm8";
+  src = fetchFromGitHub {
+    owner = "tdf";
+    repo = pname;
+    rev = "v${version}";
+    sha256 = "0s6prfh55hn11vrs72ph1gs01v0vngly81pvyjm5v1sgwymdxx57";
   };
 
-  patches = [ ./gcc5.patch ];
+  nativeBuildInputs = [ autoreconfHook pkg-config docbook2x ];
+  buildInputs = [ boost libxml2 curl cppunit ];
 
-  nativeBuildInputs = [ autoreconfHook pkgconfig ];
-  buildInputs = [ boost libxml2 curl ];
-  configureFlags = [ "--without-man" "--with-boost=${boost.dev}" "--disable-werror" "--disable-tests" ];
+  configureFlags = [
+    "--disable-werror"
+    "DOCBOOK2MAN=${docbook2x}/bin/docbook2man"
+  ];
 
-  # Cppcheck cannot find all the include files (use --check-config for details)
-  doCheck = false;
+  doCheck = true;
 
-  meta = with stdenv.lib; {
+  enableParallelBuilding = true;
+
+  meta = with lib; {
     description = "C++ client library for the CMIS interface";
-    homepage = https://sourceforge.net/projects/libcmis/;
+    homepage = "https://sourceforge.net/projects/libcmis/";
     license = licenses.gpl2;
-    platforms = platforms.linux;
+    platforms = platforms.unix;
   };
 }

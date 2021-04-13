@@ -1,14 +1,14 @@
-{ stdenv, fetchurl, autoreconfHook,
-  gzip, bzip2, pkgconfig, flex, check,
+{ lib, stdenv, fetchurl, autoreconfHook,
+  gzip, bzip2, pkg-config, flex, check,
   pam, coreutils
 }:
 
 stdenv.mkDerivation rec {
-  name = "kbd-${version}";
+  pname = "kbd";
   version = "2.0.4";
 
   src = fetchurl {
-    url = "mirror://kernel/linux/utils/kbd/${name}.tar.xz";
+    url = "mirror://kernel/linux/utils/kbd/${pname}-${version}.tar.xz";
     sha256 = "124swm93dm4ca0pifgkrand3r9gvj3019d4zkfxsj9djpvv0mnaz";
   };
 
@@ -45,7 +45,7 @@ stdenv.mkDerivation rec {
 
       # We get a warning in armv5tel-linux and the fuloong2f, so we
       # disable -Werror in it.
-      ${stdenv.lib.optionalString (stdenv.isAarch32 || stdenv.hostPlatform.isMips) ''
+      ${lib.optionalString (stdenv.isAarch32 || stdenv.hostPlatform.isMips) ''
         sed -i s/-Werror// src/Makefile.am
       ''}
     '';
@@ -59,12 +59,12 @@ stdenv.mkDerivation rec {
 
 
   buildInputs = [ check pam ];
-  nativeBuildInputs = [ autoreconfHook pkgconfig flex ];
+  nativeBuildInputs = [ autoreconfHook pkg-config flex ];
 
   makeFlags = [ "setowner=" ];
 
-  meta = with stdenv.lib; {
-    homepage = ftp://ftp.altlinux.org/pub/people/legion/kbd/;
+  meta = with lib; {
+    homepage = "ftp://ftp.altlinux.org/pub/people/legion/kbd/";
     description = "Linux keyboard utilities and keyboard maps";
     platforms = platforms.linux;
     license = licenses.gpl2Plus;

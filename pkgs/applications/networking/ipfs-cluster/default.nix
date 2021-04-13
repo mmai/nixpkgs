@@ -1,41 +1,27 @@
-{ stdenv, buildGoPackage, fetchFromGitHub, fetchgx, gx-go }:
+{ lib, buildGoModule, fetchFromGitHub }:
 
-buildGoPackage rec {
-  name = "ipfs-cluster-${version}";
-  version = "0.7.0";
-  rev = "v${version}";
+buildGoModule rec {
+  pname = "ipfs-cluster";
+  version = "0.13.1";
 
-  goPackagePath = "github.com/ipfs/ipfs-cluster";
+  vendorSha256 = "0ls6d5ijl8bbh48w0i30mwd4a4na93iw9xqpbw23lnb8pvskaggh";
 
-  extraSrcPaths = [
-    (fetchgx {
-      inherit name src;
-      sha256 = "19ljx4q9msrv5wwyd85l01l320lhwgma5z3b756ldgj9fs8p9ph6";
-    })
+  patches = [
+      ./test.patch
   ];
 
   src = fetchFromGitHub {
     owner = "ipfs";
     repo = "ipfs-cluster";
-    inherit rev;
-    sha256 = "1zqy4zzi33z16fny1dnhqa8z7czrggvbxdxs750gxzbnd9vqzda1";
+    rev = "v${version}";
+    sha256 = "0kmsa7cnk88wrplsjysrpg6n0gd0risnhw0kh33jqx0fcg12b7h8";
   };
 
-  nativeBuildInputs = [ gx-go ];
-
-  preBuild = ''
-    # fetchgx stores packages by their ipfs hash
-    # this will rewrite github.com/ imports to gx/ipfs/
-    cd go/src/${goPackagePath}
-    gx-go rewrite
-  '';
-
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Allocate, replicate, and track Pins across a cluster of IPFS daemons";
-    homepage = https://cluster.ipfs.io/;
+    homepage = "https://cluster.ipfs.io/";
     license = licenses.mit;
     platforms = platforms.unix;
     maintainers = with maintainers; [ jglukasik ];
   };
 }
-

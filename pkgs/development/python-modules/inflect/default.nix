@@ -1,15 +1,32 @@
-{ buildPythonPackage, fetchPypi, setuptools_scm, nose, six }:
+{ lib
+, buildPythonPackage
+, fetchPypi
+, isPy27
+, setuptools_scm
+, toml
+, pytestCheckHook
+}:
 
 buildPythonPackage rec {
   pname = "inflect";
-  version = "1.0.2";
+  version = "5.3.0";
+  disabled = isPy27;
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "98cf5d82952ed8bf1cf9236c6058e9a21bc66172ecb907969d907741f91388b5";
+    sha256 = "41a23f6788962e9775e40e2ecfb1d6455d02de315022afeedd3c5dc070019d73";
   };
 
-  buildInputs = [ setuptools_scm ];
-  checkInputs = [ nose ];
-  propagatedBuildInputs = [ six ];
+  nativeBuildInputs = [ setuptools_scm toml ];
+
+  checkInputs = [ pytestCheckHook ];
+
+  pythonImportsCheck = [ "inflect" ];
+
+  meta = with lib; {
+    description = "Correctly generate plurals, singular nouns, ordinals, indefinite articles";
+    homepage = "https://github.com/jaraco/inflect";
+    changelog = "https://github.com/jaraco/inflect/blob/v${version}/CHANGES.rst";
+    license = licenses.mit;
+  };
 }

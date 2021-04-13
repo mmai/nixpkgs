@@ -1,36 +1,37 @@
-{ stdenv, fetchFromGitLab, cmake, ninja, pkgconfig, wrapGAppsHook
+{ lib, stdenv, fetchFromGitLab, cmake, ninja, pkg-config, wrapGAppsHook
 , glib, gtk3, gettext, libxkbfile, libX11
-, freerdp, libssh, libgcrypt, gnutls, makeDesktopItem
-, pcre, libdbusmenu-gtk3, libappindicator-gtk3
+, freerdp, libssh, libgcrypt, gnutls
+, pcre2, libdbusmenu-gtk3, libappindicator-gtk3
 , libvncserver, libpthreadstubs, libXdmcp, libxkbcommon
 , libsecret, libsoup, spice-protocol, spice-gtk, epoxy, at-spi2-core
-, openssl, gsettings-desktop-schemas, json-glib
+, openssl, gsettings-desktop-schemas, json-glib, libsodium, webkitgtk, harfbuzz
 # The themes here are soft dependencies; only icons are missing without them.
-, hicolor-icon-theme, adwaita-icon-theme
+, gnome3
 }:
 
-with stdenv.lib;
+with lib;
 
 stdenv.mkDerivation rec {
   pname = "remmina";
-  version = "1.2.32.1";
+  version = "1.4.12";
 
   src = fetchFromGitLab {
     owner  = "Remmina";
     repo   = "Remmina";
     rev    = "v${version}";
-    sha256 = "1b77gs68j5j4nlv69vl81d0kp2623ysvshq7495y6hq5wgi5l3gc";
+    sha256 = "sha256-CjlNEmca4Kob5rdpZa+YfvdOIDDDYfhNsGYqGDxSGKY=";
   };
 
-  nativeBuildInputs = [ cmake ninja pkgconfig wrapGAppsHook ];
+  nativeBuildInputs = [ cmake ninja pkg-config wrapGAppsHook ];
   buildInputs = [
     gsettings-desktop-schemas
     glib gtk3 gettext libxkbfile libX11
     freerdp libssh libgcrypt gnutls
-    pcre libdbusmenu-gtk3 libappindicator-gtk3
+    pcre2 libdbusmenu-gtk3 libappindicator-gtk3
     libvncserver libpthreadstubs libXdmcp libxkbcommon
     libsecret libsoup spice-protocol spice-gtk epoxy at-spi2-core
-    openssl hicolor-icon-theme adwaita-icon-theme json-glib
+    openssl gnome3.adwaita-icon-theme json-glib libsodium webkitgtk
+    harfbuzz
   ];
 
   cmakeFlags = [
@@ -51,8 +52,8 @@ stdenv.mkDerivation rec {
 
   meta = {
     license = licenses.gpl2;
-    homepage = https://gitlab.com/Remmina/Remmina;
-    description = "Remote desktop client written in GTK+";
+    homepage = "https://gitlab.com/Remmina/Remmina";
+    description = "Remote desktop client written in GTK";
     maintainers = with maintainers; [ melsigl ryantm ];
     platforms = platforms.linux;
   };

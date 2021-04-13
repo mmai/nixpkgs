@@ -1,7 +1,7 @@
-{ stdenv, fetchFromGitHub, zlib, jdk, CoreServices, Foundation }:
+{ lib, stdenv, fetchFromGitHub, zlib, jdk, CoreServices, Foundation }:
 
 stdenv.mkDerivation rec {
-  name = "avian-${version}";
+  pname = "avian";
   version = "1.2.0";
 
   src = fetchFromGitHub {
@@ -12,7 +12,7 @@ stdenv.mkDerivation rec {
   };
 
   buildInputs = [ zlib jdk ]
-    ++ stdenv.lib.optionals stdenv.isDarwin [ CoreServices Foundation ];
+    ++ lib.optionals stdenv.isDarwin [ CoreServices Foundation ];
 
   NIX_CFLAGS_COMPILE = "-Wno-error";
 
@@ -35,9 +35,9 @@ stdenv.mkDerivation rec {
       to provide a useful subset of Java’s features, suitable for
       building self-contained applications.
     '';
-    homepage = https://readytalk.github.io/avian/;
-    license = stdenv.lib.licenses.isc;
-    platforms = stdenv.lib.platforms.all;
-    maintainers = [ stdenv.lib.maintainers.earldouglas ];
+    homepage = "https://readytalk.github.io/avian/";
+    license = lib.licenses.isc;
+    platforms = lib.platforms.all;
+    maintainers = [ lib.maintainers.earldouglas ];
   };
 }

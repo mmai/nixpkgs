@@ -1,81 +1,48 @@
-{ lib, stdenv, python2
-, enableSystemd ? true
+{ lib, stdenv, python3, openssl
+, enableSystemd ? stdenv.isLinux, nixosTests
+, enableRedis ? false
+, callPackage
 }:
 
-with python2.pkgs;
+with python3.pkgs;
 
 let
-  matrix-angular-sdk = buildPythonPackage rec {
-    pname = "matrix-angular-sdk";
-    version = "0.6.8";
-
-    src = fetchPypi {
-      inherit pname version;
-      sha256 = "0gmx4y5kqqphnq3m7xk2vpzb0w2a4palicw7wfdr1q2schl9fhz2";
-    };
-
-    # no checks from Pypi but as this is abandonware, there will be no
-    # new version anyway
-    doCheck = false;
-  };
-
-  matrix-synapse-ldap3 = buildPythonPackage rec {
-    pname = "matrix-synapse-ldap3";
-    version = "0.1.3";
-
-    src = fetchPypi {
-      inherit pname version;
-      sha256 = "0a0d1y9yi0abdkv6chbmxr3vk36gynnqzrjhbg26q4zg06lh9kgn";
-    };
-
-    propagatedBuildInputs = [ service-identity ldap3 twisted ];
-
-    # ldaptor is not ready for py3 yet
-    doCheck = !isPy3k;
-    checkInputs = [ ldaptor mock ];
-  };
-
-in buildPythonApplication rec {
+  plugins = python3.pkgs.callPackage ./plugins { };
+  tools = callPackage ./tools { };
+in
+buildPythonApplication rec {
   pname = "matrix-synapse";
-  version = "0.34.0";
+  version = "1.30.0";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "1bqwivzfx3kikzjmn4mng829ll8y62pd08hvsx99arr7cyzp6gri";
+    sha256 = "1ca69v479537bbj2hjliwk9zzy9fqqsf7fm188k6xxj0a37q9y41";
   };
 
   patches = [
-    ./matrix-synapse.patch
+    # adds an entry point for the service
+    ./homeserver-script.patch
   ];
 
   propagatedBuildInputs = [
+    setuptools
     bcrypt
     bleach
     canonicaljson
     daemonize
-    dateutil
     frozendict
     jinja2
     jsonschema
     lxml
-    matrix-angular-sdk
-    matrix-synapse-ldap3
-    msgpack-python
+    msgpack
     netaddr
     phonenumbers
     pillow
-    (prometheus_client.overrideAttrs (x: {
-      src = fetchPypi {
-        pname = "prometheus_client";
-        version = "0.3.1";
-        sha256 = "093yhvz7lxl7irnmsfdnf2030lkj4gsfkg6pcmy4yr1ijk029g0p";
-      };
-    }))
+    prometheus_client
     psutil
     psycopg2
     pyasn1
-    pydenticon
-    pymacaroons-pynacl
+    pymacaroons
     pynacl
     pyopenssl
     pysaml2
@@ -86,19 +53,30 @@ in buildPythonApplication rec {
     treq
     twisted
     unpaddedbase64
-  ] ++ lib.optional enableSystemd systemd;
+    typing-extensions
+    authlib
+    pyjwt
+  ] ++ lib.optional enableSystemd systemd
+    ++ lib.optional enableRedis hiredis;
 
-  # tests fail under py3 for now, but version 0.34.0 will use py3 by default
-  # https://github.com/matrix-org/synapse/issues/4036
-  doCheck = true;
-  checkPhase = "python -m twisted.trial test";
+  checkInputs = [ mock parameterized openssl ];
 
-  checkInputs = [ mock setuptoolsTrial ];
+  doCheck = !stdenv.isDarwin;
 
-  meta = with stdenv.lib; {
-    homepage = https://matrix.org;
+  checkPhase = ''
+    ${lib.optionalString (!enableRedis) "rm -r tests/replication # these tests need the optional dependency 'hiredis'"}
+    PYTHONPATH=".:$PYTHONPATH" ${python3.interpreter} -m twisted.trial tests
+  '';
+
+  passthru.tests = { inherit (nixosTests) matrix-synapse; };
+  passthru.plugins = plugins;
+  passthru.tools = tools;
+  passthru.python = python3;
+
+  meta = with lib; {
+    homepage = "https://matrix.org";
     description = "Matrix reference homeserver";
     license = licenses.asl20;
-    maintainers = with maintainers; [ ralith roblabla ekleog ];
+    maintainers = teams.matrix.members;
   };
 }

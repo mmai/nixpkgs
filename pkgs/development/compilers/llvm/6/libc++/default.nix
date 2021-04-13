@@ -1,7 +1,8 @@
-{ lib, stdenv, fetch, cmake, python, libcxxabi, fixDarwinDylibNames, version }:
+{ lib, stdenv, fetch, cmake, python3, libcxxabi, fixDarwinDylibNames, version }:
 
-stdenv.mkDerivation rec {
-  name = "libc++-${version}";
+stdenv.mkDerivation {
+  pname = "libc++";
+  inherit version;
 
   src = fetch "libcxx" "0rzw4qvxp6qx4l4h9amrq02gp7hbg8lw4m0sy3k60f50234gnm3n";
 
@@ -10,7 +11,7 @@ stdenv.mkDerivation rec {
     export LIBCXXABI_INCLUDE_DIR="$PWD/$(ls -d libcxxabi-${version}*)/include"
   '';
 
-  patches = stdenv.lib.optionals stdenv.hostPlatform.isMusl [
+  patches = lib.optionals stdenv.hostPlatform.isMusl [
     ../../libcxx-0001-musl-hacks.patch
   ];
 
@@ -24,34 +25,26 @@ stdenv.mkDerivation rec {
   '' + lib.optionalString stdenv.hostPlatform.isMusl ''
     patchShebangs utils/cat_files.py
   '';
-  nativeBuildInputs = [ cmake ] ++ stdenv.lib.optional stdenv.hostPlatform.isMusl python;
+  nativeBuildInputs = [ cmake ]
+    ++ lib.optional stdenv.hostPlatform.isMusl python3
+    ++ lib.optional stdenv.hostPlatform.isDarwin fixDarwinDylibNames;
 
-  buildInputs = [ libcxxabi ] ++ lib.optional stdenv.isDarwin fixDarwinDylibNames;
+  buildInputs = [ libcxxabi ];
 
   cmakeFlags = [
     "-DLIBCXX_LIBCXXABI_LIB_PATH=${libcxxabi}/lib"
     "-DLIBCXX_LIBCPPABI_VERSION=2"
     "-DLIBCXX_CXX_ABI=libcxxabi"
-  ] ++ stdenv.lib.optional stdenv.hostPlatform.isMusl "-DLIBCXX_HAS_MUSL_LIBC=1";
+  ] ++ lib.optional stdenv.hostPlatform.isMusl "-DLIBCXX_HAS_MUSL_LIBC=1";
 
-  enableParallelBuilding = true;
-
-  linkCxxAbi = stdenv.isLinux;
-
-  postInstall = ''
-    mv $out/lib/libc++.a $out/lib/libc++_static.a
-    cp ${./libc++.a} $out/lib/libc++.a
-  '';
-
-  setupHooks = [
-    ../../../../../build-support/setup-hooks/role.bash
-    ./setup-hook.sh
-  ];
+  passthru = {
+    isLLVM = true;
+  };
 
   meta = {
-    homepage = http://libcxx.llvm.org/;
+    homepage = "https://libcxx.llvm.org/";
     description = "A new implementation of the C++ standard library, targeting C++11";
-    license = with stdenv.lib.licenses; [ ncsa mit ];
-    platforms = stdenv.lib.platforms.unix;
+    license = with lib.licenses; [ ncsa mit ];
+    platforms = lib.platforms.unix;
   };
 }

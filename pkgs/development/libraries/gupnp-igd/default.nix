@@ -1,29 +1,61 @@
-{ stdenv, fetchurl, pkgconfig, gettext, gobject-introspection, gtk-doc, docbook_xsl, docbook_xml_dtd_412, glib, gupnp }:
+{ lib, stdenv
+, fetchurl
+, pkg-config
+, meson
+, ninja
+, gettext
+, gobject-introspection
+, gtk-doc
+, docbook_xsl
+, docbook_xml_dtd_412
+, glib
+, gupnp
+, gnome3
+}:
 
 stdenv.mkDerivation rec {
-  name = "gupnp-igd-${version}";
-  version = "0.2.5";
+  pname = "gupnp-igd";
+  version = "1.2.0";
 
   outputs = [ "out" "dev" "devdoc" ];
 
   src = fetchurl {
-    url = "mirror://gnome/sources/gupnp-igd/${stdenv.lib.versions.majorMinor version}/${name}.tar.xz";
-    sha256 = "081v1vhkbz3wayv49xfiskvrmvnpx93k25am2wnarg5cifiiljlb";
+    url = "mirror://gnome/sources/${pname}/${lib.versions.majorMinor version}/${pname}-${version}.tar.xz";
+    sha256 = "sha256-S1EgCYqhPt0ngYup7k1/6WG/VAv1DQVv9wPGFUXgK+E=";
   };
 
-  nativeBuildInputs = [ pkgconfig gettext gobject-introspection gtk-doc docbook_xsl docbook_xml_dtd_412 ];
-  propagatedBuildInputs = [ glib gupnp ];
+  nativeBuildInputs = [
+    pkg-config
+    meson
+    ninja
+    gettext
+    gobject-introspection
+    gtk-doc
+    docbook_xsl
+    docbook_xml_dtd_412
+  ];
 
-  configureFlags = [
-    "--enable-gtk-doc"
+  propagatedBuildInputs = [
+    glib
+    gupnp
+  ];
+
+  mesonFlags = [
+    "-Dgtk_doc=true"
   ];
 
   doCheck = true;
 
-  meta = with stdenv.lib; {
+  passthru = {
+    updateScript = gnome3.updateScript {
+      packageName = pname;
+    };
+  };
+
+  meta = with lib; {
     description = "Library to handle UPnP IGD port mapping";
-    homepage = http://www.gupnp.org/;
-    license = licenses.lgpl21;
+    homepage = "http://www.gupnp.org/";
+    license = licenses.lgpl21Plus;
     platforms = platforms.linux;
   };
 }

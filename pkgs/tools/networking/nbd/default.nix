@@ -1,17 +1,17 @@
-{ stdenv, fetchurl, pkgconfig, glib, which }:
+{ lib, stdenv, fetchurl, pkg-config, glib, which }:
 
 stdenv.mkDerivation rec {
-  name = "nbd-3.18";
+  name = "nbd-3.21";
 
   src = fetchurl {
     url = "mirror://sourceforge/nbd/${name}.tar.xz";
-    sha256 = "0cb0sjiv0j9sh9dk24nrjm7sa0axbrcp2av5hc91g1ryzk764dyq";
+    sha256 = "sha256-52iK852Rczu80tsIBixE/lA9AE5RUodAE5xEr/amvvk=";
   };
 
   buildInputs = [ glib ]
-    ++ stdenv.lib.optional (stdenv ? glibc) stdenv.glibc.linuxHeaders;
+    ++ lib.optional (stdenv ? glibc) stdenv.glibc.linuxHeaders;
 
-  nativeBuildInputs = [ pkgconfig which ];
+  nativeBuildInputs = [ pkg-config which ];
 
   postInstall = ''
     mkdir -p "$out/share/doc/${name}"
@@ -23,13 +23,13 @@ stdenv.mkDerivation rec {
   # Glib calls `clock_gettime', which is in librt. Linking that library
   # here ensures that a proper rpath is added to the executable so that
   # it can be loaded at run-time.
-  NIX_LDFLAGS = stdenv.lib.optionalString stdenv.isLinux "-lrt -lpthread";
+  NIX_LDFLAGS = lib.optionalString stdenv.isLinux "-lrt -lpthread";
 
   meta = {
-    homepage = http://nbd.sourceforge.net;
+    homepage = "http://nbd.sourceforge.net";
     description = "Map arbitrary files as block devices over the network";
-    license = stdenv.lib.licenses.gpl2;
-    maintainers = [ stdenv.lib.maintainers.peti ];
-    platforms = stdenv.lib.platforms.linux;
+    license = lib.licenses.gpl2;
+    maintainers = [ lib.maintainers.peti ];
+    platforms = lib.platforms.linux;
   };
 }

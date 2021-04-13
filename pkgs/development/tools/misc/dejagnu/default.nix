@@ -1,14 +1,15 @@
-{ fetchurl, stdenv, expect, makeWrapper }:
+{ fetchurl, lib, stdenv, expect, makeWrapper }:
 
 stdenv.mkDerivation rec {
-  name = "dejagnu-1.6.1";
+  name = "dejagnu-1.6.2";
 
   src = fetchurl {
     url = "mirror://gnu/dejagnu/${name}.tar.gz";
-    sha256 = "14hnq1mh91vqprc43xdy4f15sycw6fbajrh7zi6cw2kyg6xjhnxz";
+    sha256 = "0qfj2wd4qk1yn9yzam6g8nmyxfazcc0knjyyibycb2ainkhp21hd";
   };
 
-  buildInputs = [ expect makeWrapper ];
+  nativeBuildInputs = [ makeWrapper ];
+  buildInputs = [ expect ];
 
   doCheck = true;
 
@@ -30,7 +31,7 @@ stdenv.mkDerivation rec {
       --prefix PATH ":" "${expect}/bin"
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Framework for testing other programs";
 
     longDescription = ''
@@ -44,10 +45,10 @@ stdenv.mkDerivation rec {
       Tool command language.
     '';
 
-    homepage = https://www.gnu.org/software/dejagnu/;
+    homepage = "https://www.gnu.org/software/dejagnu/";
     license = licenses.gpl2Plus;
 
     platforms = platforms.unix;
-    maintainers = with maintainers; [ wkennington vrthra ];
+    maintainers = with maintainers; [ vrthra ];
   };
 }

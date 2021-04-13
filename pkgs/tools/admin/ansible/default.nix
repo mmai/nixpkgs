@@ -1,72 +1,32 @@
-{ stdenv, fetchurl, python2
-, windowsSupport ? false
-}:
+{ python3Packages, fetchurl, fetchFromGitHub }:
 
-let
-  generic = { version, sha256, py ? python2 }: py.pkgs.buildPythonPackage rec {
+rec {
+  ansible = ansible_2_10;
+
+  # The python module stays at v2.9.x until the related package set has caught up. Therefore v2.10 gets an override
+  # for now.
+  ansible_2_10 = python3Packages.toPythonApplication (python3Packages.ansible.overridePythonAttrs (old: rec {
     pname = "ansible";
-    inherit version;
+    version = "2.10.0";
 
-    outputs = [ "out" "man" ];
+    # TODO: migrate to fetchurl, when release becomes available on releases.ansible.com
+    src = fetchFromGitHub {
+      owner = pname;
+      repo = pname;
+      rev = "v${version}";
+      sha256 = "0k9rs5ajx0chaq0xr1cj4x7fr5n8kd4y856miss6k01iv2m7yx42";
+    };
+  }));
+
+  ansible_2_9 = python3Packages.toPythonApplication python3Packages.ansible;
+
+  ansible_2_8 = python3Packages.toPythonApplication (python3Packages.ansible.overridePythonAttrs (old: rec {
+    pname = "ansible";
+    version = "2.8.14";
 
     src = fetchurl {
       url = "https://releases.ansible.com/ansible/${pname}-${version}.tar.gz";
-      inherit sha256;
+      sha256 = "19ga0c9qs2b216qjg5k2yknz8ksjn8qskicqspg2d4b8x2nr1294";
     };
-
-    prePatch = ''
-      sed -i "s,/usr/,$out," lib/ansible/constants.py
-    '';
-
-    postInstall = ''
-      wrapPythonProgramsIn "$out/bin" "$out $PYTHONPATH"
-
-      for m in docs/man/man1/*; do
-        install -vD $m -t $man/share/man/man1
-      done
-    '';
-
-    doCheck = false;
-    dontStrip = true;
-    dontPatchELF = true;
-    dontPatchShebangs = false;
-
-    propagatedBuildInputs = with py.pkgs; [
-      pycrypto paramiko jinja2 pyyaml httplib2 boto six netaddr dnspython jmespath dopy
-    ] ++ stdenv.lib.optional windowsSupport pywinrm;
-
-    meta = with stdenv.lib; {
-      homepage = http://www.ansible.com;
-      description = "A simple automation tool";
-      license = with licenses; [ gpl3 ] ;
-      maintainers = with maintainers; [ jgeerds joamaki ];
-      platforms = with platforms; linux ++ darwin;
-    };
-  };
-
-in rec {
-  # We will carry all the supported versions
-
-  ansible_2_4 = generic {
-    version = "2.4.4.0";
-    sha256  = "0n1k6h0h6av74nw8vq98fmh6q4pq6brpwmx45282vh3bkdmpa0ib";
-  };
-
-  ansible_2_5 = generic {
-    version = "2.5.11";
-    sha256  = "07rhgkl3a2ba59rqh9pyz1p661gc389shlwa2sw1m6wwifg4lm24";
-  };
-
-  ansible_2_6 = generic {
-    version = "2.6.7";
-    sha256  = "10pakw9k9wd3cy1qk3ah2253ph7c7h3qzpal4k0s5lschzgy2fh0";
-  };
-
-  ansible_2_7 = generic {
-    version = "2.7.4";
-    sha256  = "0p1n6yyc632522fl2r247p0jg4mncc7z4hqngzbh1zxq3dcb12s9";
-  };
-
-  ansible2 = ansible_2_7;
-  ansible  = ansible2;
+  }));
 }

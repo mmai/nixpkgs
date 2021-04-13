@@ -1,15 +1,16 @@
+/* Generated file. */
 args @ { fetchurl, ... }:
 rec {
-  baseName = ''cl-dbi'';
-  version = ''20180831-git'';
+  baseName = "cl-dbi";
+  version = "20210228-git";
 
-  description = '''';
+  description = "System lacks description";
 
-  deps = [ args."alexandria" args."bordeaux-threads" args."cl-annot" args."cl-syntax" args."cl-syntax-annot" args."closer-mop" args."dbi" args."named-readtables" args."split-sequence" args."trivial-types" ];
+  deps = [ args."alexandria" args."bordeaux-threads" args."closer-mop" args."dbi" args."split-sequence" ];
 
   src = fetchurl {
-    url = ''http://beta.quicklisp.org/archive/cl-dbi/2018-08-31/cl-dbi-20180831-git.tgz'';
-    sha256 = ''19cpzdzjjzm0if77dycsk8lj91ihwr51mbjmf3fx0wqwr8k5y0g9'';
+    url = "http://beta.quicklisp.org/archive/cl-dbi/2021-02-28/cl-dbi-20210228-git.tgz";
+    sha256 = "0yfs7k6samv6q0n1bvscvcck7qg3c4g03qn7i81619q7g2f98jdk";
   };
 
   packageName = "cl-dbi";
@@ -17,20 +18,14 @@ rec {
   asdFilesToKeep = ["cl-dbi.asd"];
   overrides = x: x;
 }
-/* (SYSTEM cl-dbi DESCRIPTION NIL SHA256
-    19cpzdzjjzm0if77dycsk8lj91ihwr51mbjmf3fx0wqwr8k5y0g9 URL
-    http://beta.quicklisp.org/archive/cl-dbi/2018-08-31/cl-dbi-20180831-git.tgz
-    MD5 2fc95bff95d3cd25e3afeb003ee009d2 NAME cl-dbi FILENAME cl-dbi DEPS
+/* (SYSTEM cl-dbi DESCRIPTION System lacks description SHA256
+    0yfs7k6samv6q0n1bvscvcck7qg3c4g03qn7i81619q7g2f98jdk URL
+    http://beta.quicklisp.org/archive/cl-dbi/2021-02-28/cl-dbi-20210228-git.tgz
+    MD5 7cfb5ad172bc30906ae32ca620099a1f NAME cl-dbi FILENAME cl-dbi DEPS
     ((NAME alexandria FILENAME alexandria)
      (NAME bordeaux-threads FILENAME bordeaux-threads)
-     (NAME cl-annot FILENAME cl-annot) (NAME cl-syntax FILENAME cl-syntax)
-     (NAME cl-syntax-annot FILENAME cl-syntax-annot)
      (NAME closer-mop FILENAME closer-mop) (NAME dbi FILENAME dbi)
-     (NAME named-readtables FILENAME named-readtables)
-     (NAME split-sequence FILENAME split-sequence)
-     (NAME trivial-types FILENAME trivial-types))
-    DEPENDENCIES
-    (alexandria bordeaux-threads cl-annot cl-syntax cl-syntax-annot closer-mop
-     dbi named-readtables split-sequence trivial-types)
-    VERSION 20180831-git SIBLINGS
+     (NAME split-sequence FILENAME split-sequence))
+    DEPENDENCIES (alexandria bordeaux-threads closer-mop dbi split-sequence)
+    VERSION 20210228-git SIBLINGS
     (dbd-mysql dbd-postgres dbd-sqlite3 dbi-test dbi) PARASITES NIL) */

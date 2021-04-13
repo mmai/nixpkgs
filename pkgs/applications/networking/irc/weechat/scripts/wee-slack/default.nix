@@ -1,14 +1,14 @@
-{ stdenv, substituteAll, buildEnv, fetchFromGitHub, pythonPackages }:
+{ lib, stdenv, substituteAll, buildEnv, fetchFromGitHub, python3Packages }:
 
 stdenv.mkDerivation rec {
-  name = "wee-slack-${version}";
-  version = "2.2.0";
+  pname = "wee-slack";
+  version = "2.7.0";
 
   src = fetchFromGitHub {
     repo = "wee-slack";
     owner = "wee-slack";
     rev = "v${version}";
-    sha256 = "1iy70q630cgs7fvk2151fq9519dwxrlqq862sbrwypzr6na6yqpg";
+    sha256 = "sha256-6Z/H15bKe0PKpNe9PCgc5mLOii3CILCAVon7EgzIkx8=";
   };
 
   patches = [
@@ -16,22 +16,28 @@ stdenv.mkDerivation rec {
       src = ./libpath.patch;
       env = "${buildEnv {
         name = "wee-slack-env";
-        paths = with pythonPackages; [ websocket_client six ];
-      }}/${pythonPackages.python.sitePackages}";
+        paths = with python3Packages; [ websocket_client six ];
+      }}/${python3Packages.python.sitePackages}";
     })
+    ./0001-hardcode-json-file-path.patch
   ];
+
+  postPatch = ''
+    substituteInPlace wee_slack.py --subst-var out
+  '';
 
   passthru.scripts = [ "wee_slack.py" ];
 
   installPhase = ''
     mkdir -p $out/share
     cp wee_slack.py $out/share/wee_slack.py
+    install -D -m 0444 weemoji.json $out/share/wee-slack/weemoji.json
   '';
 
-  meta = with stdenv.lib; {
-    homepage = https://github.com/wee-slack/wee-slack;
+  meta = with lib; {
+    homepage = "https://github.com/wee-slack/wee-slack";
     license = licenses.mit;
-    maintainers = with maintainers; [ ma27 ];
+    maintainers = with maintainers; [ willibutz ];
     description = ''
       A WeeChat plugin for Slack.com. Synchronizes read markers, provides typing notification, search, etc..
     '';

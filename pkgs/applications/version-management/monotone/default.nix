@@ -1,17 +1,18 @@
-{ stdenv, fetchurl, boost, zlib, botan, libidn
-, lua, pcre, sqlite, perl, pkgconfig, expect
+{ lib, stdenv, fetchurl, boost, zlib, botan, libidn
+, lua, pcre, sqlite, perl, pkg-config, expect
 , bzip2, gmp, openssl
 }:
 
 let
   version = "1.1";
-  perlVersion = (builtins.parseDrvName perl.name).version;
+  perlVersion = lib.getVersion perl;
 in
 
 assert perlVersion != "";
 
 stdenv.mkDerivation rec {
-  name = "monotone-${version}";
+  pname = "monotone";
+  inherit version;
 
   src = fetchurl {
     url = "http://monotone.ca/downloads/${version}/monotone-${version}.tar.bz2";
@@ -20,20 +21,20 @@ stdenv.mkDerivation rec {
 
   patches = [ ./monotone-1.1-Adapt-to-changes-in-pcre-8.42.patch ];
 
-  nativeBuildInputs = [ pkgconfig ];
+  nativeBuildInputs = [ pkg-config ];
   buildInputs = [ boost zlib botan libidn lua pcre sqlite expect
     openssl gmp bzip2 ];
 
   postInstall = ''
-    mkdir -p $out/share/${name}
-    cp -rv contrib/ $out/share/${name}/contrib
-    mkdir -p $out/lib/perl5/site_perl/${perlVersion}
-    cp -v contrib/Monotone.pm $out/lib/perl5/site_perl/${perlVersion}
+    mkdir -p $out/share/${pname}-${version}
+    cp -rv contrib/ $out/share/${pname}-${version}/contrib
+    mkdir -p $out/${perl.libPrefix}/${perlVersion}
+    cp -v contrib/Monotone.pm $out/${perl.libPrefix}/${perlVersion}
   '';
 
   #doCheck = true; # some tests fail (and they take VERY long)
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A free distributed version control system";
     maintainers = [ maintainers.raskin ];
     platforms = platforms.unix;

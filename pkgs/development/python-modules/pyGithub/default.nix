@@ -1,25 +1,35 @@
-{ stdenv, fetchFromGitHub
-, buildPythonPackage, python-jose, pyjwt }:
+{ lib
+, buildPythonPackage
+, cryptography
+, deprecated
+, fetchFromGitHub
+, httpretty
+, isPy3k
+, parameterized
+, pyjwt
+, pytestCheckHook
+, requests }:
 
 buildPythonPackage rec {
   pname = "PyGithub";
-  version = "1.36";
-  name = pname + "-" + version;
+  version = "1.54.1";
+  disabled = !isPy3k;
 
   src = fetchFromGitHub {
     owner = "PyGithub";
     repo = "PyGithub";
     rev = "v${version}";
-    sha256 = "0yb74f9hg2vdsy766m850hfb1ss17lbgcdvvklm4qf72w12nxc5w";
+    sha256 = "1nl74bp5ikdnrc8xq0qr25ryl1mvarf0xi43k8w5jzlrllhq0nkq";
   };
 
-  postPatch = ''
-    # requires network
-    echo "" > github/tests/Issue142.py
-  '';
-  propagatedBuildInputs = [ python-jose pyjwt ];
-  meta = with stdenv.lib; {
-    homepage = https://github.com/PyGithub/PyGithub;
+  checkInputs = [ httpretty parameterized pytestCheckHook ];
+  propagatedBuildInputs = [ cryptography deprecated pyjwt requests ];
+
+  # Test suite makes REST calls against github.com
+  doCheck = false;
+
+  meta = with lib; {
+    homepage = "https://github.com/PyGithub/PyGithub";
     description = "A Python (2 and 3) library to access the GitHub API v3";
     platforms = platforms.all;
     license = licenses.gpl3;

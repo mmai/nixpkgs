@@ -1,12 +1,16 @@
-{ lib, python2 }:
+{ lib, python3 }:
 
-python2.pkgs.buildPythonApplication rec {
+python3.pkgs.buildPythonApplication rec {
   pname = "lit";
-  version = "0.7.1";
+  version = "0.10.0";
 
-  src = python2.pkgs.fetchPypi {
+  src = python3.pkgs.fetchPypi {
     inherit pname version;
-    sha256 = "ecef2833aef7f411cb923dac109c7c9dcc7dbe7cafce0650c1e8d19c243d955f";
+    sha256 = "13s8v9s2f284fnh47xdyc75gq2i9pndl39q8v4wl7v7lwri2hv8r";
+  };
+
+  passthru = {
+    python = python3;
   };
 
   # Non-standard test suite. Needs custom checkPhase.
@@ -14,7 +18,7 @@ python2.pkgs.buildPythonApplication rec {
 
   meta = {
     description = "Portable tool for executing LLVM and Clang style test suites";
-    homepage = http://llvm.org/docs/CommandGuide/lit.html;
+    homepage = "http://llvm.org/docs/CommandGuide/lit.html";
     license = lib.licenses.ncsa;
     maintainers = with lib.maintainers; [ dtzWill ];
   };

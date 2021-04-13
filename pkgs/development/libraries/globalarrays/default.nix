@@ -1,42 +1,40 @@
-{ stdenv, pkgs, fetchFromGitHub, automake, autoconf, libtool
-, openblas, gfortran, openssh, openmpi
+{ lib, stdenv, fetchpatch, fetchFromGitHub, autoreconfHook
+, blas, gfortran, openssh, mpi
 } :
 
 let
-  version = "5.7";
+  version = "5.8";
 
 in stdenv.mkDerivation {
-  name = "globalarrays-${version}";
+  pname = "globalarrays";
+  inherit version;
 
   src = fetchFromGitHub {
     owner = "GlobalArrays";
     repo = "ga";
     rev = "v${version}";
-    sha256 = "07i2idaas7pq3in5mdqq5ndvxln5q87nyfgk3vzw85r72c4fq5jh";
+    sha256 = "0bky91ncz6vy0011ps9prsnq9f4a5s5xwr23kkmi39xzg0417mnd";
   };
 
-  nativeBuildInputs = [ automake autoconf libtool ];
-  buildInputs = [ openmpi openblas gfortran openssh ];
+  nativeBuildInputs = [ autoreconfHook ];
+  buildInputs = [ mpi blas gfortran openssh ];
 
   preConfigure = ''
-    autoreconf -ivf
     configureFlagsArray+=( "--enable-i8" \
                            "--with-mpi" \
                            "--with-mpi3" \
                            "--enable-eispack" \
                            "--enable-underscoring" \
-                           "--with-blas8=${openblas}/lib -lopenblas" )
+                           "--with-blas8=${blas}/lib -lblas" )
   '';
 
   enableParallelBuilding = true;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Global Arrays Programming Models";
-    homepage = http://hpc.pnl.gov/globalarrays/;
+    homepage = "http://hpc.pnl.gov/globalarrays/";
     maintainers = [ maintainers.markuskowa ];
     license = licenses.bsd3;
     platforms = platforms.linux;
   };
 }
-
-

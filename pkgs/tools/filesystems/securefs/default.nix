@@ -1,24 +1,23 @@
-{ stdenv, fetchFromGitHub
+{ lib, stdenv, fetchFromGitHub
 , cmake
 , fuse }:
 
 stdenv.mkDerivation rec {
-  name = "securefs-${version}";
-  version = "0.8.2";
+  pname = "securefs";
+  version = "0.11.1";
 
   src = fetchFromGitHub {
-    sha256 = "0m3nv748g31b5nzxbwqqqjvygmz41x9vmhrjh655086g26gzrfib";
+    sha256 = "1sxfgqgy63ml7vg7zj3glvra4wj2qmfv9jzmpm1jqy8hq7qlqlsx";
     rev = version;
     repo = "securefs";
     owner = "netheril96";
+    fetchSubmodules = true;
   };
 
   nativeBuildInputs = [ cmake ];
   buildInputs = [ fuse ];
 
-  enableParallelBuilding = true;
-
-  meta = with stdenv.lib; {
+  meta = with lib; {
     inherit (src.meta) homepage;
     description = "Transparent encryption filesystem";
     longDescription = ''

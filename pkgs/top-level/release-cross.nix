@@ -5,9 +5,11 @@
   supportedSystems ? [ "x86_64-linux" "x86_64-darwin" "aarch64-linux" ]
 , # Strip most of attributes when evaluating to spare memory usage
   scrubJobs ? true
+, # Attributes passed to nixpkgs. Don't build packages marked as unfree.
+  nixpkgsArgs ? { config = { allowUnfree = false; inHydra = true; }; }
 }:
 
-with import ./release-lib.nix { inherit supportedSystems scrubJobs; };
+with import ./release-lib.nix { inherit supportedSystems scrubJobs nixpkgsArgs; };
 
 let
   nativePlatforms = all;
@@ -24,13 +26,14 @@ let
     libcCross = nativePlatforms;
     nix = nativePlatforms;
     nixUnstable = nativePlatforms;
+    mesa = nativePlatforms;
   };
 
   gnuCommon = lib.recursiveUpdate common {
     buildPackages.gcc = nativePlatforms;
     coreutils = nativePlatforms;
     haskell.packages.ghcHEAD.hello = nativePlatforms;
-    haskell.packages.ghc844.hello = nativePlatforms;
+    haskellPackages.hello = nativePlatforms;
   };
 
   linuxCommon = lib.recursiveUpdate gnuCommon {
@@ -52,6 +55,13 @@ let
     libunistring = nativePlatforms;
     windows.wxMSW = nativePlatforms;
     windows.mingw_w64_pthreads = nativePlatforms;
+  };
+
+  wasiCommon = {
+    gmp = nativePlatforms;
+    boehmgc = nativePlatforms;
+    hello = nativePlatforms;
+    zlib = nativePlatforms;
   };
 
   darwinCommon = {
@@ -99,7 +109,6 @@ in
     mapTestEqual = lib.mapAttrsRecursive testEqual;
 
   in mapTestEqual {
-    androidndk = nativePlatforms;
     boehmgc = nativePlatforms;
     libffi = nativePlatforms;
     libiconv = nativePlatforms;
@@ -128,6 +137,11 @@ in
   /* Linux on the fuloong */
   fuloongminipc = mapTestOnCross lib.systems.examples.fuloongminipc linuxCommon;
 
+  /* Javacript */
+  ghcjs = mapTestOnCross lib.systems.examples.ghcjs {
+    haskell.packages.ghcjs.hello = nativePlatforms;
+  };
+
   /* Linux on Raspberrypi */
   rpi = mapTestOnCross lib.systems.examples.raspberryPi rpiCommon;
   rpi-musl = mapTestOnCross lib.systems.examples.muslpi rpiCommon;
@@ -136,17 +150,25 @@ in
 
   x86_64-musl = mapTestOnCross lib.systems.examples.musl64 linuxCommon;
 
-  /* Linux on Aarch64 */
-  android64 = mapTestOnCross lib.systems.examples.aarch64-android-prebuilt (linuxCommon // {
-  });
+  ppc64le = mapTestOnCross lib.systems.examples.powernv linuxCommon;
+  ppc64le-musl = mapTestOnCross lib.systems.examples.musl-power linuxCommon;
 
+  android64 = mapTestOnCross lib.systems.examples.aarch64-android-prebuilt linuxCommon;
+  android32 = mapTestOnCross lib.systems.examples.armv7a-android-prebuilt linuxCommon;
+
+  wasi32 = mapTestOnCross lib.systems.examples.wasi32 wasiCommon;
+
+  msp430 = mapTestOnCross lib.systems.examples.msp430 embedded;
   avr = mapTestOnCross lib.systems.examples.avr embedded;
   arm-embedded = mapTestOnCross lib.systems.examples.arm-embedded embedded;
   powerpc-embedded = mapTestOnCross lib.systems.examples.ppc-embedded embedded;
   aarch64-embedded = mapTestOnCross lib.systems.examples.aarch64-embedded embedded;
   i686-embedded = mapTestOnCross lib.systems.examples.i686-embedded embedded;
   x86_64-embedded = mapTestOnCross lib.systems.examples.x86_64-embedded embedded;
-  alpha-embedded = mapTestOnCross lib.systems.examples.alpha-embedded embedded;
+
+  # we test `embedded` instead of `linuxCommon` because very few packages
+  # successfully cross-compile to Redox so far
+  x86_64-redox = mapTestOnCross lib.systems.examples.x86_64-unknown-redox embedded;
 
   /* Cross-built bootstrap tools for every supported platform */
   bootstrapTools = let

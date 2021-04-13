@@ -1,38 +1,78 @@
 { lib
+, bokeh
 , buildPythonPackage
-, fetchPypi
-, pytest
+, fetchFromGitHub
+, fsspec
+, pytestCheckHook
+, pytest-rerunfailures
+, pythonOlder
 , cloudpickle
 , numpy
 , toolz
 , dill
 , pandas
 , partd
+, pytest-xdist
+, withExtraComplete ? false
+, distributed
 }:
 
 buildPythonPackage rec {
   pname = "dask";
-  version = "0.20.2";
+  version = "2021.03.0";
+  disabled = pythonOlder "3.5";
 
-  src = fetchPypi {
-    inherit pname version;
-    sha256 = "d4139a03ab5eb6cedeb06cf1e39af90fb5226ca214d77408def7677d7e6b7af3";
+  src = fetchFromGitHub {
+    owner = "dask";
+    repo = pname;
+    rev = version;
+    sha256 = "LACv7lWpQULQknNGX/9vH9ckLsypbqKDGnsNBgKT1eI=";
   };
 
-  checkInputs = [ pytest ];
-  propagatedBuildInputs = [ cloudpickle  numpy toolz dill pandas partd ];
+  propagatedBuildInputs = [
+    bokeh
+    cloudpickle
+    dill
+    fsspec
+    numpy
+    pandas
+    partd
+    toolz
+  ] ++ lib.optionals withExtraComplete [
+    distributed
+  ];
 
-  checkPhase = ''
-    py.test dask
-  '';
-
-  # URLError
   doCheck = false;
 
-  meta = {
+  checkInputs = [
+    pytestCheckHook
+    pytest-rerunfailures
+    pytest-xdist
+  ];
+
+  dontUseSetuptoolsCheck = true;
+
+  postPatch = ''
+    # versioneer hack to set version of github package
+    echo "def get_versions(): return {'dirty': False, 'error': None, 'full-revisionid': None, 'version': '${version}'}" > dask/_version.py
+
+    substituteInPlace setup.py \
+      --replace "version=versioneer.get_version()," "version='${version}'," \
+      --replace "cmdclass=versioneer.get_cmdclass()," ""
+  '';
+
+  pytestFlagsArray = [ "-n $NIX_BUILD_CORES" ];
+
+  disabledTests = [
+    "test_annotation_pack_unpack"
+    "test_annotations_blockwise_unpack"
+  ];
+
+  meta = with lib; {
     description = "Minimal task scheduling abstraction";
-    homepage = https://github.com/ContinuumIO/dask/;
-    license = lib.licenses.bsd3;
-    maintainers = with lib.maintainers; [ fridh ];
+    homepage = "https://dask.org/";
+    changelog = "https://docs.dask.org/en/latest/changelog.html";
+    license = licenses.bsd3;
+    maintainers = with maintainers; [ fridh ];
   };
 }

@@ -1,21 +1,19 @@
-{ stdenv, fetchgit, yasm, perl, cmake, pkgconfig, python3, writeText }:
+{ lib, stdenv, fetchgit, yasm, perl, cmake, pkg-config, python3 }:
 
 stdenv.mkDerivation rec {
-  name = "libaom-${version}";
-  version = "1.0.0";
+  pname = "libaom";
+  version = "3.0.0";
 
   src = fetchgit {
     url = "https://aomedia.googlesource.com/aom";
     rev	= "v${version}";
-    sha256 = "07h2vhdiq7c3fqaz44rl4vja3dgryi6n7kwbwbj1rh485ski4j82";
+    sha256 = "178rq1d7i9q4lg40bipkyhdrk18j9wi5k5avpa5bls0zm7g5ifsx";
   };
 
-  nativeBuildInputs = [
-    yasm perl cmake pkgconfig python3
-  ];
+  patches = [ ./outputs.patch ];
 
-  cmakeFlags = [
-    "-DBUILD_SHARED_LIBS=ON"
+  nativeBuildInputs = [
+    yasm perl cmake pkg-config python3
   ];
 
   preConfigure = ''
@@ -28,10 +26,33 @@ stdenv.mkDerivation rec {
     export PATH=$NIX_BUILD_TOP:$PATH
   '';
 
-  meta = with stdenv.lib; {
-    description = "AV1 Bitstream and Decoding Library";
-    homepage    = https://aomedia.org/av1-features/get-started/;
-    maintainers = with maintainers; [ kiloreux ];
+  # Configuration options:
+  # https://aomedia.googlesource.com/aom/+/refs/heads/master/build/cmake/aom_config_defaults.cmake
+
+  cmakeFlags = [
+    "-DBUILD_SHARED_LIBS=ON"
+    "-DENABLE_TESTS=OFF"
+  ] ++ lib.optionals (stdenv.isDarwin && stdenv.isAarch64) [
+    # CPU detection isn't supported on Darwin and breaks the aarch64-darwin build:
+    "-DCONFIG_RUNTIME_CPU_DETECT=0"
+  ];
+
+  postFixup = ''
+    moveToOutput lib/libaom.a "$static"
+  '';
+
+  outputs = [ "out" "bin" "dev" "static" ];
+
+  meta = with lib; {
+    description = "Alliance for Open Media AV1 codec library";
+    longDescription = ''
+      Libaom is the reference implementation of the AV1 codec from the Alliance
+      for Open Media. It contains an AV1 library as well as applications like
+      an encoder (aomenc) and a decoder (aomdec).
+    '';
+    homepage    = "https://aomedia.org/av1-features/get-started/";
+    changelog   = "https://aomedia.googlesource.com/aom/+/refs/tags/v${version}/CHANGELOG";
+    maintainers = with maintainers; [ primeos kiloreux ];
     platforms   = platforms.all;
     license = licenses.bsd2;
   };

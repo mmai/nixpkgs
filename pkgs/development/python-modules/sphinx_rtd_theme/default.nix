@@ -1,23 +1,31 @@
-{ stdenv
+{ lib
 , buildPythonPackage
 , fetchPypi
 , sphinx
+, readthedocs-sphinx-ext
+, pytest
 }:
 
 buildPythonPackage rec {
   pname = "sphinx_rtd_theme";
-  version = "0.4.2";
+  version = "0.4.3";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "02f02a676d6baabb758a20c7a479d58648e0f64f13e07d1b388e9bb2afe86a09";
+    sha256 = "728607e34d60456d736cc7991fd236afb828b21b82f956c5ea75f94c8414040a";
   };
 
   propagatedBuildInputs = [ sphinx ];
 
-  meta = with stdenv.lib; {
+  checkInputs = [ readthedocs-sphinx-ext pytest ];
+
+  checkPhase = ''
+    py.test
+  '';
+
+  meta = with lib; {
     description = "ReadTheDocs.org theme for Sphinx";
-    homepage = https://github.com/snide/sphinx_rtd_theme/;
+    homepage = "https://github.com/snide/sphinx_rtd_theme/";
     license = licenses.bsd3;
     platforms = platforms.unix;
   };

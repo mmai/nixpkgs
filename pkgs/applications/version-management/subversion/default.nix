@@ -1,11 +1,11 @@
-{ bdbSupport ? false # build support for Berkeley DB repositories
+{ bdbSupport ? true # build support for Berkeley DB repositories
 , httpServer ? false # build Apache DAV module
-, httpSupport ? false # client must support http
+, httpSupport ? true # client must support http
 , pythonBindings ? false
 , perlBindings ? false
 , javahlBindings ? false
 , saslSupport ? false
-, stdenv, fetchurl, apr, aprutil, zlib, sqlite, openssl, lz4, utf8proc
+, lib, stdenv, fetchurl, apr, aprutil, zlib, sqlite, openssl, lz4, utf8proc
 , apacheHttpd ? null, expat, swig ? null, jdk ? null, python ? null, perl ? null
 , sasl ? null, serf ? null
 }:
@@ -19,10 +19,10 @@ let
 
   common = { version, sha256, extraBuildInputs ? [ ] }: stdenv.mkDerivation (rec {
     inherit version;
-    name = "subversion-${version}";
+    pname = "subversion";
 
     src = fetchurl {
-      url = "mirror://apache/subversion/${name}.tar.bz2";
+      url = "mirror://apache/subversion/${pname}-${version}.tar.bz2";
       inherit sha256;
     };
 
@@ -31,27 +31,28 @@ let
 
     buildInputs = [ zlib apr aprutil sqlite openssl ]
       ++ extraBuildInputs
-      ++ stdenv.lib.optional httpSupport serf
-      ++ stdenv.lib.optional pythonBindings python
-      ++ stdenv.lib.optional perlBindings perl
-      ++ stdenv.lib.optional saslSupport sasl;
+      ++ lib.optional httpSupport serf
+      ++ lib.optional pythonBindings python
+      ++ lib.optional perlBindings perl
+      ++ lib.optional saslSupport sasl;
 
     patches = [ ./apr-1.patch ];
 
-    # SVN build seems broken on gcc5:
-    # https://gcc.gnu.org/gcc-5/porting_to.html
-    CPPFLAGS = "-P";
+    # We are hitting the following issue even with APR 1.6.x
+    # -> https://issues.apache.org/jira/browse/SVN-4813
+    # "-P" CPPFLAG is needed to build Python bindings and subversionClient
+    CPPFLAGS = [ "-P" ];
 
     configureFlags = [
-      (stdenv.lib.withFeature bdbSupport "berkeley-db")
-      (stdenv.lib.withFeatureAs httpServer "apxs" "${apacheHttpd.dev}/bin/apxs")
-      (stdenv.lib.withFeatureAs (pythonBindings || perlBindings) "swig" swig)
-      (stdenv.lib.withFeatureAs saslSupport "sasl" sasl)
-      (stdenv.lib.withFeatureAs httpSupport "serf" serf)
+      (lib.withFeature bdbSupport "berkeley-db")
+      (lib.withFeatureAs httpServer "apxs" "${apacheHttpd.dev}/bin/apxs")
+      (lib.withFeatureAs (pythonBindings || perlBindings) "swig" swig)
+      (lib.withFeatureAs saslSupport "sasl" sasl)
+      (lib.withFeatureAs httpSupport "serf" serf)
       "--disable-keychain"
       "--with-zlib=${zlib.dev}"
       "--with-sqlite=${sqlite.dev}"
-    ] ++ stdenv.lib.optionals javahlBindings [
+    ] ++ lib.optionals javahlBindings [
       "--enable-javahl"
       "--with-jdk=${jdk}"
     ];
@@ -94,15 +95,15 @@ let
     checkInputs = [ python ];
     doCheck = false; # fails 10 out of ~2300 tests
 
-    meta = with stdenv.lib; {
+    meta = with lib; {
       description = "A version control system intended to be a compelling replacement for CVS in the open source community";
       license = licenses.asl20;
-      homepage = http://subversion.apache.org/;
+      homepage = "http://subversion.apache.org/";
       maintainers = with maintainers; [ eelco lovek323 ];
       platforms = platforms.linux ++ platforms.darwin;
     };
 
-  } // stdenv.lib.optionalAttrs stdenv.isDarwin {
+  } // lib.optionalAttrs stdenv.isDarwin {
     CXX = "clang++";
     CC = "clang";
     CPP = "clang -E";
@@ -110,25 +111,15 @@ let
   });
 
 in {
-  subversion18 = common {
-    version = "1.8.19";
-    sha256 = "1gp6426gkdza6ni2whgifjcmjb4nq34ljy07yxkrhlarvfq6ks2n";
-  };
-
-  subversion19 = common {
-    version = "1.9.9";
-    sha256 = "1ll13ychbkp367c7zsrrpda5nygkryma5k18qfr8wbaq7dbvxzcd";
-  };
-
   subversion_1_10 = common {
-    version = "1.10.3";
-    sha256 = "1z6r3n91a4znsh68rl3jisfr7k4faymhbpalmmvsmvsap34al3cz";
+    version = "1.10.6";
+    sha256 = "19zc215mhpnm92mlyl5jbv57r5zqp6cavr3s2g9yglp6j4kfgj0q";
     extraBuildInputs = [ lz4 utf8proc ];
   };
 
-  subversion_1_11 = common {
-    version = "1.11.0";
-    sha256 = "0miyz3xsxxp56iczxv6yqd8p06av3vxpb5nasyg2xb3ln1247i47";
+  subversion = common {
+    version = "1.12.2";
+    sha256 = "0wgpw3kzsiawzqk4y0xgh1z93kllxydgv4lsviim45y5wk4bbl1v";
     extraBuildInputs = [ lz4 utf8proc ];
   };
 }

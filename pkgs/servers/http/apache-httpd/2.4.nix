@@ -1,4 +1,4 @@
-{ stdenv, fetchurl, perl, zlib, apr, aprutil, pcre, libiconv, lynx
+{ lib, stdenv, fetchurl, perl, zlib, apr, aprutil, pcre, libiconv, lynx
 , proxySupport ? true
 , sslSupport ? true, openssl
 , http2Support ? true, nghttp2
@@ -8,7 +8,7 @@
 , luaSupport ? false, lua5
 }:
 
-let inherit (stdenv.lib) optional optionalString;
+let inherit (lib) optional;
 in
 
 assert sslSupport -> aprutil.sslSupport && openssl != null;
@@ -16,12 +16,12 @@ assert ldapSupport -> aprutil.ldapSupport && openldap != null;
 assert http2Support -> nghttp2 != null;
 
 stdenv.mkDerivation rec {
-  version = "2.4.37";
-  name = "apache-httpd-${version}";
+  version = "2.4.46";
+  pname = "apache-httpd";
 
   src = fetchurl {
     url = "mirror://apache/httpd/httpd-${version}.tar.bz2";
-    sha256 = "09npb7vlz5sizgj0nvl0bqxj9zig29ipkp07fgmw5ykjcxfdr61l";
+    sha256 = "1sj1rwgbcjgkzac3ybjy7j68c9b3dv3ap71m48mrjhf6w7vds3kl";
   };
 
   # FIXME: -dev depends on -doc
@@ -42,11 +42,7 @@ stdenv.mkDerivation rec {
   '';
 
   # Required for ‘pthread_cancel’.
-  NIX_LDFLAGS = stdenv.lib.optionalString (!stdenv.isDarwin) "-lgcc_s";
-
-  preConfigure = ''
-    configureFlags="$configureFlags --includedir=$dev/include"
-  '';
+  NIX_LDFLAGS = lib.optionalString (!stdenv.isDarwin) "-lgcc_s";
 
   configureFlags = [
     "--with-apr=${apr.dev}"
@@ -60,24 +56,25 @@ stdenv.mkDerivation rec {
     "--enable-cern-meta"
     "--enable-imagemap"
     "--enable-cgi"
-    (stdenv.lib.enableFeature proxySupport "proxy")
-    (stdenv.lib.enableFeature sslSupport "ssl")
-    (stdenv.lib.withFeatureAs libxml2Support "libxml2" "${libxml2.dev}/include/libxml2")
+    "--includedir=${placeholder "dev"}/include"
+    (lib.enableFeature proxySupport "proxy")
+    (lib.enableFeature sslSupport "ssl")
+    (lib.withFeatureAs libxml2Support "libxml2" "${libxml2.dev}/include/libxml2")
     "--docdir=$(doc)/share/doc"
 
-    (stdenv.lib.enableFeature brotliSupport "brotli")
-    (stdenv.lib.withFeatureAs brotliSupport "brotli" brotli)
+    (lib.enableFeature brotliSupport "brotli")
+    (lib.withFeatureAs brotliSupport "brotli" brotli)
 
-    (stdenv.lib.enableFeature http2Support "http2")
-    (stdenv.lib.withFeature http2Support "nghttp2")
+    (lib.enableFeature http2Support "http2")
+    (lib.withFeature http2Support "nghttp2")
 
-    (stdenv.lib.enableFeature luaSupport "lua")
-    (stdenv.lib.withFeatureAs luaSupport "lua" lua5)
+    (lib.enableFeature luaSupport "lua")
+    (lib.withFeatureAs luaSupport "lua" lua5)
   ];
 
   enableParallelBuilding = true;
 
-  stripDebugList = "lib modules bin";
+  stripDebugList = [ "lib" "modules" "bin" ];
 
   postInstall = ''
     mkdir -p $doc/share/doc/httpd
@@ -87,14 +84,14 @@ stdenv.mkDerivation rec {
   '';
 
   passthru = {
-    inherit apr aprutil sslSupport proxySupport ldapSupport;
+    inherit apr aprutil sslSupport proxySupport ldapSupport luaSupport lua5;
   };
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Apache HTTPD, the world's most popular web server";
-    homepage    = http://httpd.apache.org/;
+    homepage    = "http://httpd.apache.org/";
     license     = licenses.asl20;
-    platforms   = stdenv.lib.platforms.linux ++ stdenv.lib.platforms.darwin;
+    platforms   = lib.platforms.linux ++ lib.platforms.darwin;
     maintainers = with maintainers; [ lovek323 peti ];
   };
 }

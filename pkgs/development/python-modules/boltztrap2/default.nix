@@ -1,4 +1,4 @@
-{ stdenv
+{ lib
 , buildPythonPackage
 , fetchPypi
 , spglib
@@ -14,16 +14,18 @@
 }:
 
 buildPythonPackage rec {
-  version = "18.9.1";
+  version = "20.7.1";
   pname = "BoltzTraP2";
   disabled = pythonOlder "3.5";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "b828ad2b3b3a40956ef866e462e4c82faf83be79348af3945d4e7cede8a53913";
+    sha256 = "41caa32e5778323471d87033f23537f6178a7aea64fba894c7f2b2579b51f7ed";
   };
 
-  buildInputs = [ cython cmake ];
+  dontUseCmakeConfigure = true;
+
+  nativeBuildInputs = [ cmake cython ];
   checkInputs = [ pytest ];
   propagatedBuildInputs = [ spglib numpy scipy matplotlib ase netcdf4 ];
 
@@ -34,8 +36,8 @@ buildPythonPackage rec {
     py.test
   '';
 
-  meta = with stdenv.lib; {
-    homepage = https://www.boltztrap.org/;
+  meta = with lib; {
+    homepage = "http://www.boltztrap.org/";
     description = "Band-structure interpolator and transport coefficient calculator";
     license = licenses.gpl3;
     maintainers = [ maintainers.costrouc ];

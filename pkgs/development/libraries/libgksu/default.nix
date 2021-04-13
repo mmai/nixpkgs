@@ -1,4 +1,4 @@
-{ stdenv, fetchurl, pkgconfig, wrapGAppsHook, gtk2, gnome2, gnome3,
+{ lib, stdenv, fetchurl, pkg-config, wrapGAppsHook, gtk2, gnome2, gnome3,
   libstartup_notification, libgtop, perlPackages,
   autoreconfHook, intltool, docbook_xsl, xauth
 }:
@@ -6,15 +6,14 @@
 stdenv.mkDerivation rec {
   version = "2.0.12";
   pname = "libgksu";
-  name = "${pname}-${version}";
 
   src = fetchurl {
-    url = "http://people.debian.org/~kov/gksu/${name}.tar.gz";
+    url = "http://people.debian.org/~kov/gksu/${pname}-${version}.tar.gz";
     sha256 = "1brz9j3nf7l2gd3a5grbp0s3nksmlrp6rxmgp5s6gjvxcb1wzy92";
   };
 
   nativeBuildInputs = [
-    pkgconfig autoreconfHook intltool docbook_xsl wrapGAppsHook
+    pkg-config autoreconfHook intltool docbook_xsl wrapGAppsHook
   ];
 
   buildInputs = [
@@ -79,9 +78,9 @@ stdenv.mkDerivation rec {
       user.  It provides X authentication facilities for running
       programs in an X session.
     '';
-    homepage = https://www.nongnu.org/gksu/;
-    license = stdenv.lib.licenses.lgpl2;
-    maintainers = [ stdenv.lib.maintainers.romildo ];
-    platforms = stdenv.lib.platforms.linux;
+    homepage = "https://www.nongnu.org/gksu/";
+    license = lib.licenses.lgpl2;
+    maintainers = [ lib.maintainers.romildo ];
+    platforms = lib.platforms.linux;
   };
 }

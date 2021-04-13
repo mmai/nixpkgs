@@ -1,83 +1,149 @@
-{ stdenv, symlinkJoin, fetchurl, fetchFromGitHub, boost, brotli, cmake, double-conversion, flatbuffers, gflags, glog, gtest, lz4, perl, python, rapidjson, snappy, thrift, which, zlib, zstd }:
+{ stdenv, lib, fetchurl, fetchFromGitHub, fetchpatch, fixDarwinDylibNames
+, autoconf, boost, brotli, cmake, flatbuffers, gflags, glog, gtest, lz4
+, perl, python3, rapidjson, re2, snappy, thrift, utf8proc, which, zlib, zstd
+, enableShared ? !stdenv.hostPlatform.isStatic
+}:
 
 let
+  arrow-testing = fetchFromGitHub {
+    owner = "apache";
+    repo = "arrow-testing";
+    rev = "d6c4deb22c4b4e9e3247a2f291046e3c671ad235";
+    sha256 = "0cwhnqijam632zp07j98i8ym967wz6kd35fim1msv88x2rhqky1i";
+  };
+
   parquet-testing = fetchFromGitHub {
     owner = "apache";
     repo = "parquet-testing";
-    rev = "46ae2605c2de306f5740587107dcf333a527f2d1";
-    sha256 = "07ps745gas2zcfmg56m3vwl63yyzmalnxwb5dc40vd004cx5hdik";
+    rev = "e31fe1a02c9e9f271e4bfb8002d403c52f1ef8eb";
+    sha256 = "02f51dvx8w5mw0bx3hn70hkn55mn1m65kzdps1ifvga9hghpy0sh";
   };
-in
 
-stdenv.mkDerivation rec {
-  name = "arrow-cpp-${version}";
-  version = "0.11.0";
+in stdenv.mkDerivation rec {
+  pname = "arrow-cpp";
+  version = "3.0.0";
 
   src = fetchurl {
-    url = "mirror://apache/arrow/arrow-${version}/apache-arrow-${version}.tar.gz";
-    sha256 = "0pc5pqr0dbnx8s1ji102dhw9bbrsq3ml4ac3mmi2022yfyizlf0q";
+    url =
+      "mirror://apache/arrow/arrow-${version}/apache-arrow-${version}.tar.gz";
+    sha256 = "0yp2b02wrc3s50zd56fmpz4nhhbihp0zw329v4zizaipwlxwrhkk";
   };
-
   sourceRoot = "apache-arrow-${version}/cpp";
 
-  patches = [
-    # fix ARROW-3467
-    ./double-conversion_cmake.patch
+  ARROW_JEMALLOC_URL = fetchurl {
+    # From
+    # ./cpp/cmake_modules/ThirdpartyToolchain.cmake
+    # ./cpp/thirdparty/versions.txt
+    url =
+      "https://github.com/jemalloc/jemalloc/releases/download/5.2.1/jemalloc-5.2.1.tar.bz2";
+    sha256 = "1xl7z0vwbn5iycg7amka9jd6hxd8nmfk7nahi4p9w2bnw9f0wcrl";
+  };
 
+  ARROW_MIMALLOC_URL = fetchurl {
+    # From
+    # ./cpp/cmake_modules/ThirdpartyToolchain.cmake
+    # ./cpp/thirdparty/versions.txt
+    url =
+      "https://github.com/microsoft/mimalloc/archive/v1.6.4.tar.gz";
+    sha256 = "1b8av0974q70alcmaw5cwzbn6n9blnpmj721ik1qwmbbwwd6nqgs";
+  };
+
+  patches = [
     # patch to fix python-test
     ./darwin.patch
+  ];
 
-    # facebook/zstd#1385
-    ./zstd136.patch
-    ];
-
-  nativeBuildInputs = [ cmake ];
-  buildInputs = [ boost double-conversion glog python.pkgs.python python.pkgs.numpy ];
+  nativeBuildInputs = [
+    cmake
+    autoconf # for vendored jemalloc
+    flatbuffers
+  ] ++ lib.optional stdenv.isDarwin fixDarwinDylibNames;
+  buildInputs = [
+    boost
+    brotli
+    flatbuffers
+    gflags
+    glog
+    gtest
+    lz4
+    rapidjson
+    re2
+    snappy
+    thrift
+    utf8proc
+    zlib
+    zstd
+  ] ++ lib.optionals enableShared [
+    python3.pkgs.python
+    python3.pkgs.numpy
+  ];
 
   preConfigure = ''
-    substituteInPlace cmake_modules/FindThrift.cmake --replace CMAKE_STATIC_LIBRARY CMAKE_SHARED_LIBRARY
-    substituteInPlace cmake_modules/FindBrotli.cmake --replace CMAKE_STATIC_LIBRARY CMAKE_SHARED_LIBRARY
-    substituteInPlace cmake_modules/FindGLOG.cmake --replace CMAKE_STATIC_LIBRARY CMAKE_SHARED_LIBRARY
-    substituteInPlace cmake_modules/FindLz4.cmake --replace CMAKE_STATIC_LIBRARY CMAKE_SHARED_LIBRARY
-    substituteInPlace cmake_modules/FindSnappy.cmake --replace CMAKE_STATIC_LIBRARY CMAKE_SHARED_LIBRARY
-
     patchShebangs build-support/
   '';
 
-  BROTLI_HOME = symlinkJoin { name="brotli-wrap"; paths = [ brotli.lib brotli.dev ]; };
-  DOUBLE_CONVERSION_HOME = double-conversion;
-  FLATBUFFERS_HOME = flatbuffers;
-  GFLAGS_HOME = gflags;
-  GLOG_HOME = glog;
-  GTEST_HOME = symlinkJoin { name="gtest-wrap"; paths = [ gtest gtest.dev ]; };
-  LZ4_HOME = symlinkJoin { name="lz4-wrap"; paths = [ lz4 lz4.dev ]; };
-  RAPIDJSON_HOME = rapidjson;
-  SNAPPY_HOME = symlinkJoin { name="snappy-wrap"; paths = [ snappy snappy.dev ]; };
-  THRIFT_HOME = thrift;
-  ZLIB_HOME = symlinkJoin { name="zlib-wrap"; paths = [ zlib zlib.dev ]; };
-  ZSTD_HOME = zstd;
-
   cmakeFlags = [
-    "-DARROW_PYTHON=ON"
+    "-DCMAKE_FIND_PACKAGE_PREFER_CONFIG=ON"
+    "-DARROW_BUILD_SHARED=${if enableShared then "ON" else "OFF"}"
+    "-DARROW_BUILD_STATIC=${if enableShared then "OFF" else "ON"}"
+    "-DARROW_BUILD_TESTS=ON"
+    "-DARROW_VERBOSE_THIRDPARTY_BUILD=ON"
+    "-DARROW_DEPENDENCY_SOURCE=SYSTEM"
+    "-DARROW_DEPENDENCY_USE_SHARED=${if enableShared then "ON" else "OFF"}"
+    "-DARROW_PLASMA=ON"
+    # Disable Python for static mode because openblas is currently broken there.
+    "-DARROW_PYTHON=${if enableShared then "ON" else "OFF"}"
+    "-DARROW_USE_GLOG=ON"
+    "-DARROW_WITH_BROTLI=ON"
+    "-DARROW_WITH_LZ4=ON"
+    "-DARROW_WITH_SNAPPY=ON"
+    "-DARROW_WITH_UTF8PROC=ON"
+    "-DARROW_WITH_ZLIB=ON"
+    "-DARROW_WITH_ZSTD=ON"
+    "-DARROW_MIMALLOC=ON"
+    # Parquet options:
     "-DARROW_PARQUET=ON"
-  ];
+    "-DPARQUET_BUILD_EXECUTABLES=ON"
+  ] ++ lib.optionals (!enableShared) [
+    "-DARROW_TEST_LINKAGE=static"
+  ] ++ lib.optionals stdenv.isDarwin [
+    "-DCMAKE_SKIP_BUILD_RPATH=OFF" # needed for tests
+    "-DCMAKE_INSTALL_RPATH=@loader_path/../lib" # needed for tools executables
+  ] ++ lib.optional (!stdenv.isx86_64) "-DARROW_USE_SIMD=OFF";
 
   doInstallCheck = true;
-  PARQUET_TEST_DATA = if doInstallCheck then "${parquet-testing}/data" else null;
+  ARROW_TEST_DATA =
+    if doInstallCheck then "${arrow-testing}/data" else null;
+  PARQUET_TEST_DATA =
+    if doInstallCheck then "${parquet-testing}/data" else null;
+  GTEST_FILTER =
+    if doInstallCheck then let
+      # Upstream Issue: https://issues.apache.org/jira/browse/ARROW-11398
+      filteredTests = lib.optionals stdenv.hostPlatform.isAarch64 [
+        "TestFilterKernelWithNumeric/3.CompareArrayAndFilterRandomNumeric"
+        "TestFilterKernelWithNumeric/7.CompareArrayAndFilterRandomNumeric"
+        "TestCompareKernel.PrimitiveRandomTests"
+      ];
+    in "-${builtins.concatStringsSep ":" filteredTests}" else null;
   installCheckInputs = [ perl which ];
-  installCheckPhase = (stdenv.lib.optionalString stdenv.isDarwin ''
-    for f in release/*-test; do
-      install_name_tool -add_rpath "$out"/lib  "$f"
-    done
-  '') + ''
-    ctest -L unittest -V
+  installCheckPhase =
+  let
+    excludedTests = lib.optionals stdenv.isDarwin [
+      # Some plasma tests need to be patched to use a shorter AF_UNIX socket
+      # path on Darwin. See https://github.com/NixOS/nix/pull/1085
+      "plasma-external-store-tests"
+      "plasma-client-tests"
+    ];
+  in ''
+    ctest -L unittest -V \
+      --exclude-regex '^(${builtins.concatStringsSep "|" excludedTests})$'
   '';
 
   meta = {
     description = "A  cross-language development platform for in-memory data";
-    homepage = https://arrow.apache.org/;
-    license = stdenv.lib.licenses.asl20;
-    platforms = stdenv.lib.platforms.unix;
-    maintainers = with stdenv.lib.maintainers; [ veprbl ];
+    homepage = "https://arrow.apache.org/";
+    license = lib.licenses.asl20;
+    platforms = lib.platforms.unix;
+    maintainers = with lib.maintainers; [ tobim veprbl ];
   };
 }

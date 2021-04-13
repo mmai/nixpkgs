@@ -1,49 +1,43 @@
-{ stdenv, buildPythonPackage, fetchPypi, fetchpatch, iana-etc, libredirect,
-  pytest, case, kombu, billiard, pytz, anyjson, amqp, eventlet
+{ lib, buildPythonPackage, fetchPypi
+, billiard, click, click-didyoumean, click-plugins, click-repl, kombu, pytz, vine
+, boto3, case, moto, pytest, pytest-celery, pytest-subtests, pytest-timeout
 }:
 
-let
-
-  # Needed for celery
-  pytest_32 = pytest.overridePythonAttrs( oldAttrs: rec {
-    version = "3.2.5";
-    src = oldAttrs.src.override {
-      inherit version;
-      sha256 = "6d5bd4f7113b444c55a3bbb5c738a3dd80d43563d063fc42dcb0aaefbdd78b81";
-    };
-  });
-
-in buildPythonPackage rec {
+buildPythonPackage rec {
   pname = "celery";
-  version = "4.2.1";
+  version = "5.0.5";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "0y66rz7z8dfcgs3s0qxmdddlaq57bzbgxgfz896nbp14grkv9nkp";
+    sha256 = "f4efebe6f8629b0da2b8e529424de376494f5b7a743c321c8a2ddc2b1414921c";
   };
 
-  # Skip test_RedisBackend.test_timeouts_in_url_coerced
-  # See https://github.com/celery/celery/pull/4847
-  patches = fetchpatch {
-    url = https://github.com/celery/celery/commit/b2668607c909c61becd151905b4525190c19ff4a.patch;
-    sha256 = "11w0z2ycyh8kccj4y69zb7bxppiipcwwigg6jn1q9yrcsvz170jq";
-  };
-
-  # make /etc/protocols accessible to fix socket.getprotobyname('tcp') in sandbox
-  preCheck = stdenv.lib.optionalString stdenv.isLinux ''
-    export NIX_REDIRECTS=/etc/protocols=${iana-etc}/etc/protocols \
-      LD_PRELOAD=${libredirect}/lib/libredirect.so
-  '';
-  postCheck = stdenv.lib.optionalString stdenv.isLinux ''
-    unset NIX_REDIRECTS LD_PRELOAD
+  postPatch = ''
+    substituteInPlace requirements/test.txt \
+      --replace "moto==1.3.7" moto
   '';
 
-  checkInputs = [ pytest_32 case ];
-  propagatedBuildInputs = [ kombu billiard pytz anyjson amqp eventlet ];
+  propagatedBuildInputs = [ billiard click click-didyoumean click-plugins click-repl kombu pytz vine ];
 
-  meta = with stdenv.lib; {
-    homepage = https://github.com/celery/celery/;
+  checkInputs = [ boto3 case moto pytest pytest-celery pytest-subtests pytest-timeout ];
+
+  # ignore test that's incompatible with pytest5
+  # test_eventlet touches network
+  # test_mongodb requires pymongo
+  # test_multi tries to create directories under /var
+  checkPhase = ''
+    pytest -k 'not restore_current_app_fallback and not msgpack and not on_apply and not pytest' \
+      --ignore=t/unit/contrib/test_pytest.py \
+      --ignore=t/unit/concurrency/test_eventlet.py \
+      --ignore=t/unit/bin/test_multi.py \
+      --ignore=t/unit/apps/test_multi.py \
+      --ignore=t/unit/backends/test_mongodb.py
+  '';
+
+  meta = with lib; {
+    homepage = "https://github.com/celery/celery/";
     description = "Distributed task queue";
     license = licenses.bsd3;
+    maintainers = [ ];
   };
 }

@@ -1,35 +1,45 @@
-{ stdenv, fetchFromGitHub, pythonPackages
+{ lib, stdenv, fetchFromGitHub, python2
 , unzip, makeWrapper }:
 let
-  inherit (pythonPackages) python;
-  docker_1_10 = pythonPackages.buildPythonPackage rec {
-    name = "docker-${version}";
-    version = "1.10.6";
+  python' = python2.override {
+    packageOverrides = self: super: {
+      docker = self.buildPythonPackage rec {
+        name = "docker-${version}";
+        version = "1.10.6";
 
-    src = fetchFromGitHub {
-      owner = "docker";
-      repo = "docker-py";
-      rev = version;
-      sha256 = "1awzpbrkh4fympqzddz5i3ml81b7f0i0nwkvbpmyxjjfqx6l0m4m";
+        src = fetchFromGitHub {
+          owner = "docker";
+          repo = "docker-py";
+          rev = version;
+          sha256 = "1awzpbrkh4fympqzddz5i3ml81b7f0i0nwkvbpmyxjjfqx6l0m4m";
+        };
+
+        propagatedBuildInputs = with self; [
+          six
+          requests
+          websocket_client
+          ipaddress
+          docker_pycreds
+          uptime
+        ] ++ lib.optionals (self.pythonOlder "3.7") [ backports_ssl_match_hostname ];
+
+        # due to flake8
+        doCheck = false;
+      };
+
+      pymongo = super.pymongo.overridePythonAttrs (oldAttrs: rec {
+        version = "2.9.5";
+        src = oldAttrs.src.override {
+          inherit version;
+          sha256 = "912516ac6a355d7624374a38337b8587afe3eb535c0a5456b3bd12df637a6e70";
+        };
+      });
     };
-
-    propagatedBuildInputs = with pythonPackages; [
-      six
-      requests
-      websocket_client
-      ipaddress
-      backports_ssl_match_hostname
-      docker_pycreds
-      uptime
-    ];
-
-    # due to flake8
-    doCheck = false;
   };
 
 in stdenv.mkDerivation rec {
   version = "5.11.2";
-  name = "dd-agent-${version}";
+  pname = "dd-agent";
 
   src = fetchFromGitHub {
     owner  = "datadog";
@@ -40,22 +50,22 @@ in stdenv.mkDerivation rec {
 
   patches = [ ./40103-iostat-fix.patch ];
 
+  nativeBuildInputs = [ unzip ];
   buildInputs = [
-    python
-    unzip
     makeWrapper
-    pythonPackages.requests
-    pythonPackages.psycopg2
-    pythonPackages.psutil
-    pythonPackages.ntplib
-    pythonPackages.simplejson
-    pythonPackages.pyyaml
-    pythonPackages.pymongo_2_9_1
-    pythonPackages.python-etcd
-    pythonPackages.consul
-    docker_1_10
-  ];
-  propagatedBuildInputs = with pythonPackages; [ python tornado ];
+  ] ++ (with python'.pkgs; [
+    requests
+    psycopg2
+    psutil
+    ntplib
+    simplejson
+    pyyaml
+    pymongo
+    python-etcd
+    consul
+    docker
+  ]);
+  propagatedBuildInputs = with python'.pkgs; [ python tornado ];
 
   buildCommand = ''
     mkdir -p $out/bin
@@ -72,7 +82,7 @@ in stdenv.mkDerivation rec {
 
     cat > $out/bin/dd-jmxfetch <<EOF
     #!/usr/bin/env bash
-    exec ${python}/bin/python $out/agent/jmxfetch.py $@
+    exec ${python'.interpreter} $out/agent/jmxfetch.py $@
     EOF
     chmod a+x $out/bin/dd-jmxfetch
 
@@ -93,9 +103,9 @@ in stdenv.mkDerivation rec {
       Event collector for the DataDog analysis service
       -- v5 Python implementation
     '';
-    homepage    = https://www.datadoghq.com;
-    license     = stdenv.lib.licenses.bsd3;
-    platforms   = stdenv.lib.platforms.all;
-    maintainers = with stdenv.lib.maintainers; [ thoughtpolice domenkozar ];
+    homepage    = "https://www.datadoghq.com";
+    license     = lib.licenses.bsd3;
+    platforms   = lib.platforms.all;
+    maintainers = with lib.maintainers; [ thoughtpolice domenkozar ];
   };
 }

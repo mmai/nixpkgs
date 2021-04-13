@@ -1,39 +1,26 @@
-{ stdenv, fetchFromGitHub, fetchpatch, coreutils
-, python3Packages, substituteAll }:
+{ lib, fetchFromGitHub, python3Packages }:
 
 python3Packages.buildPythonApplication rec {
-  name = "trash-cli-${version}";
-  version = "0.17.1.14";
-  namePrefix = "";
+  pname = "trash-cli";
+  version = "0.20.12.26";
 
   src = fetchFromGitHub {
     owner = "andreafrancia";
     repo = "trash-cli";
-    rev = "${version}";
-    sha256 = "1bqazna223ibqjwbc1wfvfnspfyrvjy8347qlrgv4cpng72n7gfi";
+    rev = version;
+    sha256 = "15iivl9xln1bw1zr2x5zvqyb6aj7mc8hfqi6dniq6xkp5m046ib7";
   };
 
-  patches = [
-    (substituteAll {
-      src = ./nix-paths.patch;
-      df = "${coreutils}/bin/df";
-      libc = let ext = if stdenv.isDarwin then ".dylib" else ".so.6";
-             in "${stdenv.cc.libc}/lib/libc${ext}";
-    })
+  propagatedBuildInputs = [ python3Packages.psutil ];
 
-    # Fix build on Python 3.6.
-    (fetchpatch {
-      url = "https://github.com/andreafrancia/trash-cli/commit/a21b80d1e69783bb09376c3f60dd2f2a10578805.patch";
-      sha256 = "0w49rjh433sjfc2cl5a9wlbr6kcn9f1qg905qsyv7ay3ar75wvyp";
-    })
+  checkInputs = with python3Packages; [
+    nose
+    mock
   ];
-
-  buildInputs = with python3Packages; [ nose mock ];
-
   checkPhase = "nosetests";
 
-  meta = with stdenv.lib; {
-    homepage = https://github.com/andreafrancia/trash-cli;
+  meta = with lib; {
+    homepage = "https://github.com/andreafrancia/trash-cli";
     description = "Command line tool for the desktop trash can";
     maintainers = [ maintainers.rycee ];
     platforms = platforms.unix;

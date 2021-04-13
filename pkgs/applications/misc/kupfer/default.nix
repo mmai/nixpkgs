@@ -1,4 +1,4 @@
-{ stdenv
+{ lib
 , fetchurl
 , intltool
 , python3Packages
@@ -6,7 +6,6 @@
 , gtk3
 , libwnck3
 , keybinder3
-, hicolor-icon-theme
 , wrapGAppsHook
 , wafHook
 }:
@@ -14,8 +13,10 @@
 with python3Packages;
 
 buildPythonApplication rec {
-  name = "kupfer-${version}";
+  pname = "kupfer";
   version = "319";
+
+  format = "other";
 
   src = fetchurl {
     url = "https://github.com/kupferlauncher/kupfer/releases/download/v${version}/kupfer-v${version}.tar.xz";
@@ -27,23 +28,23 @@ buildPythonApplication rec {
     # For setup hook
     gobject-introspection wafHook
   ];
-  buildInputs = [ hicolor-icon-theme docutils libwnck3 keybinder3 ];
+  buildInputs = [ docutils libwnck3 keybinder3 ];
   propagatedBuildInputs = [ pygobject3 gtk3 pyxdg dbus-python pycairo ];
 
-  postInstall = let
-    pythonPath = (stdenv.lib.concatMapStringsSep ":"
-      (m: "${m}/lib/${python.libPrefix}/site-packages")
-      propagatedBuildInputs);
-  in ''
+  # without strictDeps kupfer fails to build: Could not find the python module 'gi.repository.Gtk'
+  # see https://github.com/NixOS/nixpkgs/issues/56943 for details
+  strictDeps = false;
+
+  postInstall = ''
     gappsWrapperArgs+=(
-      "--prefix" "PYTHONPATH" : "${pythonPath}"
+      "--prefix" "PYTHONPATH" : "${makePythonPath propagatedBuildInputs}"
       "--set" "PYTHONNOUSERSITE" "1"
     )
   '';
 
   doCheck = false; # no tests
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A smart, quick launcher";
     homepage    = "https://kupferlauncher.github.io/";
     license     = licenses.gpl3;

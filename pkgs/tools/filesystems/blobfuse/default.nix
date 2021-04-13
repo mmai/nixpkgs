@@ -1,7 +1,7 @@
-{ stdenv, fetchFromGitHub, cmake, pkgconfig, curl, gnutls, libgcrypt, libuuid, fuse }:
+{ lib, stdenv, fetchFromGitHub, cmake, pkg-config, curl, gnutls, libgcrypt, libuuid, fuse }:
 
 stdenv.mkDerivation rec {
-  name = "blobfuse-${version}";
+  pname = "blobfuse";
   version = "1.0.2";
 
   src = fetchFromGitHub {
@@ -11,10 +11,12 @@ stdenv.mkDerivation rec {
     sha256 = "1qh04z1fsj1l6l12sz9yl2sy9hwlrnzac54hwrr7wvsgv90n9gbp";
   };
 
-  buildInputs = [ curl gnutls libgcrypt libuuid fuse ];
-  nativeBuildInputs = [ cmake pkgconfig ];
+  NIX_CFLAGS_COMPILE = "-Wno-error=catch-value";
 
-  meta = with stdenv.lib; {
+  buildInputs = [ curl gnutls libgcrypt libuuid fuse ];
+  nativeBuildInputs = [ cmake pkg-config ];
+
+  meta = with lib; {
     description = "Mount an Azure Blob storage as filesystem through FUSE";
     license = licenses.mit;
     maintainers = with maintainers; [ jbgi ];

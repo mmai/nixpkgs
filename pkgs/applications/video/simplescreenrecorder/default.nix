@@ -1,9 +1,9 @@
-{ stdenv, fetchurl, alsaLib, ffmpeg, libjack2, libX11, libXext, qtx11extras
-, libXfixes, libGLU_combined, pkgconfig, libpulseaudio, qtbase, cmake, ninja
+{ lib, stdenv, mkDerivation, fetchurl, alsaLib, ffmpeg_3, libjack2, libX11, libXext, qtx11extras
+, libXfixes, libGLU, libGL, pkg-config, libpulseaudio, qtbase, cmake, ninja
 }:
 
-stdenv.mkDerivation rec {
-  name = "simplescreenrecorder-${version}";
+mkDerivation rec {
+  pname = "simplescreenrecorder";
   version = "0.3.11";
 
   src = fetchurl {
@@ -23,15 +23,15 @@ stdenv.mkDerivation rec {
     done
   '';
 
-  nativeBuildInputs = [ pkgconfig cmake ninja ];
+  nativeBuildInputs = [ pkg-config cmake ninja ];
   buildInputs = [
-    alsaLib ffmpeg libjack2 libX11 libXext libXfixes libGLU_combined
+    alsaLib ffmpeg_3 libjack2 libX11 libXext libXfixes libGLU libGL
     libpulseaudio qtbase qtx11extras
   ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A screen recorder for Linux";
-    homepage = http://www.maartenbaert.be/simplescreenrecorder;
+    homepage = "https://www.maartenbaert.be/simplescreenrecorder";
     license = licenses.gpl3;
     platforms = [ "x86_64-linux" ];
     maintainers = [ maintainers.goibhniu ];

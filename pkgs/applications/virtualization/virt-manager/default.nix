@@ -1,32 +1,35 @@
-{ stdenv, fetchurl, python3Packages, intltool, file
+{ lib, fetchurl, python3Packages, intltool, file
 , wrapGAppsHook, gtk-vnc, vte, avahi, dconf
 , gobject-introspection, libvirt-glib, system-libvirt
-, gsettings-desktop-schemas, glib, libosinfo, gnome3, gtk3
+, gsettings-desktop-schemas, glib, libosinfo, gnome3
+, gtksourceview4, docutils
 , spiceSupport ? true, spice-gtk ? null
 , cpio, e2fsprogs, findutils, gzip
 }:
 
-with stdenv.lib;
+with lib;
 
 python3Packages.buildPythonApplication rec {
-  name = "virt-manager-${version}";
-  version = "2.0.0";
-  namePrefix = "";
+  pname = "virt-manager";
+  version = "3.1.0";
 
   src = fetchurl {
-    url = "http://virt-manager.org/download/sources/virt-manager/${name}.tar.gz";
-    sha256 = "1b48xbrx99mfiv80c60k3ydzkpcpbq57c8h8dl0gnffmnzbs8vzb";
+    url = "http://virt-manager.org/download/sources/virt-manager/${pname}-${version}.tar.gz";
+    sha256 = "0al34lxlywqnj98hdm72a38zk8ns91wkqgrc3h1mhv1kikd8pjfc";
   };
 
   nativeBuildInputs = [
-    wrapGAppsHook intltool file
+    intltool file
     gobject-introspection # for setup hook populating GI_TYPELIB_PATH
+    docutils
   ];
 
-  buildInputs =
-    [ libvirt-glib vte dconf gtk-vnc gnome3.defaultIconTheme avahi
-      gsettings-desktop-schemas libosinfo gtk3
-    ] ++ optional spiceSupport spice-gtk;
+  buildInputs = [
+    wrapGAppsHook
+    libvirt-glib vte dconf gtk-vnc gnome3.adwaita-icon-theme avahi
+    gsettings-desktop-schemas libosinfo gtksourceview4
+    gobject-introspection # Temporary fix, see https://github.com/NixOS/nixpkgs/issues/56943
+  ] ++ optional spiceSupport spice-gtk;
 
   propagatedBuildInputs = with python3Packages;
     [
@@ -42,9 +45,7 @@ python3Packages.buildPythonApplication rec {
     ${python3Packages.python.interpreter} setup.py configure --prefix=$out
   '';
 
-  postInstall = ''
-    ${glib.dev}/bin/glib-compile-schemas "$out"/share/glib-2.0/schemas
-  '';
+  setupPyGlobalFlags = [ "--no-update-icon-cache" ];
 
   preFixup = ''
     gappsWrapperArgs+=(--set PYTHONPATH "$PYTHONPATH")
@@ -55,8 +56,8 @@ python3Packages.buildPythonApplication rec {
   # Failed tests
   doCheck = false;
 
-  meta = with stdenv.lib; {
-    homepage = http://virt-manager.org;
+  meta = with lib; {
+    homepage = "http://virt-manager.org";
     description = "Desktop user interface for managing virtual machines";
     longDescription = ''
       The virt-manager application is a desktop user interface for managing
@@ -66,6 +67,6 @@ python3Packages.buildPythonApplication rec {
     license = licenses.gpl2;
     # exclude Darwin since libvirt-glib currently doesn't build there
     platforms = platforms.linux;
-    maintainers = with maintainers; [ qknight offline fpletz ];
+    maintainers = with maintainers; [ qknight offline fpletz globin ];
   };
 }

@@ -1,30 +1,30 @@
-{ stdenv, fetchurl }:
+{ lib, stdenv, fetchurl }:
 
 stdenv.mkDerivation rec {
-  name = "wallabag-${version}";
-  version = "2.3.3";
+  pname = "wallabag";
+  version = "2.4.1";
 
   # remember to rm -r var/cache/* after a rebuild or unexpected errors will occur
 
   src = fetchurl {
     url = "https://static.wallabag.org/releases/wallabag-release-${version}.tar.gz";
-    sha256 = "12q5daigqn4xqp9pyfzac881qm9ywrflm8sivhl3spczyh41gwpg";
+    sha256 = "1dqf5ia66kjsnfad2xkm8w6jgs976mf9x0dcd73jybqfgs4j09kj";
   };
 
   outputs = [ "out" ];
 
-  patches = [ ./wallabag-data.patch ]; # exposes $WALLABAG_DATA
+  patches = [
+    ./wallabag-data.patch # exposes $WALLABAG_DATA
+  ];
 
-  prePatch = ''
-    rm Makefile # use the "shared hosting" package with bundled dependencies
-  '';
+  dontBuild = true;
 
   installPhase = ''
     mkdir $out/
     cp -R * $out/
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Web page archiver";
     longDescription = ''
       wallabag is a self hostable application for saving web pages.
@@ -33,7 +33,7 @@ stdenv.mkDerivation rec {
       After a package upgrade, empty the `var/cache` folder.
     '';
     license = licenses.mit;
-    homepage = http://wallabag.org;
+    homepage = "http://wallabag.org";
     maintainers = with maintainers; [ schneefux ];
     platforms = platforms.all;
   };

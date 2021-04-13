@@ -1,38 +1,39 @@
 { pkgs
 , buildPythonPackage
 , fetchPypi
-, python
+, azure-mgmt-core
 , azure-mgmt-common
+, isPy3k
 }:
 
 
 buildPythonPackage rec {
-  version = "0.20.1";
+  version = "16.0.0";
   pname = "azure-mgmt-resource";
+  disabled = !isPy3k;
 
   src = fetchPypi {
     inherit pname version;
     extension = "zip";
-    sha256 = "0slh9qfm5nfacrdm3lid0sr8kwqzgxvrwf27laf9v38kylkfqvml";
+    sha256 = "0bdbdc9c1ed2ef975d8dff45f358d1e06dc6761eace5b6817f13993447e48a68";
   };
 
-  preConfigure = ''
-    # Patch to make this package work on requests >= 2.11.x
-    # CAN BE REMOVED ON NEXT PACKAGE UPDATE
-    sed -i 's|len(request_content)|str(len(request_content))|' azure/mgmt/resource/resourcemanagement.py
-  '';
+  propagatedBuildInputs = [
+    azure-mgmt-common
+    azure-mgmt-core
+  ];
 
-  postInstall = ''
-    echo "__import__('pkg_resources').declare_namespace(__name__)" >> "$out/lib/${python.libPrefix}"/site-packages/azure/__init__.py
-    echo "__import__('pkg_resources').declare_namespace(__name__)" >> "$out/lib/${python.libPrefix}"/site-packages/azure/mgmt/__init__.py
-  '';
+  # has no tests
+  doCheck = false;
 
-  propagatedBuildInputs = [ azure-mgmt-common ];
+  pythonNamespaces = [ "azure.mgmt" ];
+
+  pythonImportsCheck = [ "azure.mgmt.resource" ];
 
   meta = with pkgs.lib; {
     description = "Microsoft Azure SDK for Python";
-    homepage = "https://azure.microsoft.com/en-us/develop/python/";
-    license = licenses.asl20;
-    maintainers = with maintainers; [ olcai ];
+    homepage = "https://github.com/Azure/azure-sdk-for-python";
+    license = licenses.mit;
+    maintainers = with maintainers; [ olcai maxwilson jonringer ];
   };
 }

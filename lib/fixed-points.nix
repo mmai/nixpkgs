@@ -1,4 +1,4 @@
-{ ... }:
+{ lib, ... }:
 rec {
   # Compute the fixed point of the given function `f`, which is usually an
   # attribute set that expects its final, non-recursive representation as an
@@ -30,9 +30,12 @@ rec {
   #     nix-repl> converge (x: x / 2) 16
   #     0
   converge = f: x:
-    if (f x) == x
-    then x
-    else converge f (f x);
+    let
+      x' = f x;
+    in
+      if x' == x
+      then x
+      else converge f x';
 
   # Modify the contents of an explicitly recursive attribute set in a way that
   # honors `self`-references. This is accomplished with a function
@@ -73,6 +76,15 @@ rec {
       let fApplied = f self super;
           super' = super // fApplied;
       in fApplied // g self super';
+
+  # Compose several extending functions of the type expected by 'extends' into
+  # one where changes made in preceding functions are made available to
+  # subsequent ones.
+  #
+  # composeManyExtensions : [packageSet -> packageSet -> packageSet] -> packageSet -> packageSet -> packageSet
+  #                          ^final        ^prev         ^overrides     ^final        ^prev         ^overrides
+  composeManyExtensions =
+    lib.foldr (x: y: composeExtensions x y) (self: super: {});
 
   # Create an overridable, recursive attribute set. For example:
   #

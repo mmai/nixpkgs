@@ -1,7 +1,13 @@
-{ stdenv, callPackage,
-  fetchurl, guile_1_8, qt4, zlib, xmodmap, which, makeWrapper, freetype,
+{ lib, mkDerivation, callPackage, fetchurl,
+  guile_1_8, qtbase, xmodmap, which, freetype,
+  libjpeg,
+  sqlite,
   tex ? null,
   aspell ? null,
+  git ? null,
+  python3 ? null,
+  cmake,
+  pkg-config,
   ghostscriptX ? null,
   extraFonts ? false,
   chineseFonts ? false,
@@ -10,37 +16,52 @@
 
 let
   pname = "TeXmacs";
-  version = "1.99.2";
+  version = "1.99.18";
   common = callPackage ./common.nix {
     inherit tex extraFonts chineseFonts japaneseFonts koreanFonts;
   };
 in
-stdenv.mkDerivation {
-  name = "${pname}-${version}";
+mkDerivation {
+  inherit pname version;
 
   src = fetchurl {
-    url = "http://www.texmacs.org/Download/ftp/tmftp/source/TeXmacs-${version}-src.tar.gz";
-    sha256 = "0l48g9746igiaxw657shm8g3xxk565vzsviajlrxqyljbh6py0fs";
+    url = "https://www.texmacs.org/Download/ftp/tmftp/source/TeXmacs-${version}-src.tar.gz";
+    sha256 = "0il3fwgw20421aj90wg8kyhkwk6lbgb3bb2g5qamh5lk90yj725i";
   };
 
-  buildInputs = [ guile_1_8 qt4 makeWrapper ghostscriptX freetype ];
+  nativeBuildInputs = [ cmake pkg-config ];
+  buildInputs = [
+    guile_1_8
+    qtbase
+    ghostscriptX
+    freetype
+    libjpeg
+    sqlite
+    git
+    python3
+  ];
+  NIX_LDFLAGS = "-lz";
 
-  postInstall = "wrapProgram $out/bin/texmacs --suffix PATH : " +
-        (if ghostscriptX == null then "" else "${ghostscriptX}/bin:") +
-        (if aspell == null then "" else "${aspell}/bin:") +
-        (if tex == null then "" else "${tex}/bin:") +
-        "${xmodmap}/bin:${which}/bin";
+  qtWrapperArgs = [
+    "--suffix" "PATH" ":" (lib.makeBinPath [
+      xmodmap
+      which
+      ghostscriptX
+      aspell
+      tex
+      git
+      python3
+    ])
+  ];
+
+  postFixup = ''
+    wrapQtApp $out/bin/texmacs
+  '';
 
   inherit (common) postPatch;
 
-  postFixup = ''
-    bin="$out/libexec/TeXmacs/bin/texmacs.bin"
-    rpath=$(patchelf --print-rpath "$bin")
-    patchelf --set-rpath "$rpath:${zlib.out}/lib" "$bin"
-  '';
-
   meta = common.meta // {
-    maintainers = [ stdenv.lib.maintainers.roconnor ];
-    platforms = stdenv.lib.platforms.gnu ++ stdenv.lib.platforms.linux;  # arbitrary choice
+    maintainers = [ lib.maintainers.roconnor ];
+    platforms = lib.platforms.gnu ++ lib.platforms.linux;  # arbitrary choice
   };
 }

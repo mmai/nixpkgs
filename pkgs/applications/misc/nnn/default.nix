@@ -1,31 +1,44 @@
-{ stdenv, fetchFromGitHub, pkgconfig, ncurses, readline, conf ? null }:
+{ lib, stdenv, fetchFromGitHub, pkg-config, ncurses, readline
+, conf ? null, withIcons ? false, withNerdIcons ? false }:
 
-with stdenv.lib;
+# Mutually exclusive options
+assert withIcons -> withNerdIcons == false;
+assert withNerdIcons -> withIcons == false;
 
 stdenv.mkDerivation rec {
-  name = "nnn-${version}";
-  version = "2.1";
+  pname = "nnn";
+  version = "3.6";
 
   src = fetchFromGitHub {
     owner = "jarun";
-    repo = "nnn";
+    repo = pname;
     rev = "v${version}";
-    sha256 = "1vkrhsdwgacln335rjywdf7nj7fg1x55szmm8xrvwda8y2qjqhc4";
+    sha256 = "1hwv7ncp8pmzdir30877ni4qlmczmb3yjdkbfd1pssr08y1srsc7";
   };
 
-  configFile = optionalString (conf!=null) (builtins.toFile "nnn.h" conf);
-  preBuild = optionalString (conf!=null) "cp ${configFile} nnn.h";
+  configFile = lib.optionalString (conf != null) (builtins.toFile "nnn.h" conf);
+  preBuild = lib.optionalString (conf != null) "cp ${configFile} src/nnn.h";
 
-  nativeBuildInputs = [ pkgconfig ];
-  buildInputs = [ ncurses readline ];
+  nativeBuildInputs = [ pkg-config ];
+  buildInputs = [ readline ncurses ];
 
-  installFlags = [ "DESTDIR=$(out)" "PREFIX=" ];
+  makeFlags = [ "PREFIX=$(out)" ]
+    ++ lib.optional withIcons [ "O_ICONS=1" ]
+    ++ lib.optional withNerdIcons [ "O_NERD=1" ];
 
-  meta = {
+  # shell completions
+  postInstall = ''
+    install -Dm555 misc/auto-completion/bash/nnn-completion.bash $out/share/bash-completion/completions/nnn.bash
+    install -Dm555 misc/auto-completion/zsh/_nnn -t $out/share/zsh/site-functions
+    install -Dm555 misc/auto-completion/fish/nnn.fish -t $out/share/fish/vendor_completions.d
+  '';
+
+  meta = with lib; {
     description = "Small ncurses-based file browser forked from noice";
-    homepage = https://github.com/jarun/nnn;
+    homepage = "https://github.com/jarun/nnn";
+    changelog = "https://github.com/jarun/nnn/blob/v${version}/CHANGELOG";
     license = licenses.bsd2;
     platforms = platforms.all;
-    maintainers = with maintainers; [ jfrankenau ];
+    maintainers = with maintainers; [ jfrankenau Br1ght0ne ];
   };
 }

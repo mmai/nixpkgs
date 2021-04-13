@@ -1,14 +1,14 @@
-{ stdenv, fetchurl, fetchpatch, pkgconfig, gnome-doc-utils, intltool, lib
+{ stdenv, fetchurl, fetchpatch, pkg-config, gnome-doc-utils, intltool, lib
 , mono, gtk-sharp-2_0, gnome-sharp, hyena
 , which, makeWrapper, glib, gnome2, poppler, wrapGAppsHook
 }:
 
 stdenv.mkDerivation rec {
-  name = "pdfmod-${version}";
+  pname = "pdfmod";
   version = "0.9.1";
 
   src = fetchurl {
-    url = "mirror://gnome/sources/pdfmod/0.9/pdfmod-${version}.tar.bz2";
+    url = "mirror://gnome/sources/${pname}/${lib.versions.majorMinor version}/${pname}-${version}.tar.bz2";
     sha256 = "eb7c987514a053106ddf03f26544766c751c801d87762909b36415d46bc425c9";
   };
 
@@ -18,7 +18,7 @@ stdenv.mkDerivation rec {
     sha256 = "0fpz9ifr6476lqhd5rkb94dm68vlrwdq5w1aaxzgyjgdax9hxx81";
   }) ];
 
-  nativeBuildInputs = [ pkgconfig ];
+  nativeBuildInputs = [ pkg-config ];
   buildInputs = [
     gnome-doc-utils intltool mono gtk-sharp-2_0 gnome-sharp
     hyena which makeWrapper wrapGAppsHook
@@ -39,8 +39,8 @@ stdenv.mkDerivation rec {
 
   dontStrip = true;
 
-  meta = with stdenv.lib; {
-    homepage = https://wiki.gnome.org/Apps/PdfMod;
+  meta = with lib; {
+    homepage = "https://wiki.gnome.org/Attic/PdfMod";
     description = "A simple application for modifying PDF documents";
     platforms = platforms.all;
     maintainers = with maintainers; [ obadz ];

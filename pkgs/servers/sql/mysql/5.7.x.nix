@@ -1,30 +1,32 @@
-{ stdenv, fetchurl, cmake, bison
+{ lib, stdenv, fetchurl, cmake, bison, pkg-config
 , boost, libedit, libevent, lz4, ncurses, openssl, protobuf, readline, zlib, perl
-, cctools, CoreServices, developer_cmds }:
+, cctools, CoreServices, developer_cmds
+, libtirpc, rpcsvc-proto
+}:
 
 # Note: zlib is not required; MySQL can use an internal zlib.
 
 let
 self = stdenv.mkDerivation rec {
-  name = "mysql-${version}";
-  version = "5.7.24";
+  pname = "mysql";
+  version = "5.7.27";
 
   src = fetchurl {
-    url = "mirror://mysql/MySQL-5.7/${name}.tar.gz";
-    sha256 = "11qz8cc4zyi7sxs66c5zlap6fd3vra1srwgzcxdzhz59qs90rgq5";
+    url = "mirror://mysql/MySQL-5.7/${pname}-${version}.tar.gz";
+    sha256 = "1fhv16zr46pxm1j8vb8x8mh3nwzglg01arz8gnazbmjqldr5idpq";
   };
 
-  preConfigure = stdenv.lib.optional stdenv.isDarwin ''
+  preConfigure = lib.optional stdenv.isDarwin ''
     ln -s /bin/ps $TMPDIR/ps
     export PATH=$PATH:$TMPDIR
   '';
 
-  nativeBuildInputs = [ cmake bison ];
+  nativeBuildInputs = [ bison cmake pkg-config ]
+    ++ lib.optionals (!stdenv.isDarwin) [ rpcsvc-proto ];
 
   buildInputs = [ boost libedit libevent lz4 ncurses openssl protobuf readline zlib ]
-     ++ stdenv.lib.optionals stdenv.isDarwin [ perl cctools CoreServices developer_cmds ];
-
-  enableParallelBuilding = true;
+     ++ lib.optionals stdenv.isDarwin [ perl cctools CoreServices developer_cmds ]
+     ++ lib.optionals stdenv.isLinux [ libtirpc ];
 
   outputs = [ "out" "static" ];
 
@@ -57,8 +59,8 @@ self = stdenv.mkDerivation rec {
     "-DINSTALL_SHAREDIR=share/mysql"
   ];
 
-  CXXFLAGS = "-fpermissive";
-  NIX_LDFLAGS = stdenv.lib.optionalString stdenv.isLinux "-lgcc_s";
+  CXXFLAGS = "-fpermissive -std=c++11";
+  NIX_LDFLAGS = lib.optionalString stdenv.isLinux "-lgcc_s";
 
   prePatch = ''
     sed -i -e "s|/usr/bin/libtool|libtool|" cmake/merge_archives.cmake.in
@@ -75,8 +77,8 @@ self = stdenv.mkDerivation rec {
     mysqlVersion = "5.7";
   };
 
-  meta = with stdenv.lib; {
-    homepage = https://www.mysql.com/;
+  meta = with lib; {
+    homepage = "https://www.mysql.com/";
     description = "The world's most popular open source database";
     platforms = platforms.unix;
     license = with licenses; [

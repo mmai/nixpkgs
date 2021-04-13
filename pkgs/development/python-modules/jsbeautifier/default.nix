@@ -1,16 +1,15 @@
-{ lib, fetchPypi, buildPythonApplication, EditorConfig, pytest, six }:
+{ lib, fetchPypi, buildPythonApplication, editorconfig, pytest, six }:
 
 buildPythonApplication rec {
   pname = "jsbeautifier";
-  version = "1.8.8";
+  version = "1.13.5";
 
-  propagatedBuildInputs = [ six ];
-
-  buildInputs = [ EditorConfig pytest ];
+  propagatedBuildInputs = [ six editorconfig ];
+  checkInputs = [ pytest ];
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "98a29abef991f9f8f8fa67c32ccc07bee3d95ef7c8323e3560f6a5e83db7412a";
+    sha256 = "4532a6bc85ba91ffc542b55d65cd13cedc971a934f26f51ed56d4c680b3fbe66";
   };
 
   meta = with lib; {

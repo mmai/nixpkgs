@@ -1,36 +1,86 @@
-{ stdenv, pkgconfig, glib, libxml2, expat,
-  fftw, orc, lcms, imagemagick, openexr, libtiff, libjpeg, libgsf, libexif,
-  ApplicationServices,
-  python27, libpng ? null,
-  fetchFromGitHub,
-  autoreconfHook,
-  gtk-doc,
-  gobject-introspection,
+{ lib, stdenv
+, pkg-config
+, glib
+, libxml2
+, expat
+, fftw
+, orc
+, lcms
+, imagemagick
+, openexr
+, libtiff
+, libjpeg
+, libgsf
+, libexif
+, libheif
+, librsvg
+, ApplicationServices
+, python27
+, libpng
+, fetchFromGitHub
+, fetchpatch
+, autoreconfHook
+, gtk-doc
+, gobject-introspection
+,
 }:
 
 stdenv.mkDerivation rec {
-  name = "vips-${version}";
-  version = "8.7.0";
+  pname = "vips";
+  version = "8.10.5";
+
+  outputs = [ "bin" "out" "man" "dev" ];
 
   src = fetchFromGitHub {
     owner = "libvips";
     repo = "libvips";
     rev = "v${version}";
-    sha256 = "1dwcpmpqbgb9lkajnqv50mrsn97mxbxpq6b5aya7fgfkgdnrs9sw";
+    sha256 = "sha256-h21Ep6f4/y+m0kdrCA5dcULFeOOyLtMx2etAziG6f9Y=";
+    # Remove unicode file names which leads to different checksums on HFS+
+    # vs. other filesystems because of unicode normalisation.
+    extraPostFetch = ''
+      rm -r $out/test/test-suite/images/
+    '';
   };
 
-  nativeBuildInputs = [ pkgconfig autoreconfHook gtk-doc gobject-introspection ];
-  buildInputs = [ glib libxml2 fftw orc lcms
-    imagemagick openexr libtiff libjpeg
-    libgsf libexif python27 libpng expat ]
-    ++ stdenv.lib.optional stdenv.isDarwin ApplicationServices;
+  nativeBuildInputs = [
+    pkg-config
+    autoreconfHook
+    gtk-doc
+    gobject-introspection
+  ];
+
+  buildInputs = [
+    glib
+    libxml2
+    fftw
+    orc
+    lcms
+    imagemagick
+    openexr
+    libtiff
+    libjpeg
+    libgsf
+    libexif
+    libheif
+    libpng
+    librsvg
+    python27
+    libpng
+    expat
+  ] ++ lib.optional stdenv.isDarwin ApplicationServices;
+
+  # Required by .pc file
+  propagatedBuildInputs = [
+    glib
+  ];
 
   autoreconfPhase = ''
-    ./autogen.sh
+    NOCONFIGURE=1 ./autogen.sh
   '';
 
-  meta = with stdenv.lib; {
-    homepage = http://www.vips.ecs.soton.ac.uk;
+  meta = with lib; {
+    homepage = "https://libvips.github.io/libvips/";
     description = "Image processing system for large images";
     license = licenses.lgpl2Plus;
     maintainers = with maintainers; [ kovirobi ];

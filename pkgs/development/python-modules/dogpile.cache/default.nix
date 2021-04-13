@@ -1,14 +1,23 @@
-{ stdenv, buildPythonPackage, fetchPypi
-, pytest, pytestcov, mock, Mako
+{ lib
+, buildPythonPackage
+, fetchPypi
+, pythonOlder
+, pytest
+, pytestcov
+, mock
+, Mako
+, decorator
+, stevedore
 }:
 
 buildPythonPackage rec {
   pname = "dogpile.cache";
-  version = "0.6.7";
+  version = "1.1.2";
+  disabled = pythonOlder "3.6";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "fca7deb7c276b879b01c15c5d39b3c05701dc43b263ec3fef1e52cb851cf88ab";
+    sha256 = "2134464672a3deb7ef1366a8691726686d8c62540e4208f1a40c9aaa1a0b6a45";
   };
 
   # Disable concurrency tests that often fail,
@@ -19,12 +28,18 @@ buildPythonPackage rec {
     rm tests/cache/test_memcached_backend.py
   '';
 
-  buildInputs = [ pytest pytestcov mock Mako ];
+  dontUseSetuptoolsCheck = true;
+  checkPhase = ''
+    pytest
+  '';
 
-  meta = with stdenv.lib; {
+  checkInputs = [ pytest pytestcov mock Mako ];
+
+  propagatedBuildInputs = [ decorator stevedore ];
+
+  meta = with lib; {
     description = "A caching front-end based on the Dogpile lock";
-    homepage = https://bitbucket.org/zzzeek/dogpile.cache;
-    platforms = platforms.unix;
+    homepage = "https://bitbucket.org/zzzeek/dogpile.cache";
     license = licenses.bsd3;
   };
 }

@@ -1,18 +1,26 @@
-{ stdenv, buildPythonPackage, fetchFromGitHub, pytest, libsodium, cffi, six, hypothesis}:
+{ lib
+, buildPythonPackage
+, fetchPypi
+, pytest
+, libsodium
+, cffi
+, six
+, hypothesis
+}:
 
 buildPythonPackage rec {
   pname = "pynacl";
-  version = "1.3.0";
+  version = "1.4.0";
 
-  src = fetchFromGitHub {
-    owner = "pyca";
-    repo = pname;
-    rev = version;
-    sha256 = "0ac00d5bfdmz1x428h2scq5b34llp61yhxradl94qjwz7ikqv052";
+  src = fetchPypi {
+    inherit version;
+    pname = "PyNaCl";
+    sha256 = "01b56hxrbif3hx8l6rwz5kljrgvlbj7shmmd2rjh0hn7974a5sal";
   };
 
   checkInputs = [ pytest hypothesis ];
-  propagatedBuildInputs = [ libsodium cffi six ];
+  buildInputs = [ libsodium ];
+  propagatedBuildInputs = [ cffi six ];
 
   SODIUM_INSTALL = "system";
 
@@ -20,10 +28,10 @@ buildPythonPackage rec {
     py.test
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     maintainers = with maintainers; [ va1entin ];
     description = "Python binding to the Networking and Cryptography (NaCl) library";
-    homepage = https://github.com/pyca/pynacl/;
+    homepage = "https://github.com/pyca/pynacl/";
     license = licenses.asl20;
   };
 }

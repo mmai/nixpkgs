@@ -1,24 +1,37 @@
-{ stdenv, buildPackages, fetchurl
+{ lib, stdenv, fetchurl, fetchpatch
 , bzip2
+, expat
+, libffi
 , gdbm
-, fetchpatch
+, db
 , ncurses
 , openssl
 , readline
 , sqlite
 , tcl ? null, tk ? null, tix ? null, xlibsWrapper ? null, libX11 ? null, x11Support ? false
 , zlib
-, callPackage
 , self
-, db
-, expat
-, libffi
-, CF, configd, coreutils
+, configd, coreutils
+, autoreconfHook
 , python-setup-hook
 # Some proprietary libs assume UCS2 unicode, especially on darwin :(
 , ucsEncoding ? 4
 # For the Python package set
 , packageOverrides ? (self: super: {})
+, pkgsBuildBuild
+, pkgsBuildHost
+, pkgsBuildTarget
+, pkgsHostHost
+, pkgsTargetTarget
+, sourceVersion
+, sha256
+, passthruFun
+, static ? false
+, stripBytecode ? reproducibleBuild
+, rebuildBytecode ? true
+, reproducibleBuild ? true
+, enableOptimizations ? false
+, pythonAttr ? "python${sourceVersion.major}${sourceVersion.minor}"
 }:
 
 assert x11Support -> tcl != null
@@ -26,19 +39,48 @@ assert x11Support -> tcl != null
                   && xlibsWrapper != null
                   && libX11 != null;
 
-with stdenv.lib;
+assert lib.assertMsg (enableOptimizations -> (!stdenv.cc.isClang))
+  "Optimizations with clang are not supported. configure: error: llvm-profdata is required for a --enable-optimizations build but could not be found.";
+
+assert lib.assertMsg (reproducibleBuild -> stripBytecode)
+  "Deterministic builds require stripping bytecode.";
+
+assert lib.assertMsg (reproducibleBuild -> (!enableOptimizations))
+  "Deterministic builds are not achieved when optimizations are enabled.";
+
+
+with lib;
 
 let
-  majorVersion = "2.7";
-  minorVersion = "15";
-  minorVersionSuffix = "";
-  version = "${majorVersion}.${minorVersion}${minorVersionSuffix}";
-  libPrefix = "python${majorVersion}";
-  sitePackages = "lib/${libPrefix}/site-packages";
+  buildPackages = pkgsBuildHost;
+  inherit (passthru) pythonForBuild;
+
+  pythonForBuildInterpreter = if stdenv.hostPlatform == stdenv.buildPlatform then
+    "$out/bin/python"
+  else pythonForBuild.interpreter;
+
+  passthru = passthruFun rec {
+    inherit self sourceVersion packageOverrides;
+    implementation = "cpython";
+    libPrefix = "python${pythonVersion}";
+    executable = libPrefix;
+    pythonVersion = with sourceVersion; "${major}.${minor}";
+    sitePackages = "lib/${libPrefix}/site-packages";
+    inherit hasDistutilsCxxPatch;
+    pythonOnBuildForBuild = pkgsBuildBuild.${pythonAttr};
+    pythonOnBuildForHost = pkgsBuildHost.${pythonAttr};
+    pythonOnBuildForTarget = pkgsBuildTarget.${pythonAttr};
+    pythonOnHostForHost = pkgsHostHost.${pythonAttr};
+    pythonOnTargetForTarget = pkgsTargetTarget.${pythonAttr} or {};
+  } // {
+    inherit ucsEncoding;
+  };
+
+  version = with sourceVersion; "${major}.${minor}.${patch}${suffix}";
 
   src = fetchurl {
-    url = "https://www.python.org/ftp/python/${majorVersion}.${minorVersion}/Python-${version}.tar.xz";
-    sha256 = "0x2mvz9dp11wj7p5ccvmk9s0hzjk2fa1m462p395l4r6bfnb3n92";
+    url = with sourceVersion; "https://www.python.org/ftp/python/${major}.${minor}.${patch}/Python-${version}.tar.xz";
+    inherit sha256;
   };
 
   hasDistutilsCxxPatch = !(stdenv.cc.isGNU or false);
@@ -66,20 +108,27 @@ let
         sha256 = "0l9rw6r5r90iybdkp3hhl2pf0h0s1izc68h5d3ywrm92pq32wz57";
       })
 
-      # "`type_getattro()` calls `tp_descr_get(self, obj, type)` without actually owning a reference to "self".
-      # In very rare cases, this can cause a segmentation fault if "self" is deleted by the descriptor."
-      # https://github.com/python/cpython/pull/6118
-      (fetchpatch {
-        name = "type_getattro.patch";
-        url = "file://${./type_getattro.patch}";
-        sha256 = "11v9yx20hs3jmw0wggzvmw39qs4mxay4kb8iq2qjydwy9ya61nrd";
-      })
+      # Fix race-condition during pyc creation. Has a slight backwards
+      # incompatible effect: pyc symlinks will now be overridden
+      # (https://bugs.python.org/issue17222). Included in python >= 3.4,
+      # backported in debian since 2013.
+      # https://bugs.python.org/issue13146
+      ./atomic_pyc.patch
 
-      (fetchpatch {
-        name = "CVE-2018-1000802.patch";
-        url = "https://github.com/python/cpython/pull/8985.patch";
-        sha256 = "1c8nq2c9sjqa8ipl62hiandg6a7lzrwwfhi3ky6jd3pxgyalrh97";
-      })
+      # Backport from CPython 3.8 of a good list of tests to run for PGO.
+      ./profile-task.patch
+
+      # Patch is likely to go away in the next release (if there is any)
+      ./CVE-2019-20907.patch
+
+      ./CVE-2021-3177.patch
+
+      # The workaround is for unittests on Win64, which we don't support.
+      # It does break aarch64-darwin, which we do support. See:
+      # * https://bugs.python.org/issue35523
+      # * https://github.com/python/cpython/commit/e6b247c8e524
+      ../3.7/no-win64-workaround.patch
+
     ] ++ optionals (x11Support && stdenv.isDarwin) [
       ./use-correct-tcl-tk-on-darwin.patch
     ] ++ optionals stdenv.isLinux [
@@ -90,6 +139,9 @@ let
       # (since it will do a futile invocation of gcc (!) to find
       # libuuid, slowing down program startup a lot).
       ./no-ldconfig.patch
+
+      # Fix ctypes.util.find_library with gcc10.
+      ./find_library-gcc10.patch
 
     ] ++ optionals stdenv.hostPlatform.isCygwin [
       ./2.5.2-ctypes-util-find_library.patch
@@ -129,7 +181,9 @@ let
         --replace 'os.popen(comm)' 'os.popen("${coreutils}/bin/nproc")'
     '';
 
-  configureFlags = [
+  configureFlags = optionals enableOptimizations [
+    "--enable-optimizations"
+  ] ++ [
     "--enable-shared"
     "--with-threads"
     "--enable-unicode=ucs${toString ucsEncoding}"
@@ -165,7 +219,8 @@ let
   ]
     # Never even try to use lchmod on linux,
     # don't rely on detecting glibc-isms.
-  ++ optional stdenv.hostPlatform.isLinux "ac_cv_func_lchmod=no";
+  ++ optional stdenv.hostPlatform.isLinux "ac_cv_func_lchmod=no"
+  ++ optional static "LDFLAGS=-static";
 
   buildInputs =
     optional (stdenv ? cc && stdenv.cc.libc != null) stdenv.cc.libc ++
@@ -174,10 +229,11 @@ let
     ++ optional stdenv.hostPlatform.isCygwin expat
     ++ [ db gdbm ncurses sqlite readline ]
     ++ optionals x11Support [ tcl tk xlibsWrapper libX11 ]
-    ++ optionals stdenv.isDarwin ([ CF ] ++ optional (configd != null) configd);
+    ++ optional (stdenv.isDarwin && configd != null) configd;
   nativeBuildInputs =
-    optionals (stdenv.hostPlatform != stdenv.buildPlatform)
-    [ buildPackages.stdenv.cc buildPackages.python ];
+    [ autoreconfHook ]
+    ++ optionals (stdenv.hostPlatform != stdenv.buildPlatform)
+      [ buildPackages.stdenv.cc buildPackages.python ];
 
   mkPaths = paths: {
     C_INCLUDE_PATH = makeSearchPathOutput "dev" "include" paths;
@@ -185,20 +241,19 @@ let
   };
 
   # Python 2.7 needs this
-  crossCompileEnv = stdenv.lib.optionalAttrs (stdenv.hostPlatform != stdenv.buildPlatform)
+  crossCompileEnv = lib.optionalAttrs (stdenv.hostPlatform != stdenv.buildPlatform)
                       { _PYTHON_HOST_PLATFORM = stdenv.hostPlatform.config; };
 
   # Build the basic Python interpreter without modules that have
   # external dependencies.
 
-in stdenv.mkDerivation ({
-    name = "python-${version}";
-    pythonVersion = majorVersion;
+in with passthru; stdenv.mkDerivation ({
+    pname = "python";
+    inherit version;
 
-    inherit majorVersion version src patches buildInputs nativeBuildInputs
-            preConfigure configureFlags;
+    inherit src patches buildInputs nativeBuildInputs preConfigure configureFlags;
 
-    LDFLAGS = stdenv.lib.optionalString (!stdenv.isDarwin) "-lgcc_s";
+    LDFLAGS = lib.optionalString (!stdenv.isDarwin) "-lgcc_s";
     inherit (mkPaths buildInputs) C_INCLUDE_PATH LIBRARY_PATH;
 
     NIX_CFLAGS_COMPILE = optionalString stdenv.isDarwin "-msse2"
@@ -215,7 +270,7 @@ in stdenv.mkDerivation ({
       ''
         # needed for some packages, especially packages that backport
         # functionality to 2.x from 3.x
-        for item in $out/lib/python${majorVersion}/test/*; do
+        for item in $out/lib/${libPrefix}/test/*; do
           if [[ "$item" != */test_support.py*
              && "$item" != */test/support
              && "$item" != */test/regrtest.py* ]]; then
@@ -224,55 +279,42 @@ in stdenv.mkDerivation ({
             echo $item
           fi
         done
-        touch $out/lib/python${majorVersion}/test/__init__.py
-        ln -s $out/lib/python${majorVersion}/pdb.py $out/bin/pdb
-        ln -s $out/lib/python${majorVersion}/pdb.py $out/bin/pdb${majorVersion}
+        touch $out/lib/${libPrefix}/test/__init__.py
+        ln -s $out/lib/${libPrefix}/pdb.py $out/bin/pdb
+        ln -s $out/lib/${libPrefix}/pdb.py $out/bin/pdb${sourceVersion.major}.${sourceVersion.minor}
         ln -s $out/share/man/man1/{python2.7.1.gz,python.1.gz}
-
-        paxmark E $out/bin/python${majorVersion}
-
-        # Python on Nix is not manylinux1 compatible. https://github.com/NixOS/nixpkgs/issues/18484
-        echo "manylinux1_compatible=False" >> $out/lib/${libPrefix}/_manylinux.py
 
         rm "$out"/lib/python*/plat-*/regen # refers to glibc.dev
 
         # Determinism: Windows installers were not deterministic.
         # We're also not interested in building Windows installers.
         find "$out" -name 'wininst*.exe' | xargs -r rm -f
-      '' + optionalString (stdenv.hostPlatform == stdenv.buildPlatform)
-      ''
-        # Determinism: rebuild all bytecode
-        # We exclude lib2to3 because that's Python 2 code which fails
-        # We rebuild three times, once for each optimization level
-        find $out -name "*.py" | $out/bin/python -m compileall -q -f -x "lib2to3" -i -
-        find $out -name "*.py" | $out/bin/python -O -m compileall -q -f -x "lib2to3" -i -
-        find $out -name "*.py" | $out/bin/python -OO -m compileall -q -f -x "lib2to3" -i -
+      '' + optionalString stripBytecode ''
+        # Determinism: deterministic bytecode
+        # First we delete all old bytecode.
+        find $out -name "*.pyc" -delete
+        '' + optionalString rebuildBytecode ''
+        # Then, we build for the two optimization levels.
+        # We do not build unoptimized bytecode, because its not entirely deterministic yet.
+        find $out -name "*.py" | ${pythonForBuildInterpreter} -O  -m compileall -q -f -x "lib2to3" -i -
+        find $out -name "*.py" | ${pythonForBuildInterpreter} -OO -m compileall -q -f -x "lib2to3" -i -
       '' + optionalString stdenv.hostPlatform.isCygwin ''
         cp libpython2.7.dll.a $out/lib
       '';
 
-    passthru = let
-      pythonPackages = callPackage ../../../../../top-level/python-packages.nix {
-        python = self;
-        overrides = packageOverrides;
-      };
-    in rec {
-      inherit libPrefix sitePackages x11Support hasDistutilsCxxPatch ucsEncoding;
-      executable = libPrefix;
-      buildEnv = callPackage ../../wrapper.nix { python = self; inherit (pythonPackages) requiredPythonModules; };
-      withPackages = import ../../with-packages.nix { inherit buildEnv pythonPackages;};
-      pkgs = pythonPackages;
-      isPy2 = true;
-      isPy27 = true;
-      interpreter = "${self}/bin/${executable}";
-    };
+    inherit passthru;
+
+    postFixup = ''
+      # Include a sitecustomize.py file. Note it causes an error when it's in postInstall with 2.7.
+      cp ${../../sitecustomize.py} $out/${sitePackages}/sitecustomize.py
+    '';
 
     enableParallelBuilding = true;
 
     doCheck = false; # expensive, and fails
 
     meta = {
-      homepage = http://python.org;
+      homepage = "http://python.org";
       description = "A high-level dynamically-typed programming language";
       longDescription = ''
         Python is a remarkably powerful dynamic programming language that
@@ -283,9 +325,9 @@ in stdenv.mkDerivation ({
         hierarchical packages; exception-based error handling; and very
         high level dynamic data types.
       '';
-      license = stdenv.lib.licenses.psfl;
-      platforms = stdenv.lib.platforms.all;
-      maintainers = with stdenv.lib.maintainers; [ fridh ];
+      license = lib.licenses.psfl;
+      platforms = lib.platforms.all;
+      maintainers = with lib.maintainers; [ fridh ];
       # Higher priority than Python 3.x so that `/bin/python` points to `/bin/python2`
       # in case both 2 and 3 are installed.
       priority = -100;

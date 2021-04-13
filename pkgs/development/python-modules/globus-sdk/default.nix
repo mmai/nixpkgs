@@ -1,36 +1,38 @@
 { lib
 , buildPythonPackage
-, flake8
-, nose2
-, mock
+, fetchFromGitHub
 , requests
 , pyjwt
-, fetchPypi
+, pytestCheckHook
+, responses
 }:
 
 buildPythonPackage rec {
   pname = "globus-sdk";
-  version = "1.6.1";
+  version = "2.0.1";
 
-  src = fetchPypi {
-    inherit pname version;
-    sha256 = "aae6142ec8136d835f0f5c48824a65df5eb964863e155a5d90ce7ee8b84b0f8a";
+  src = fetchFromGitHub {
+    owner = "globus";
+    repo = "globus-sdk-python";
+    rev = version;
+    sha256 = "1kqnr50iwcq9nx40lblbqzf327cdcbkrir6vh70067hk33rq0gm9";
   };
 
-  checkPhase = ''
-    py.test tests
-  '';
+  propagatedBuildInputs = [
+    requests
+    pyjwt
+  ];
 
-  # No tests in archive
-  doCheck = false;
-  
-  checkInputs = [ flake8 nose2 mock ];
-  
-  propagatedBuildInputs = [ requests pyjwt  ];
- 
+  checkInputs = [
+    pytestCheckHook
+    responses
+  ];
+
+  pythonImportsCheck = [ "globus_sdk" ];
+
   meta = with lib; {
-    description = "A convenient Pythonic interface to Globus REST APIs, including the Transfer API and the Globus Auth API.";
-    homepage =  https://github.com/globus/globus-sdk-python;
+    description = "A convenient Pythonic interface to Globus REST APIs, including the Transfer API and the Globus Auth API";
+    homepage =  "https://github.com/globus/globus-sdk-python";
     license = licenses.asl20;
     maintainers = with maintainers; [ ixxie ];
   };

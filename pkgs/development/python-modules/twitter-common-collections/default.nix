@@ -1,4 +1,4 @@
-{ stdenv
+{ lib
 , buildPythonPackage
 , fetchPypi
 , twitter-common-lang
@@ -6,16 +6,16 @@
 
 buildPythonPackage rec {
   pname   = "twitter.common.collections";
-  version = "0.3.9";
+  version = "0.3.11";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "0wf8ks6y2kalx2inzayq0w4kh3kg25daik1ac7r6y79i03fslsc5";
+    sha256 = "ede4caff74928156f7ff38dac9b0811893de41966c39cd5b2fdea53418349ca8";
   };
 
   propagatedBuildInputs = [ twitter-common-lang ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Twitter's common collections";
     homepage    = "https://twitter.github.io/commons/";
     license     = licenses.asl20;

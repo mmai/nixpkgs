@@ -1,15 +1,16 @@
 { lib, stdenv, fetchurl, readline, tcp_wrappers, pcre, makeWrapper, gcc }:
 
 stdenv.mkDerivation rec {
-  name = "atftp-${version}";
-  version = "0.7.1";
+  pname = "atftp";
+  version = "0.7.4";
 
   src = fetchurl {
-    url = "mirror://sourceforge/atftp/${name}.tar.gz";
-    sha256 = "0bgr31gbnr3qx4ixf8hz47l58sh3367xhcnfqd8233fvr84nyk5f";
+    url = "mirror://sourceforge/atftp/${pname}-${version}.tar.gz";
+    sha256 = "sha256-08nNDZcd/Hhtel9AVcNdTmaq/IECrANHPvIlvfftsmo=";
   };
 
-  buildInputs = [ readline tcp_wrappers pcre makeWrapper gcc ];
+  nativeBuildInputs = [ makeWrapper ];
+  buildInputs = [ readline tcp_wrappers pcre gcc ];
 
   # Expects pre-GCC5 inline semantics
   NIX_CFLAGS_COMPILE = "-std=gnu89";

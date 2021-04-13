@@ -4,17 +4,17 @@
 
 buildPythonPackage rec {
   pname = "easy-thumbnails";
-  version = "2.5";
+  version = "2.7.1";
 
   meta = {
     description = "Easy thumbnails for Django";
-    homepage = https://github.com/SmileyChris/easy-thumbnails;
+    homepage = "https://github.com/SmileyChris/easy-thumbnails";
     license = lib.licenses.bsd3;
   };
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "e244d1f26027fc32c6ca60ffb0169a39099446f614b0433e907a2588ae7d9b95";
+    sha256 = "f862949208d9066cd3d84ffcf9c2dbe9c7344ea6152b741e440f861eca46855c";
   };
 
   propagatedBuildInputs = [ django pillow ];

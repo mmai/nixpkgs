@@ -1,10 +1,14 @@
-{ stdenv, lib, fetchPypi, buildPythonPackage, isPy3k
+{ lib, fetchPypi, buildPythonPackage, isPy3k
 , numpy
+, wheel
 , werkzeug
 , protobuf
 , grpcio
 , markdown
-, futures
+, absl-py
+, google-auth-oauthlib
+, tensorboard-plugin-wit
+, tensorboard-plugin-profile
 }:
 
 # tensorflow/tensorboard is built from a downloaded wheel, because
@@ -13,26 +17,50 @@
 
 buildPythonPackage rec {
   pname = "tensorflow-tensorboard";
-  version = "1.11.0";
+  version = "2.4.0";
   format = "wheel";
+  disabled = !isPy3k;
 
-  src = fetchPypi ({
+  src = fetchPypi {
     pname = "tensorboard";
-    inherit version;
-    format = "wheel";
-  } // (if isPy3k then {
+    inherit version format;
     python = "py3";
-    sha256 = "1nkd37zq9mk0gc9x6d4x8whahbx2cn0wl94lir3g1pibdzx9hc4v";
-  } else {
-    python = "py2";
-    sha256 = "1mkyb5gn952i4s7fmc9ay4yh74ysrqbiqna6dl1qmahjpbaavbf5";
-  }));
+    sha256 = "0f17h6i398n8maam0r3rssqvdqnqbwjyf96nnhf482anm1iwdq6d";
+  };
 
-  propagatedBuildInputs = [ numpy werkzeug protobuf markdown grpcio ] ++ lib.optional (!isPy3k) futures;
+  propagatedBuildInputs = [
+    numpy
+    werkzeug
+    protobuf
+    markdown
+    grpcio
+    absl-py
+    google-auth-oauthlib
+    tensorboard-plugin-profile
+    tensorboard-plugin-wit
+    # not declared in install_requires, but used at runtime
+    # https://github.com/NixOS/nixpkgs/issues/73840
+    wheel
+  ];
 
-  meta = with stdenv.lib; {
+  # in the absence of a real test suite, run cli and imports
+  checkPhase = ''
+    $out/bin/tensorboard --help > /dev/null
+  '';
+
+  pythonImportsCheck = [
+    "tensorboard"
+    "tensorboard.backend"
+    "tensorboard.compat"
+    "tensorboard.data"
+    "tensorboard.plugins"
+    "tensorboard.summary"
+    "tensorboard.util"
+  ];
+
+  meta = with lib; {
     description = "TensorFlow's Visualization Toolkit";
-    homepage = http://tensorflow.org;
+    homepage = "http://tensorflow.org";
     license = licenses.asl20;
     maintainers = with maintainers; [ abbradar ];
   };

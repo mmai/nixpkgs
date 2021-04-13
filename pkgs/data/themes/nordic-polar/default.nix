@@ -1,17 +1,17 @@
-{ stdenv, fetchurl, gtk-engine-murrine }:
+{ lib, stdenv, fetchurl, gtk-engine-murrine }:
 
 stdenv.mkDerivation rec {
-  name = "nordic-polar-${version}";
-  version = "1.3.0";
+  pname = "nordic-polar";
+  version = "1.9.0";
 
   srcs = [
     (fetchurl {
       url = "https://github.com/EliverLara/Nordic-Polar/releases/download/v${version}/Nordic-Polar.tar.xz";
-      sha256 = "1c5zgymkwd89fr680c49siwbkhfbay56iq9vlyqkj1dp0xnc528s";
+      sha256 = "1583mx8frkl5w26myczbyrggrp07lmpsfj00h1bzicw6lz8jbxf1";
     })
     (fetchurl {
       url = "https://github.com/EliverLara/Nordic-Polar/releases/download/v${version}/Nordic-Polar-standard-buttons.tar.xz";
-      sha256 = "0nxzcgqzc42qvnhafranz6rwanqb4wzf9ychm5m4yrlp3ngw38p4";
+      sha256 = "1n2qys0xcg1k28bwfrrr44cqz7q2rnfj6ry6qgd67ivgh63kmcq6";
     })
   ];
 
@@ -25,9 +25,9 @@ stdenv.mkDerivation rec {
     rm $out/share/themes/*/{LICENSE,README.md}
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Gtk theme created using the awesome Nord color pallete";
-    homepage = https://github.com/EliverLara/Nordic-Polar;
+    homepage = "https://github.com/EliverLara/Nordic-Polar";
     license = licenses.gpl3;
     platforms = platforms.all;
     maintainers = [ maintainers.romildo ];

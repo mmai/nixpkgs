@@ -1,38 +1,93 @@
-{ stdenv, fetchurl, meson, ninja, pkgconfig, gettext, libxml2
-, desktop-file-utils, python3, wrapGAppsHook , gtk, gnome3, gnome-autoar
-, glib-networking, shared-mime-info, libnotify, libexif, libseccomp , exempi
-, librsvg, tracker, tracker-miners, gexiv2, libselinux, gdk_pixbuf
-, substituteAll, bubblewrap
+{ lib, stdenv
+, fetchurl
+, meson
+, ninja
+, pkg-config
+, gettext
+, libxml2
+, desktop-file-utils
+, python3
+, wrapGAppsHook
+, gtk3
+, gnome3
+, gnome-autoar
+, glib-networking
+, shared-mime-info
+, libnotify
+, libexif
+, libseccomp
+, exempi
+, librsvg
+, tracker
+, tracker-miners
+, gexiv2
+, libselinux
+, gdk-pixbuf
+, substituteAll
+, gnome-desktop
+, gst_all_1
+, gsettings-desktop-schemas
+, gobject-introspection
 }:
 
-let
+stdenv.mkDerivation rec {
   pname = "nautilus";
-  version = "3.30.5";
-in stdenv.mkDerivation rec {
-  name = "${pname}-${version}";
+  version = "3.38.2";
 
   src = fetchurl {
-    url = "mirror://gnome/sources/${pname}/${stdenv.lib.versions.majorMinor version}/${name}.tar.xz";
-    sha256 = "144r4py9b8w9ycsg6fggjg05kwvymh003qsb3h6apgpch5y3zgnv";
+    url = "mirror://gnome/sources/${pname}/${lib.versions.majorMinor version}/${pname}-${version}.tar.xz";
+    sha256 = "19ln84d6s05h6cvx3c500bg5pvkz4k6p6ykmr2201rblq9afp76h";
   };
 
+  patches = [
+    # Allow changing extension directory using environment variable.
+    ./extension_dir.patch
+
+    # Hardcode required paths.
+    (substituteAll {
+      src = ./fix-paths.patch;
+      inherit tracker;
+    })
+  ];
+
   nativeBuildInputs = [
-    meson ninja pkgconfig libxml2 gettext python3 wrapGAppsHook
     desktop-file-utils
+    gettext
+    gobject-introspection
+    libxml2
+    meson
+    ninja
+    pkg-config
+    python3
+    wrapGAppsHook
   ];
 
   buildInputs = [
-    glib-networking shared-mime-info libexif gtk exempi libnotify libselinux
-    tracker tracker-miners gexiv2 libseccomp bubblewrap
-    gnome3.adwaita-icon-theme gnome3.gsettings-desktop-schemas
+    exempi
+    gexiv2
+    glib-networking
+    gnome-desktop
+    gnome3.adwaita-icon-theme
+    gsettings-desktop-schemas
+    gst_all_1.gst-plugins-base
+    gtk3
+    libexif
+    libnotify
+    libseccomp
+    libselinux
+    shared-mime-info
+    tracker
+    tracker-miners
   ];
 
-  propagatedBuildInputs = [ gnome-autoar ];
+  propagatedBuildInputs = [
+    gnome-autoar
+  ];
 
   preFixup = ''
     gappsWrapperArgs+=(
       # Thumbnailers
-      --prefix XDG_DATA_DIRS : "${gdk_pixbuf}/share"
+      --prefix XDG_DATA_DIRS : "${gdk-pixbuf}/share"
       --prefix XDG_DATA_DIRS : "${librsvg}/share"
       --prefix XDG_DATA_DIRS : "${shared-mime-info}/share"
     )
@@ -42,17 +97,6 @@ in stdenv.mkDerivation rec {
     patchShebangs build-aux/meson/postinstall.py
   '';
 
-  patches = [
-    ./extension_dir.patch
-    # 3.30 now generates it's own thummbnails,
-    # and no longer depends on `gnome-desktop`
-    (substituteAll {
-      src = ./bubblewrap-paths.patch;
-      bubblewrap_bin = "${bubblewrap}/bin/bwrap";
-      inherit (builtins) storeDir;
-    })
-  ];
-
   passthru = {
     updateScript = gnome3.updateScript {
       packageName = pname;
@@ -60,11 +104,11 @@ in stdenv.mkDerivation rec {
     };
   };
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "The file manager for GNOME";
-    homepage = https://wiki.gnome.org/Apps/Files;
+    homepage = "https://wiki.gnome.org/Apps/Files";
     license = licenses.gpl3Plus;
     platforms = platforms.linux;
-    maintainers = gnome3.maintainers;
+    maintainers = teams.gnome.members;
   };
 }

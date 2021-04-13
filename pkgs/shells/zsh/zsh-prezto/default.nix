@@ -1,30 +1,39 @@
-{ stdenv, fetchgit }:
+{ lib, stdenv, fetchFromGitHub, unstableGitUpdater }:
 
 stdenv.mkDerivation rec {
-  name = "zsh-prezto-2017-12-03";
-  src = fetchgit {
-    url = "https://github.com/sorin-ionescu/prezto";
-    rev = "029414581e54f5b63156f81acd0d377e8eb78883";
-    sha256 = "0crrj2nq0wcv5in8qimnkca2an760aqald13vq09s5kbwwc9rs1f";
+  pname = "zsh-prezto";
+  version = "unstable-2021-01-19";
+
+  src = fetchFromGitHub {
+    owner = "sorin-ionescu";
+    repo = "prezto";
+    rev = "704fc46c3f83ca1055becce65fb513a533f48982";
+    sha256 = "0rkbx6hllf6w6x64mggbhvm1fvbq5sr5kvf06sarfkpz5l0a5wh3";
     fetchSubmodules = true;
   };
-  buildPhase = ''
-    sed -i -e "s|\''${ZDOTDIR:\-\$HOME}/.zpreztorc|/etc/zpreztorc|g" init.zsh
-    sed -i -e "s|\''${ZDOTDIR:\-\$HOME}/.zprezto/|$out/|g" init.zsh
-    for i in runcoms/*; do
-      sed -i -e "s|\''${ZDOTDIR:\-\$HOME}/.zprezto/|$out/|g" $i
-    done
-    sed -i -e "s|\''${0:h}/cache.zsh|\''${ZDOTDIR:\-\$HOME}/.zfasd_cache|g" modules/fasd/init.zsh
+
+  postPatch = ''
+    # make zshrc aware of where zsh-prezto is installed
+    sed -i -e "s|\''${ZDOTDIR:\-\$HOME}/.zprezto/|$out/share/zsh-prezto/|g" runcoms/zshrc
   '';
+
   installPhase = ''
-    mkdir -p $out
-    cp ./* $out/ -R
+    mkdir -p $out/share/zsh-prezto
+    cp -R ./ $out/share/zsh-prezto
   '';
-  meta = with stdenv.lib; {
-    description = "Prezto is the configuration framework for Zsh; it enriches the command line interface environment with sane defaults, aliases, functions, auto completion, and prompt themes.";
-    homepage = https://github.com/sorin-ionescu/prezto;
+
+  passthru.updateScript = unstableGitUpdater {};
+
+  meta = with lib; {
+    description = "The configuration framework for Zsh";
+    longDescription = ''
+      Prezto is the configuration framework for Zsh; it enriches
+      the command line interface environment with sane defaults,
+      aliases, functions, auto completion, and prompt themes.
+    '';
+    homepage = "https://github.com/sorin-ionescu/prezto";
     license = licenses.mit;
-    maintainers = with maintainers; [ garbas ];
-    platforms = with platforms; unix;
+    maintainers = with maintainers; [ holymonson ];
+    platforms = platforms.unix;
   };
 }

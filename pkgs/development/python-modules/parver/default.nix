@@ -11,11 +11,11 @@
 
 buildPythonPackage rec {
   pname = "parver";
-  version = "0.2.0";
+  version = "0.3.1";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "1nylv880zxnm9waw32y8dmdc435jv5gjcajv8qahafm7v1prgcmq";
+    sha256 = "c902e0653bcce927cc156a7fd9b3a51924cbce3bf3d0bfd49fc282bfd0c5dfd3";
   };
 
   propagatedBuildInputs = [ six attrs arpeggio ];

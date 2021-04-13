@@ -15,26 +15,46 @@
 
 buildPythonPackage rec {
   pname = "nbval";
-  version = "0.9.1";
+  version = "0.9.6";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "3f18b87af4e94ccd073263dd58cd3eebabe9f5e4d6ab535b39d3af64811c7eda";
+    sha256 = "cfefcd2ef66ee2d337d0b252c6bcec4023384eb32e8b9e5fcc3ac80ab8cd7d40";
   };
 
-  LC_ALL = "en_US.UTF-8";
+  checkInputs = [
+    pytest
+    matplotlib
+    sympy
+    pytestcov
+  ];
 
   buildInputs = [ glibcLocales ];
-  checkInputs = [ matplotlib sympy pytestcov ];
-  propagatedBuildInputs = [ coverage ipykernel jupyter_client nbformat pytest six ];
 
+  propagatedBuildInputs = [
+    coverage
+    ipykernel
+    jupyter_client
+    nbformat
+    pytest
+    six
+  ];
+
+  # Set HOME so that matplotlib doesn't try to use
+  # /homeless-shelter/.config/matplotlib, otherwise some of the tests fail for
+  # having an unexpected warning on stderr produced by matplotlib.
+  # Ignore impure tests.
   checkPhase = ''
-    pytest tests --current-env --ignore tests/test_timeouts.py
+    export HOME=$(mktemp -d)
+    pytest tests --ignore tests/test_timeouts.py
   '';
+
+  # Some of the tests use localhost networking.
+  __darwinAllowLocalNetworking = true;
 
   meta = with lib; {
     description = "A py.test plugin to validate Jupyter notebooks";
-    homepage = https://github.com/computationalmodelling/nbval;
+    homepage = "https://github.com/computationalmodelling/nbval";
     license = licenses.bsd3;
     maintainers = [ maintainers.costrouc ];
   };

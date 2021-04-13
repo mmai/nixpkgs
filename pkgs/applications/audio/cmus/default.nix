@@ -1,5 +1,5 @@
-{ stdenv, fetchFromGitHub, runCommand, ncurses, pkgconfig
-, libiconv, CoreAudio
+{ config, lib, stdenv, fetchFromGitHub, runCommand, ncurses, pkg-config
+, libiconv, CoreAudio, AudioUnit
 
 , alsaSupport ? stdenv.isLinux, alsaLib ? null
 # simple fallback for everyone else
@@ -7,7 +7,8 @@
 , jackSupport ? false, libjack ? null
 , samplerateSupport ? jackSupport, libsamplerate ? null
 , ossSupport ? false, alsaOss ? null
-, pulseaudioSupport ? false, libpulseaudio ? null
+, pulseaudioSupport ? config.pulseaudio or false, libpulseaudio ? null
+, mprisSupport ? stdenv.isLinux, systemd ? null
 
 # TODO: add these
 #, artsSupport
@@ -38,7 +39,7 @@
 #, vtxSupport ? true, libayemu ? null
 }:
 
-with stdenv.lib;
+with lib;
 
 assert samplerateSupport -> jackSupport;
 
@@ -60,6 +61,7 @@ let
     (mkFlag samplerateSupport "CONFIG_SAMPLERATE=y" libsamplerate)
     (mkFlag ossSupport        "CONFIG_OSS=y"        alsaOss)
     (mkFlag pulseaudioSupport "CONFIG_PULSE=y"      libpulseaudio)
+    (mkFlag mprisSupport      "CONFIG_MPRIS=y"      systemd)
 
     #(mkFlag artsSupport      "CONFIG_ARTS=y")
     #(mkFlag roarSupport      "CONFIG_ROAR=y")
@@ -99,14 +101,14 @@ let
 in
 
 stdenv.mkDerivation rec {
-  name = "cmus-${version}";
-  version = "2.7.1";
+  pname = "cmus";
+  version = "2.9.1";
 
   src = fetchFromGitHub {
     owner  = "cmus";
     repo   = "cmus";
     rev    = "v${version}";
-    sha256 = "0xd96py21bl869qlv1353zw7xsgq6v5s8szr0ldr63zj5fgc2ps5";
+    sha256 = "sha256-HEiEnEWf/MzhPO19VKTLYzhylpEvyzy1Jxs6EW2NU34=";
   };
 
   patches = [ ./option-debugging.patch ];
@@ -116,17 +118,17 @@ stdenv.mkDerivation rec {
     "CONFIG_WAV=y"
   ] ++ concatMap (a: a.flags) opts);
 
-  nativeBuildInputs = [ pkgconfig ];
+  nativeBuildInputs = [ pkg-config ];
   buildInputs = [ ncurses ]
-    ++ stdenv.lib.optional stdenv.cc.isClang clangGCC
-    ++ stdenv.lib.optionals stdenv.isDarwin [ libiconv CoreAudio ]
-    ++ concatMap (a: a.deps) opts;
+    ++ lib.optional stdenv.cc.isClang clangGCC
+    ++ lib.optionals stdenv.isDarwin [ libiconv CoreAudio AudioUnit ]
+    ++ flatten (concatMap (a: a.deps) opts);
 
   makeFlags = [ "LD=$(CC)" ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Small, fast and powerful console music player for Linux and *BSD";
-    homepage = https://cmus.github.io/;
+    homepage = "https://cmus.github.io/";
     license = licenses.gpl2;
     maintainers = [ maintainers.oxij ];
     platforms = platforms.linux ++ platforms.darwin;

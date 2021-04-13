@@ -1,5 +1,5 @@
-{ stdenv, fetchurl, imake, bison, flex, gccmakedep
-, xproto, libXau, libXt, libXext, libXaw, libXpm, xorgcffiles }:
+{ lib, stdenv, fetchurl, imake, bison, flex, gccmakedep
+, xorgproto, libXau, libXt, libXext, libXaw, libXpm, xorgcffiles }:
 
 let
   pname = "nas";
@@ -14,7 +14,7 @@ in stdenv.mkDerivation {
 
   nativeBuildInputs = [ imake bison flex gccmakedep ];
 
-  buildInputs = [ xproto libXau libXt libXext libXaw libXpm ];
+  buildInputs = [ xorgproto libXau libXt libXext libXaw libXpm ];
 
   buildFlags = [ "WORLDOPTS=" "World" ];
 
@@ -25,9 +25,9 @@ in stdenv.mkDerivation {
     rm -r $out/nix
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A network transparent, client/server audio transport system";
-    homepage = http://radscan.com/nas.html;
+    homepage = "http://radscan.com/nas.html";
     license = licenses.mit;
     maintainers = [ maintainers.gnidorah ];
     platforms = platforms.linux;

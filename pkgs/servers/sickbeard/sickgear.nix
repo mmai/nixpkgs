@@ -1,16 +1,16 @@
-{ stdenv, fetchFromGitHub, python2, makeWrapper }:
+{ lib, stdenv, fetchFromGitHub, python2, makeWrapper }:
 
 let
   pythonEnv = python2.withPackages(ps: with ps; [ cheetah ]);
-in python2.pkgs.buildPythonApplication rec {
-  name = "sickgear-${version}";
-  version = "0.17.5";
+in stdenv.mkDerivation rec {
+  pname = "sickgear";
+  version = "0.23.15";
 
   src = fetchFromGitHub {
     owner = "SickGear";
     repo = "SickGear";
     rev = "release_${version}";
-    sha256 = "1lx060klgxz8gjanfjvya6p6kd8842qbpp1qhhiw49a25r8gyxpk";
+    sha256 = "sha256-xZ2SgYSEamh+Z64VKvIemqJLH/WjJHFji5qIameF5hM=";
   };
 
   dontBuild = true;
@@ -21,15 +21,15 @@ in python2.pkgs.buildPythonApplication rec {
 
   installPhase = ''
     mkdir -p $out/bin
-    cp -R {autoProcessTV,gui,lib,sickbeard,SickBeard.py} $out/
+    cp -R {autoProcessTV,gui,lib,sickbeard,sickgear.py,SickBeard.py} $out/
 
     makeWrapper $out/SickBeard.py $out/bin/sickgear
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "The most reliable stable TV fork of the great Sick-Beard to fully automate TV enjoyment with innovation";
     license     = licenses.gpl3;
-    homepage    = https:/github.com/SickGear/SickGear;
-    maintainers = with stdenv.lib.maintainers; [ ];
+    homepage    = "https://github.com/SickGear/SickGear";
+    maintainers = with lib.maintainers; [ rembo10 ];
   };
 }

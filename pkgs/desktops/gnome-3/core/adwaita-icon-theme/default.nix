@@ -1,21 +1,23 @@
-{ stdenv, fetchurl, pkgconfig, intltool, gnome3
-, iconnamingutils, gtk, gdk_pixbuf, librsvg, hicolor-icon-theme }:
+{ lib, stdenv, fetchurl, pkg-config, intltool, gnome3
+, iconnamingutils, gtk3, gdk-pixbuf, librsvg, hicolor-icon-theme }:
 
 stdenv.mkDerivation rec {
-  name = "adwaita-icon-theme-${version}";
-  version = "3.30.1";
+  pname = "adwaita-icon-theme";
+  version = "3.38.0";
 
   src = fetchurl {
-    url = "mirror://gnome/sources/adwaita-icon-theme/${stdenv.lib.versions.majorMinor version}/${name}.tar.xz";
-    sha256 = "1kp1lis3dr16jmlgycz1b29jsr6ir8wmqj6laqwlhs663cmjlxbd";
+    url = "mirror://gnome/sources/adwaita-icon-theme/${lib.versions.majorMinor version}/${pname}-${version}.tar.xz";
+    sha256 = "15xgz9wzk07442x3s3052as95g0223z4pp9qlsgcs323yama30v6";
   };
 
   # For convenience, we can specify adwaita-icon-theme only in packages
   propagatedBuildInputs = [ hicolor-icon-theme ];
 
-  buildInputs = [ gdk_pixbuf librsvg ];
+  buildInputs = [ gdk-pixbuf librsvg ];
 
-  nativeBuildInputs = [ pkgconfig intltool iconnamingutils gtk ];
+  nativeBuildInputs = [ pkg-config intltool iconnamingutils gtk3 ];
+
+  dontDropIconThemeCache = true;
 
   # remove a tree of dirs with no files within
   postInstall = '' rm -rf "$out/locale" '';
@@ -27,8 +29,8 @@ stdenv.mkDerivation rec {
     };
   };
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     platforms = with platforms; linux ++ darwin;
-    maintainers = gnome3.maintainers;
+    maintainers = teams.gnome.members;
   };
 }

@@ -1,29 +1,79 @@
-{ alsaLib, autoconf, automake, dssi, fetchurl, gtk2, libjack2
-, ladspaH, ladspaPlugins, liblo, libmad, libsamplerate, libsndfile
-, libtool, libvorbis, lilv, lv2, pkgconfig, qt4, rubberband, serd
-, sord, sratom, stdenv, suil }:
+{ alsaLib
+, aubio
+, cmake
+, dssi
+, fetchurl
+, flac
+, libjack2
+, ladspaH
+, ladspaPlugins
+, liblo
+, libmad
+, libsamplerate
+, libsndfile
+, libtool
+, libvorbis
+, lilv
+, lv2
+, mkDerivation
+, opusfile
+, pkg-config
+, qttools
+, qtbase
+, rubberband
+, serd
+, sord
+, sratom
+, lib
+, suil
+}:
 
-stdenv.mkDerivation rec {
-  version = "0.6.7";
-  name = "qtractor-${version}";
+mkDerivation rec {
+  pname = "qtractor";
+  version = "0.9.19";
 
   src = fetchurl {
-    url = "mirror://sourceforge/qtractor/${name}.tar.gz";
-    sha256 = "0h5nblfkl4s412c9f02b40nb8c8jq8ypz67z2qn3hkvhx6i9yxsg";
+    url = "mirror://sourceforge/${pname}/${pname}-${version}.tar.gz";
+    sha256 = "sha256-98/trRZRvNRPEA4ASS81qp2rMevpo5TIrtsU1TYMuT0=";
   };
 
-  buildInputs =
-    [ alsaLib autoconf automake dssi gtk2 libjack2 ladspaH
-      ladspaPlugins liblo libmad libsamplerate libsndfile libtool
-      libvorbis lilv lv2 pkgconfig qt4 rubberband serd sord sratom
-      suil
-    ];
+  nativeBuildInputs = [
+    cmake
+    libtool
+    pkg-config
+    qttools
+  ];
 
-  meta = with stdenv.lib; {
+  buildInputs = [
+    alsaLib
+    aubio
+    dssi
+    flac
+    libjack2
+    ladspaH
+    ladspaPlugins
+    liblo
+    libmad
+    libsamplerate
+    libsndfile
+    libtool
+    libvorbis
+    lilv
+    lv2
+    opusfile
+    qtbase
+    rubberband
+    serd
+    sord
+    sratom
+    suil
+  ];
+
+  meta = with lib; {
     description = "Audio/MIDI multi-track sequencer";
-    homepage = http://qtractor.sourceforge.net;
+    homepage = "https://qtractor.sourceforge.io";
     license = licenses.gpl2Plus;
+    maintainers = with maintainers; [ goibhniu ];
     platforms = platforms.linux;
-    maintainers = [ maintainers.goibhniu ];
   };
 }

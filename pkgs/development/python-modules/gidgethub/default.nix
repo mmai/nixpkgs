@@ -1,4 +1,4 @@
-{ stdenv
+{ lib
 , buildPythonPackage
 , fetchPypi
 , pythonOlder
@@ -11,30 +11,38 @@
 , tornado
 , aiohttp
 , uritemplate
+, pyjwt
 }:
 
 buildPythonPackage rec {
   pname = "gidgethub";
-  version = "3.0.0";
-  format = "flit";
+  version = "4.2.0";
 
   disabled = pythonOlder "3.6";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "1ebe79cf80ad64cb78c880efc7f30ac664e18b80dfd18ee201bf8685cf029628";
+    sha256 = "5526cc2a06bfad707d10ec118393e0d33c2aa524605255d96958c22c93e8e7aa";
   };
 
-  buildInputs = [ setuptools pytestrunner ];
+  nativeBuildInputs = [ setuptools pytestrunner ];
   checkInputs = [ pytest pytest-asyncio twisted treq tornado aiohttp ];
-  propagatedBuildInputs = [ uritemplate ];
+  propagatedBuildInputs = [
+    uritemplate
+    pyjwt
+  ];
+
+  postPatch = ''
+    substituteInPlace setup.py \
+      --replace "extras_require=extras_require," "extras_require=None,"
+  '';
 
   # requires network (reqests github.com)
   doCheck = false;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "An async GitHub API library";
-    homepage = https://github.com/brettcannon/gidgethub;
+    homepage = "https://github.com/brettcannon/gidgethub";
     license = licenses.asl20;
     maintainers = [ maintainers.costrouc ];
   };

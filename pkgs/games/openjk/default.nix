@@ -1,4 +1,4 @@
-{ stdenv, fetchFromGitHub, makeDesktopItem, makeWrapper, cmake, libjpeg, zlib, libpng, libGL, SDL2 }:
+{ lib, stdenv, fetchFromGitHub, makeDesktopItem, makeWrapper, cmake, libjpeg, zlib, libpng, libGL, SDL2 }:
 
 let
   jamp = makeDesktopItem rec {
@@ -19,18 +19,18 @@ let
     genericName = "Jedi Academy";
     categories = "Game;";
   };
-in stdenv.mkDerivation rec {
-  name = "OpenJK-2017-08-11";
+in stdenv.mkDerivation {
+  pname = "OpenJK";
+  version = "2020-07-03";
 
   src = fetchFromGitHub {
     owner = "JACoders";
     repo = "OpenJK";
-    rev = "a0828f06e0181c62e110f2f78d30acb5036b4113";
-    sha256 = "1wbb643z2nyhyirzzy3rz03wjqglwmsgnj7w5cl8167f9f9j9w0m";
+    rev = "0a336ce4dffe6505e3f754b59732402a1db95752";
+    sha256 = "1xagbz42hi3ivs208mnay2dbgh90pmwwbar2p1yfhj3zl3cghcs8";
   };
 
   dontAddPrefix = true;
-  enableParallelBuilding = true;
 
   nativeBuildInputs = [ makeWrapper cmake ];
   buildInputs = [ libjpeg zlib libpng libGL SDL2 ];
@@ -53,9 +53,9 @@ in stdenv.mkDerivation rec {
     ln -s ${jasp}/share/applications/* $out/share/applications
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "An open-source engine for Star Wars Jedi Academy game";
-    homepage = https://github.com/JACoders/OpenJK;
+    homepage = "https://github.com/JACoders/OpenJK";
     license = licenses.gpl2;
     platforms = platforms.linux;
     maintainers = with maintainers; [ gnidorah ];

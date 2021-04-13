@@ -11,6 +11,8 @@ appleDerivation {
     export PRIVATE_HEADERS_FOLDER_PATH=include
     bash xcodescripts/headers.sh
 
+    cp ${./CrashReporterClient.h} $out/include/CrashReporterClient.h
+
     cp ${Libc_10-9}/include/NSSystemDirectories.h $out/include
 
     # Ugh Apple stopped releasing this stuff so we need an older one...
@@ -27,4 +29,6 @@ appleDerivation {
     cp ${Libc_old}/include/libkern/OSAtomic.h       $out/include/libkern
     cp ${Libc_old}/include/libkern/OSCacheControl.h $out/include/libkern
   '';
+
+  appleHeaders = builtins.readFile ./headers.txt;
 }

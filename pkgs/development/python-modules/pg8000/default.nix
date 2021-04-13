@@ -1,26 +1,37 @@
-{ stdenv
+{ lib
 , buildPythonPackage
 , fetchPypi
-, pytz
-, six
+, passlib
+, pythonOlder
+, scramp
 }:
 
 buildPythonPackage rec {
   pname = "pg8000";
-  version = "1.12.3";
+  version = "1.19.0";
+  disabled = pythonOlder "3.6";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "18192d90409a3037619ef17f1924e3fd9c7169c9c1b3277cec1982116ec2b6de";
+    sha256 = "sha256-EexwwLIOpECAfiyGmUDxSE7qk9cbQ1gHtjhW3YK3RN0=";
   };
 
-  propagatedBuildInputs = [ pytz six ];
+  propagatedBuildInputs = [passlib scramp ];
 
-  meta = with stdenv.lib; {
-    homepage = https://github.com/mfenniak/pg8000;
-    description = "PostgreSQL interface library, for asyncio";
-    maintainers = with maintainers; [ garbas domenkozar ];
-    platforms = platforms.linux;
+  postPatch = ''
+    substituteInPlace setup.py \
+      --replace "scramp==1.3.0" "scramp>=1.3.0"
+  '';
+
+  # Tests require a running PostgreSQL instance
+  doCheck = false;
+  pythonImportsCheck = [ "pg8000" ];
+
+  meta = with lib; {
+    description = "Python driver for PostgreSQL";
+    homepage = "https://github.com/tlocke/pg8000";
+    license = with licenses; [ bsd3 ];
+    maintainers = with maintainers; [ domenkozar ];
+    platforms = platforms.unix;
   };
-
 }

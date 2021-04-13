@@ -1,41 +1,53 @@
-{ stdenv, fetchFromGitHub, autoreconfHook, ncurses, libevent, pkgconfig, makeWrapper }:
+{ lib, stdenv
+, fetchFromGitHub
+, autoreconfHook
+, pkg-config
+, bison
+, ncurses
+, libevent
+}:
 
 let
 
   bashCompletion = fetchFromGitHub {
     owner = "imomaliev";
     repo = "tmux-bash-completion";
-    rev = "fcda450d452f07d36d2f9f27e7e863ba5241200d";
-    sha256 = "092jpkhggjqspmknw7h3icm0154rg21mkhbc71j5bxfmfjdxmya8";
+    rev = "f5d53239f7658f8e8fbaf02535cc369009c436d6";
+    sha256 = "0sq2g3w0h3mkfa6qwqdw93chb5f1hgkz5vdl8yw8mxwdqwhsdprr";
   };
 
 in
 
 stdenv.mkDerivation rec {
-  name = "tmux-${version}";
-  version = "2.8";
+  pname = "tmux";
+  version = "3.1c";
 
   outputs = [ "out" "man" ];
 
   src = fetchFromGitHub {
     owner = "tmux";
     repo = "tmux";
-    rev = "01918cb0170e07288d3aec624516e6470bf5b7fc";
-    sha256 = "1fy87wvxn7r7jzqapvjisc1iizic3kxqk2lv83giqmw1y4g3s7rl";
+    rev = version;
+    sha256 = "1fqgpzfas85dn0sxlvvg6rj488jwgnxs8d3gqcm8lgs211m9qhcf";
   };
 
-  postPatch = ''
-    sed -i 's/2.8-rc/2.8/' configure.ac
-  '';
+  nativeBuildInputs = [
+    pkg-config
+    autoreconfHook
+    bison
+  ];
 
-  nativeBuildInputs = [ pkgconfig autoreconfHook ];
-
-  buildInputs = [ ncurses libevent makeWrapper ];
+  buildInputs = [
+    ncurses
+    libevent
+  ];
 
   configureFlags = [
     "--sysconfdir=/etc"
     "--localstatedir=/var"
   ];
+
+  enableParallelBuilding = true;
 
   postInstall = ''
     mkdir -p $out/share/bash-completion/completions
@@ -43,7 +55,7 @@ stdenv.mkDerivation rec {
   '';
 
   meta = {
-    homepage = http://tmux.github.io/;
+    homepage = "https://tmux.github.io/";
     description = "Terminal multiplexer";
 
     longDescription =
@@ -60,9 +72,9 @@ stdenv.mkDerivation rec {
           * A clean, easily extended, BSD-licensed codebase, under active development.
       '';
 
-    license = stdenv.lib.licenses.bsd3;
+    license = lib.licenses.bsd3;
 
-    platforms = stdenv.lib.platforms.unix;
-    maintainers = with stdenv.lib.maintainers; [ thammers fpletz ];
+    platforms = lib.platforms.unix;
+    maintainers = with lib.maintainers; [ thammers fpletz ];
   };
 }

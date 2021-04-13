@@ -1,11 +1,12 @@
-{ stdenv, fetchurl }:
+{ lib, stdenv, fetchurl }:
 
 stdenv.mkDerivation rec {
-  name = "spice-protocol-0.12.14";
+  pname = "spice-protocol";
+  version = "0.14.1";
 
   src = fetchurl {
-    url = "https://www.spice-space.org/download/releases/${name}.tar.bz2";
-    sha256 = "170ckpgazvqv7hxy209myg67pqnd6c0gvr4ysbqgsfch6320nd90";
+    url = "https://www.spice-space.org/download/releases/${pname}-${version}.tar.bz2";
+    sha256 = "0ahk5hlanwhbc64r80xmchdav3ls156cvh9l68a0l22bhdhxmrkr";
   };
 
   postInstall = ''
@@ -13,11 +14,11 @@ stdenv.mkDerivation rec {
     ln -sv ../share/pkgconfig $out/lib/pkgconfig
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Protocol headers for the SPICE protocol";
-    homepage = https://www.spice-space.org/;
+    homepage = "https://www.spice-space.org/";
     license = licenses.bsd3;
     maintainers = with maintainers; [ bluescreen303 ];
-    platforms = platforms.linux;
+    platforms = platforms.all;
   };
 }

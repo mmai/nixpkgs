@@ -3,38 +3,78 @@
 , fetchurl
 , fetchpatch
 , makeWrapper
-, m4
+, readline
 , gmp
-# don't remove any packages -- results in a ~1.3G size increase
-# see https://github.com/NixOS/nixpkgs/pull/38754 for a discussion
-, keepAllPackages ? true
+# one of
+# - "minimal" (~400M):
+#     Install the bare minimum of packages required by gap to start.
+#     This is likely to break a lot of stuff. Do not expect upstream support with
+#     this configuration.
+# - "standard" (~700M):
+#     Install the "standard packages" which gap autoloads by default. These
+#     packages are effectively considered a part of gap.
+# - "full" (~1.7G):
+#     Install all available packages. This takes a lot of space.
+, packageSet ? "standard"
+# Kept for backwards compatibility. Overrides packageSet to "full".
+, keepAllPackages ? false
 }:
+let
+  # packages absolutely required for gap to start
+  # `*` represents the version where applicable
+  requiredPackages = [
+    "GAPDoc-*"
+    "primgrp-*"
+    "SmallGrp-*"
+    "transgrp"
+  ];
+  # packages autoloaded by default if available
+  autoloadedPackages = [
+    "atlasrep"
+    "autpgrp-*"
+    "alnuth-*"
+    "crisp-*"
+    "ctbllib"
+    "FactInt-*"
+    "fga"
+    "irredsol-*"
+    "laguna-*"
+    "polenta-*"
+    "polycyclic-*"
+    "resclasses-*"
+    "sophus-*"
+    "tomlib-*"
+  ];
+  keepAll = keepAllPackages || (packageSet == "full");
+  packagesToKeep = requiredPackages ++ lib.optionals (packageSet == "standard") autoloadedPackages;
 
+  # Generate bash script that removes all packages from the `pkg` subdirectory
+  # that are not on the whitelist. The whitelist consists of strings expected by
+  # `find`'s `-name`.
+  removeNonWhitelistedPkgs = whitelist: ''
+    find pkg -type d -maxdepth 1 -mindepth 1 \
+  '' + (lib.concatStringsSep "\n" (map (str: "-not -name '${str}' \\") whitelist)) + ''
+    -exec echo "Removing package {}" \; \
+    -exec rm -r '{}' \;
+  '';
+in
 stdenv.mkDerivation rec {
   pname = "gap";
   # https://www.gap-system.org/Releases/
-  version = "4.10.0";
+  version = "4.10.2";
 
   src = fetchurl {
-    url = "https://www.gap-system.org/pub/gap/gap-${lib.versions.major version}.${lib.versions.minor version}/tar.bz2/gap-${version}.tar.bz2";
-    sha256 = "1dmb8v4p7j1nnf7sx8sg54b49yln36bi9acwp7w1d3a1nxj17ird";
+    url = "https://files.gap-system.org/gap-${lib.versions.major version}.${lib.versions.minor version}/tar.bz2/gap-${version}.tar.bz2";
+    sha256 = "0cp6ddk0469zzv1m1vair6gm27ic6c5m77ri8rn0znq3gaps6x94";
   };
 
   # remove all non-essential packages (which take up a lot of space)
-  preConfigure = ''
+  preConfigure = lib.optionalString (!keepAll) (removeNonWhitelistedPkgs packagesToKeep) + ''
     patchShebangs .
-  '' + lib.optionalString (!keepAllPackages) ''
-    find pkg -type d -maxdepth 1 -mindepth 1 \
-       -not -name 'GAPDoc-*' \
-       -not -name 'autpgrp*' \
-       -exec echo "Removing package {}" \; \
-       -exec rm -r {} \;
   '';
 
-  configureFlags = [ "--with-gmp=system" ];
-
   buildInputs = [
-    m4
+    readline
     gmp
   ];
 
@@ -43,34 +83,40 @@ stdenv.mkDerivation rec {
   ];
 
   patches = [
-    # bugfix: https://github.com/gap-system/gap/pull/3102
+    # https://github.com/gap-system/gap/pull/3294
     (fetchpatch {
-      name = "fix-infinite-loop-in-writeandcheck.patch";
-      url = "https://git.sagemath.org/sage.git/plain/build/pkgs/gap/patches/0001-a-version-of-the-writeandcheck.patch-from-Sage-that-.patch?id=5e61d7b6a0da3aa53d8176fa1fb9353cc559b098";
-      sha256 = "1zkv8bbiw3jdn54sqqvfkdkfsd7jxzq0bazwsa14g4sh2265d28j";
+      name = "add-make-install-targets.patch";
+      url = "https://github.com/gap-system/gap/commit/3361c172e6c5ff3bb3f01ba9d6f1dd4ad42cea80.patch";
+      sha256 = "1kwp9qnfvmlbpf1c3rs6j5m2jz22rj7a4hb5x1gj9vkpiyn5pdyj";
     })
 
-    # needed for libgap (sage): https://github.com/gap-system/gap/pull/3043
+    # Fix for locale specific tests causing issues. Already upstream.
+    # Backport of https://github.com/gap-system/gap/pull/4022
+    # WHEN REMOVING: also remove the`rm tst/testinstall/strings.tst` line in
+    # `postPatch` below. That line is necessary since the patch is not intended
+    # for gap 4.10.
     (fetchpatch {
-      name = "add-error-messages-helper.patch";
-      url = "https://git.sagemath.org/sage.git/plain/build/pkgs/gap/patches/0002-kernel-add-helper-function-for-writing-error-message.patch?id=5e61d7b6a0da3aa53d8176fa1fb9353cc559b098";
-      sha256 = "0c4ry5znb6hwwp8ld6k62yw8w6cqldflw3x49bbzizbmipfpidh5";
+      name = "remove-locale-specific-tests.patch";
+      url = "https://github.com/gap-system/gap/commit/c18b0c4215b5212a2cc4f305e2d5b94ba716bee8.patch";
+      excludes = ["tst/testinstall/stringobj.tst"];
+      sha256 = "1mz5b4mbw2jdd1ypp5s0dy6pp0jsvwsxr2dm4kbkls20r1r192sc";
     })
 
-    # needed for libgap (sage): https://github.com/gap-system/gap/pull/3096
-    (fetchpatch {
-      name = "gap-enter.patch";
-      url = "https://git.sagemath.org/sage.git/plain/build/pkgs/gap/patches/0003-Prototype-for-GAP_Enter-Leave-macros-to-bracket-use-.patch?id=5e61d7b6a0da3aa53d8176fa1fb9353cc559b098";
-      sha256 = "12fg8mb8rm6khsz1r4k3k26jrkx4q1rv13hcrfnlhn0m7iikvc3q";
-    })
+    # fixes aarch64 gc crashes: https://github.com/gap-system/gap/pull/3965
+    ./mark-genstackfuncbags-as-noinline.patch
   ];
+
+  postPatch = ''
+    # File not covered by the remove-locale-specific-tests.patch patch above.
+    rm tst/testinstall/strings.tst
+  '';
 
   # "teststandard" is a superset of testinstall. It takes ~1h instead of ~1min.
   # tests are run twice, once with all packages loaded and once without
   # checkTarget = "teststandard";
 
   doInstallCheck = true;
-  installCheckTarget = "testinstall";
+  installCheckTarget = "check";
 
   preInstallCheck = ''
     # gap tests check that the home directory exists
@@ -91,23 +137,22 @@ stdenv.mkDerivation rec {
     )
   '';
 
-  postCheck = ''
-    # The testsuite doesn't exit with a non-zero exit code on failure.
-    # It leaves its logs in dev/log however.
-
-    # grep for error messages
-    if grep ^##### dev/log/*; then
-        exit 1
-    fi
-  '';
-
   postBuild = ''
     pushd pkg
     bash ../bin/BuildPackages.sh
     popd
   '';
 
-  installPhase = ''
+  installTargets = [
+    "install-libgap"
+    "install-headers"
+  ];
+
+  # full `make install` is not yet implemented, just for libgap and headers
+  postInstall = ''
+    # Install config.h, which is not currently handled by `make install-headers`
+    cp gen/config.h "$out/include/gap"
+
     mkdir -p "$out/bin" "$out/share/gap/"
 
     mkdir -p "$out/share/gap"
@@ -129,13 +174,15 @@ stdenv.mkDerivation rec {
     [
       raskin
       chrisjefferson
+      timokau
     ];
     platforms = platforms.all;
-    # keeping all packages increases the package size considerably, wchich
-    # is why a local build is preferable in that situation. The timeframe
-    # is reasonable and that way the binary cache doesn't get overloaded.
+    broken = stdenv.isDarwin;
+    # keeping all packages increases the package size considerably, which is
+    # why a local build is preferable in that situation. The timeframe is
+    # reasonable and that way the binary cache doesn't get overloaded.
     hydraPlatforms = lib.optionals (!keepAllPackages) meta.platforms;
     license = licenses.gpl2;
-    homepage = http://gap-system.org/;
+    homepage = "https://www.gap-system.org";
   };
 }

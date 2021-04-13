@@ -1,12 +1,12 @@
-{ stdenv, fetchurl }:
+{ lib, stdenv, fetchurl }:
 
 stdenv.mkDerivation rec {
-  name = "airsonic-${version}";
-  version = "10.1.2";
+  pname = "airsonic";
+  version = "10.6.2";
 
   src = fetchurl {
     url = "https://github.com/airsonic/airsonic/releases/download/v${version}/airsonic.war";
-    sha256 = "0hpk801dipmzsswgx0y6m0xhwn5iz97agnb2bzbr5xhkl4a0d33k";
+    sha256 = "0q3qnqymj3gaa6n79pvbyidn1ga99lpngp5wvhlw1aarg1m7vccl";
   };
 
   buildCommand = ''
@@ -14,10 +14,10 @@ stdenv.mkDerivation rec {
     cp "$src" "$out/webapps/airsonic.war"
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Personal media streamer";
-    homepage = https://airsonic.github.io;
-    license = stdenv.lib.licenses.gpl3;
+    homepage = "https://airsonic.github.io";
+    license = lib.licenses.gpl3;
     platforms = platforms.all;
     maintainers = with maintainers; [ disassembler ];
   };

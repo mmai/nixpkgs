@@ -1,9 +1,9 @@
-{ stdenv, fetchzip }:
+{ fetchzip }:
 
 fetchzip {
   name = "lmodern-2.004.5";
 
-  url = mirror://debian/pool/main/l/lmodern/lmodern_2.004.5.orig.tar.gz;
+  url = "mirror://debian/pool/main/l/lmodern/lmodern_2.004.5.orig.tar.gz";
 
   postFetch = ''
     tar xzvf $downloadedFile
@@ -21,7 +21,6 @@ fetchzip {
 
   meta = {
     description = "Latin Modern font";
-    platforms = stdenv.lib.platforms.unix;
   };
 }
 

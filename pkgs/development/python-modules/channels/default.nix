@@ -1,13 +1,13 @@
-{ stdenv, buildPythonPackage, fetchPypi,
+{ lib, buildPythonPackage, fetchPypi,
   asgiref, django, daphne
 }:
 buildPythonPackage rec {
   pname = "channels";
-  version = "2.1.5";
+  version = "3.0.3";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "48f97f1801e0a8da6d01430d16d4ed8bd460d4ec3130c66075fb94b12bb30a67";
+    sha256 = "056b72e51080a517a0f33a0a30003e03833b551d75394d6636c885d4edb8188f";
   };
 
   # Files are missing in the distribution
@@ -15,9 +15,9 @@ buildPythonPackage rec {
 
   propagatedBuildInputs = [ asgiref django daphne ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Brings event-driven capabilities to Django with a channel system";
     license = licenses.bsd3;
-    homepage = https://github.com/django/channels;
+    homepage = "https://github.com/django/channels";
   };
 }

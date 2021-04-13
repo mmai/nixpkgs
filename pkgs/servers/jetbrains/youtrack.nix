@@ -1,28 +1,28 @@
-{ stdenv, fetchurl, makeWrapper, jre, gawk }:
+{ lib, stdenv, fetchurl, makeWrapper, jre, gawk }:
 
 stdenv.mkDerivation rec {
-  name = "youtrack-${version}";
+  pname = "youtrack";
   version = "2018.2.44329";
 
   jar = fetchurl {
-    url = "https://download.jetbrains.com/charisma/${name}.jar";
+    url = "https://download.jetbrains.com/charisma/${pname}-${version}.jar";
     sha256 = "1fnnpyikr1x443vxy6f7vlv550sbahpps8awyn13jpg7kpgfm7lk";
   };
 
-  buildInputs = [ makeWrapper ];
+  nativeBuildInputs = [ makeWrapper ];
 
-  unpackPhase = ":";
+  dontUnpack = true;
 
   installPhase = ''
     runHook preInstall
     makeWrapper ${jre}/bin/java $out/bin/youtrack \
       --add-flags "\$YOUTRACK_JVM_OPTS -jar $jar" \
-      --prefix PATH : "${stdenv.lib.makeBinPath [ gawk ]}" \
+      --prefix PATH : "${lib.makeBinPath [ gawk ]}" \
       --set JRE_HOME ${jre}
     runHook postInstall
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Issue tracking and project management tool for developers";
     maintainers = with maintainers; [ yorickvp ];
     # https://www.jetbrains.com/youtrack/buy/license.html

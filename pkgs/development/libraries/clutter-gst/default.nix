@@ -1,18 +1,18 @@
-{ fetchurl, stdenv, pkgconfig, clutter, gtk3, glib, cogl, gnome3 }:
+{ fetchurl, lib, stdenv, pkg-config, clutter, gtk3, glib, cogl, gnome3, gdk-pixbuf }:
 
-let
+stdenv.mkDerivation rec {
   pname = "clutter-gst";
-  version = "3.0.26";
-in stdenv.mkDerivation rec {
-  name = "${pname}-${version}";
+  version = "3.0.27";
+
+  outputs = [ "out" "dev" ];
 
   src = fetchurl {
-    url = "mirror://gnome/sources/${pname}/${stdenv.lib.versions.majorMinor version}/${name}.tar.xz";
-    sha256 = "0fnblqm4igdx4rn3681bp1gm1y2i00if3iblhlm0zv6ck9nqlqfq";
+    url = "mirror://gnome/sources/${pname}/${lib.versions.majorMinor version}/${pname}-${version}.tar.xz";
+    sha256 = "17czmpl92dzi4h3rn5rishk015yi3jwiw29zv8qan94xcmnbssgy";
   };
 
-  propagatedBuildInputs = [ clutter gtk3 glib cogl ];
-  nativeBuildInputs = [ pkgconfig ];
+  propagatedBuildInputs = [ clutter gtk3 glib cogl gdk-pixbuf ];
+  nativeBuildInputs = [ pkg-config ];
 
   postBuild = "rm -rf $out/share/gtk-doc";
 
@@ -25,11 +25,11 @@ in stdenv.mkDerivation rec {
   meta = {
     description = "GStreamer bindings for clutter";
 
-    homepage = http://www.clutter-project.org/;
+    homepage = "http://www.clutter-project.org/";
 
-    license = stdenv.lib.licenses.lgpl2Plus;
+    license = lib.licenses.lgpl2Plus;
 
-    maintainers = with stdenv.lib.maintainers; [ lethalman ];
-    platforms = stdenv.lib.platforms.gnu ++ stdenv.lib.platforms.linux;  # arbitrary choice
+    maintainers = with lib.maintainers; [ lethalman ];
+    platforms = lib.platforms.gnu ++ lib.platforms.linux;  # arbitrary choice
   };
 }

@@ -1,4 +1,4 @@
-{ stdenv
+{ lib
 , buildPythonPackage
 , fetchPypi
 , pytest
@@ -7,11 +7,11 @@
 
 buildPythonPackage rec {
   pname = "django-treebeard";
-  version = "4.3";
+  version = "4.4";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "c21db06a8d4943bf2a28d9d7a119058698fb76116df2679ecbf15a46a501de42";
+    sha256 = "f50e4eea146f7af6702decf7ef198ac1eee1fb9bb4af2c5dba276c3c48f76623";
   };
 
   buildInputs = [ pytest ];
@@ -20,9 +20,9 @@ buildPythonPackage rec {
   # tests fail  "AppRegistryNotReady("Apps aren't loaded yet.")"
   doCheck = false;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Efficient tree implementations for Django 1.6+";
-    homepage = https://tabo.pe/projects/django-treebeard/;
+    homepage = "https://tabo.pe/projects/django-treebeard/";
     maintainers = with maintainers; [ desiderius ];
     license = licenses.asl20;
   };

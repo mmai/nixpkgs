@@ -1,7 +1,7 @@
-{ stdenv, lib, autoconf213, fetchurl, fetchpatch, pkgconfig, nspr, perl, python2, zip }:
+{ stdenv, lib, autoconf213, fetchurl, fetchpatch, pkg-config, nspr, perl, python2, zip }:
 
-stdenv.mkDerivation rec {
-  name = "spidermonkey-${version}";
+stdenv.mkDerivation {
+  pname = "spidermonkey";
   version = "1.8.5";
 
   src = fetchurl {
@@ -11,7 +11,7 @@ stdenv.mkDerivation rec {
 
   propagatedBuildInputs = [ nspr ];
 
-  nativeBuildInputs = [ pkgconfig ] ++ lib.optional stdenv.isAarch32 autoconf213;
+  nativeBuildInputs = [ pkg-config ] ++ lib.optional stdenv.isAarch32 autoconf213;
   buildInputs = [ perl python2 zip ];
 
   postUnpack = "sourceRoot=\${sourceRoot}/js/src";
@@ -28,14 +28,20 @@ stdenv.mkDerivation rec {
       url = "https://sources.debian.org/data/main/m/mozjs/1.8.5-1.0.0+dfsg-6/debian/patches/fix-811665.patch";
       sha256 = "1q8477xqxiy5d8376k5902l45gd0qkd4nxmhl8vr6rr1pxfcny99";
     })
-  ] ++ stdenv.lib.optionals stdenv.isAarch32 [
+  ] ++ lib.optionals stdenv.isAarch32 [
     # Explained below in configureFlags for ARM
     ./1.8.5-findvanilla.patch
     # Fix for hard float flags.
     ./1.8.5-arm-flags.patch
   ];
 
-  patchFlags = "-p3";
+  patchFlags = [ "-p3" ];
+
+  # fixes build on gcc8
+  postPatch = ''
+    substituteInPlace ./methodjit/MethodJIT.cpp \
+      --replace 'asm volatile' 'asm'
+  '';
 
   # On the Sheevaplug, ARM, its nanojit thing segfaults in japi-tests in
   # "make check". Disabling tracejit makes it work, but then it needs the
@@ -43,8 +49,8 @@ stdenv.mkDerivation rec {
   # of polkit, which is what matters most, it does not override the allocator
   # so the failure of that test does not matter much.
   configureFlags = [ "--enable-threadsafe" "--with-system-nspr" ] ++
-    stdenv.lib.optionals (stdenv.hostPlatform.system == "armv5tel-linux") [
-        "--with-cpu-arch=armv5t" 
+    lib.optionals (stdenv.hostPlatform.system == "armv5tel-linux") [
+        "--with-cpu-arch=armv5t"
         "--disable-tracejit" ];
 
   # hack around a make problem, see https://github.com/NixOS/nixpkgs/issues/1279#issuecomment-29547393
@@ -59,14 +65,11 @@ stdenv.mkDerivation rec {
 
   preCheck = ''
     rm jit-test/tests/sunspider/check-date-format-tofte.js    # https://bugzil.la/600522
-
-    paxmark mr shell/js
-    paxmark mr jsapi-tests/jsapi-tests
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Mozilla's JavaScript engine written in C/C++";
-    homepage = https://developer.mozilla.org/en/SpiderMonkey;
+    homepage = "https://developer.mozilla.org/en/SpiderMonkey";
     # TODO: MPL/GPL/LGPL tri-license.
     maintainers = [ maintainers.goibhniu ];
     platforms = platforms.linux;

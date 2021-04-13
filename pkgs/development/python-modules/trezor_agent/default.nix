@@ -1,4 +1,4 @@
-{ stdenv
+{ lib
 , buildPythonPackage
 , fetchPypi
 , trezor
@@ -8,24 +8,30 @@
 , mnemonic
 , keepkey
 , semver
+, setuptools
+, wheel
+, pinentry
 }:
 
-buildPythonPackage rec{
+buildPythonPackage rec {
   pname = "trezor_agent";
-  version = "0.9.3";
+  version = "0.11.0";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "0c1ef62903534d8b01260dbd6304780e278bc83e0bc21f6a83beee76e48e1580";
+    sha256 = "139d917d6495bf290bcc21da457f84ccd2e74c78b4d59a649e0cdde4288cd20c";
   };
 
-  propagatedBuildInputs = [ trezor libagent ecdsa ed25519 mnemonic keepkey semver ];
+  propagatedBuildInputs = [ setuptools trezor libagent ecdsa ed25519 mnemonic keepkey semver wheel pinentry ];
 
-  meta = with stdenv.lib; {
+  doCheck = false;
+  pythonImportsCheck = [ "libagent" ];
+
+  meta = with lib; {
     description = "Using Trezor as hardware SSH agent";
-    homepage = https://github.com/romanz/trezor-agent;
+    homepage = "https://github.com/romanz/trezor-agent";
     license = licenses.gpl3;
-    maintainers = with maintainers; [ np ];
+    maintainers = with maintainers; [ hkjn np mmahut ];
   };
 
 }

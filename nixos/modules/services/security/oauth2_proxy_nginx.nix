@@ -6,14 +6,14 @@ in
 {
   options.services.oauth2_proxy.nginx = {
     proxy = mkOption {
-      type = types.string;
+      type = types.str;
       default = config.services.oauth2_proxy.httpAddress;
       description = ''
         The address of the reverse proxy endpoint for oauth2_proxy
       '';
     };
     virtualHosts = mkOption {
-      type = types.listOf types.string;
+      type = types.listOf types.str;
       default = [];
       description = ''
         A list of nginx virtual hosts to put behind the oauth2 proxy
@@ -31,7 +31,7 @@ in
         proxyPass = cfg.proxy;
         extraConfig = ''
           proxy_set_header X-Scheme                $scheme;
-          proxy_set_header X-Auth-Request-Redirect $request_uri;
+          proxy_set_header X-Auth-Request-Redirect $scheme://$host$request_uri;
         '';
       };
       locations."/oauth2/auth" = {

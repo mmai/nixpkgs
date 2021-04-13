@@ -1,7 +1,7 @@
-{ stdenv
-, bootstrapped-pip
+{ lib
 , buildPythonPackage
 , python
+, fetchpatch
 , fetchPypi
 , pari
 , gmp
@@ -12,27 +12,39 @@
 buildPythonPackage rec {
   pname = "cypari2";
   # upgrade may break sage, please test the sage build or ping @timokau on upgrade
-  version = "1.3.1";
+  version = "2.1.2";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "04f00xp8aaz37v00iqg1mv5wjq00a5qhk8cqa93s13009s9x984r";
+    sha256 = "03cd45edab8716ebbfdb754e65fea72e873c73dc91aec098fe4a01e35324ac7a";
   };
+
+  patches = [
+    # patch to avoid some segfaults in sage's totallyreal.pyx test.
+    # (https://trac.sagemath.org/ticket/27267). depends on Cython patch.
+    (fetchpatch {
+      name = "use-trashcan-for-gen.patch";
+      url = "https://git.sagemath.org/sage.git/plain/build/pkgs/cypari/patches/trashcan.patch?id=b6ea17ef8e4d652de0a85047bac8d41e90b25555";
+      sha256 = "sha256-w4kktWb9/aR9z4CjrUvAMOxEwRN2WkubaKzQttN8rU8=";
+    })
+  ];
 
   # This differs slightly from the default python installPhase in that it pip-installs
   # "." instead of "*.whl".
   # That is because while the default install phase succeeds to build the package,
   # it fails to generate the file "auto_paridecl.pxd".
   installPhase = ''
-    mkdir -p "$out/lib/${python.libPrefix}/site-packages"
-    export PYTHONPATH="$out/lib/${python.libPrefix}/site-packages:$PYTHONPATH"
+    export PYTHONPATH="$out/${python.sitePackages}:$PYTHONPATH"
 
     # install "." instead of "*.whl"
-    ${bootstrapped-pip}/bin/pip install --no-index --prefix=$out --no-cache --build=tmpdir .
+    ${python.pythonForBuild.pkgs.bootstrapped-pip}/bin/pip install . --no-index --no-warn-script-location --prefix="$out" --no-cache
   '';
 
-  buildInputs = [
+  nativeBuildInputs = [
     pari
+  ];
+
+  buildInputs = [
     gmp
   ];
 
@@ -45,10 +57,10 @@ buildPythonPackage rec {
     make check
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Cython bindings for PARI";
-    license = licenses.gpl2;
-    maintainers = with maintainers; [ timokau ];
-    homepage = https://github.com/defeo/cypari2;
+    license = licenses.gpl2Plus;
+    maintainers = teams.sage.members;
+    homepage = "https://github.com/defeo/cypari2";
   };
 }

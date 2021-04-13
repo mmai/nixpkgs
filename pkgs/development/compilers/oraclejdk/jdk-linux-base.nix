@@ -1,14 +1,12 @@
 { productVersion
 , patchVersion
-, downloadUrl
 , sha256
 , jceName
-, jceDownloadUrl
 , sha256JCE
 }:
 
 { swingSupport ? true
-, stdenv
+, lib, stdenv
 , requireFile
 , makeWrapper
 , unzip
@@ -17,10 +15,10 @@
 , installjdk ? true
 , pluginSupport ? true
 , installjce ? false
+, config
 , glib
 , libxml2
-, libav_0_8
-, ffmpeg
+, ffmpeg_3
 , libxslt
 , libGL
 , freetype
@@ -30,7 +28,7 @@
 , cairo
 , alsaLib
 , atk
-, gdk_pixbuf
+, gdk-pixbuf
 , setJavaClassPath
 }:
 
@@ -46,13 +44,13 @@ let
     x86_64-linux  = "amd64";
     armv7l-linux  = "arm";
     aarch64-linux = "aarch64";
-  }.${stdenv.hostPlatform.system};
+  }.${stdenv.hostPlatform.system} or (throw "unsupported system ${stdenv.hostPlatform.system}");
 
   jce =
     if installjce then
       requireFile {
         name = jceName;
-        url = jceDownloadUrl;
+        url = "http://www.oracle.com/technetwork/java/javase/downloads/jce8-download-2133166.html";
         sha256 = sha256JCE;
       }
     else
@@ -68,38 +66,31 @@ let
 in
 
 let result = stdenv.mkDerivation rec {
-  name =
-    if installjdk then "oraclejdk-${productVersion}u${patchVersion}" else "oraclejre-${productVersion}u${patchVersion}";
+  pname = if installjdk then "oraclejdk" else "oraclejre";
+  version = "${productVersion}u${patchVersion}";
 
-  src = requireFile {
-    name = {
-      i686-linux    = "jdk-${productVersion}u${patchVersion}-linux-i586.tar.gz";
-      x86_64-linux  = "jdk-${productVersion}u${patchVersion}-linux-x64.tar.gz";
-      armv7l-linux  = "jdk-${productVersion}u${patchVersion}-linux-arm32-vfp-hflt.tar.gz";
-      aarch64-linux = "jdk-${productVersion}u${patchVersion}-linux-arm64-vfp-hflt.tar.gz";
-    }.${stdenv.hostPlatform.system};
-    url = downloadUrl;
-    sha256 = sha256.${stdenv.hostPlatform.system};
-  };
+  src =
+    let
+      platformName = {
+        i686-linux    = "linux-i586";
+        x86_64-linux  = "linux-x64";
+        armv7l-linux  = "linux-arm32-vfp-hflt";
+        aarch64-linux = "linux-aarch64";
+      }.${stdenv.hostPlatform.system} or (throw "unsupported system ${stdenv.hostPlatform.system}");
+    in requireFile {
+      name = "jdk-${productVersion}u${patchVersion}-${platformName}.tar.gz";
+      url = "http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html";
+      sha256 = sha256.${stdenv.hostPlatform.system};
+    };
 
-  nativeBuildInputs = [ file ]
-    ++ stdenv.lib.optional installjce unzip;
-
-  buildInputs = [ makeWrapper ];
+  nativeBuildInputs = [ file makeWrapper ]
+    ++ lib.optional installjce unzip;
 
   # See: https://github.com/NixOS/patchelf/issues/10
   dontStrip = 1;
 
   installPhase = ''
     cd ..
-
-    # Set PaX markings
-    exes=$(file $sourceRoot/bin/* $sourceRoot/jre/bin/* 2> /dev/null | grep -E 'ELF.*(executable|shared object)' | sed -e 's/: .*$//')
-    for file in $exes; do
-      paxmark m "$file" || true
-      # On x86 for heap sizes over 700MB disable SEGMEXEC and PAGEEXEC as well.
-      ${stdenv.lib.optionalString stdenv.isi686 ''paxmark msp "$file"''}
-    done
 
     if test -z "$installjdk"; then
       mv $sourceRoot/jre $out
@@ -150,12 +141,12 @@ let result = stdenv.mkDerivation rec {
 
     # Set JAVA_HOME automatically.
     cat <<EOF >> $out/nix-support/setup-hook
-    if [ -z "\$JAVA_HOME" ]; then export JAVA_HOME=$out; fi
+    if [ -z "\''${JAVA_HOME-}" ]; then export JAVA_HOME=$out; fi
     EOF
   '';
 
   postFixup = ''
-    rpath+="''${rpath:+:}${stdenv.lib.concatStringsSep ":" (map (a: "$jrePath/${a}") rSubPaths)}"
+    rpath+="''${rpath:+:}${lib.concatStringsSep ":" (map (a: "$jrePath/${a}") rSubPaths)}"
 
     # set all the dynamic linkers
     find $out -type f -perm -0100 \
@@ -177,10 +168,10 @@ let result = stdenv.mkDerivation rec {
    * libXt is only needed on amd64
    */
   libraries =
-    [stdenv.cc.libc glib libxml2 libav_0_8 ffmpeg libxslt libGL xorg.libXxf86vm alsaLib fontconfig freetype pango gtk2 cairo gdk_pixbuf atk] ++
-    (if swingSupport then [xorg.libX11 xorg.libXext xorg.libXtst xorg.libXi xorg.libXp xorg.libXt xorg.libXrender stdenv.cc.cc] else []);
+    [stdenv.cc.libc glib libxml2 ffmpeg_3 libxslt libGL xorg.libXxf86vm alsaLib fontconfig freetype pango gtk2 cairo gdk-pixbuf atk] ++
+    lib.optionals swingSupport [xorg.libX11 xorg.libXext xorg.libXtst xorg.libXi xorg.libXp xorg.libXt xorg.libXrender stdenv.cc.cc];
 
-  rpath = stdenv.lib.strings.makeLibraryPath libraries;
+  rpath = lib.strings.makeLibraryPath libraries;
 
   passthru.mozillaPlugin = if installjdk then "/jre/lib/${architecture}/plugins" else "/lib/${architecture}/plugins";
 
@@ -190,7 +181,7 @@ let result = stdenv.mkDerivation rec {
 
   passthru.architecture = architecture;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     license = licenses.unfree;
     platforms = [ "i686-linux" "x86_64-linux" "armv7l-linux" "aarch64-linux" ]; # some inherit jre.meta.platforms
   };

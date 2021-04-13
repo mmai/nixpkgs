@@ -1,32 +1,32 @@
-{ stdenv, buildPythonPackage, fetchFromGitHub, pythonOlder
-, pytest, mock, pytestcov, coverage
-, future, futures
+{ lib, buildPythonPackage, fetchFromGitHub, pythonOlder
+, pytestCheckHook, mock, pytestcov, coverage
+, future, futures, ujson, isPy38
 }:
 
 buildPythonPackage rec {
   pname = "python-jsonrpc-server";
-  version = "0.0.2";
+  version = "0.4.0";
 
   src = fetchFromGitHub {
     owner = "palantir";
     repo = "python-jsonrpc-server";
     rev = version;
-    sha256 = "1xp6xipslw8d1yv05mjmhql07kz04ibci5psjrv6rapqi6jp4bgk";
+    sha256 = "0pcf50qvcxqnz3db58whqd8z89cdph19pfs1whgfm0zmwbwk0lw6";
   };
 
-  checkInputs = [
-    pytest mock pytestcov coverage
-  ];
-
-  checkPhase = ''
-    pytest
+  postPatch = ''
+    sed -i "s/version=versioneer.get_version(),/version=\"$version\",/g" setup.py
   '';
 
-  propagatedBuildInputs = [ future ]
-    ++ stdenv.lib.optional (pythonOlder "3.2") futures;
+  checkInputs = [
+    pytestCheckHook mock pytestcov coverage
+  ];
 
-  meta = with stdenv.lib; {
-    homepage = https://github.com/palantir/python-jsonrpc-server;
+  propagatedBuildInputs = [ future ujson ]
+    ++ lib.optional (pythonOlder "3.2") futures;
+
+  meta = with lib; {
+    homepage = "https://github.com/palantir/python-jsonrpc-server";
     description = "A Python 2 and 3 asynchronous JSON RPC server";
     license = licenses.mit;
     maintainers = [ maintainers.mic92 ];

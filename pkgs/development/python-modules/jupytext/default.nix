@@ -1,46 +1,43 @@
-{ lib
-, buildPythonPackage
-, fetchPypi
-, testfixtures
-, pyyaml
-, mock
+{ lib, buildPythonPackage, fetchPypi, isPy27
+, markdown-it-py
 , nbformat
 , pytest
+, pyyaml
+, toml
 }:
 
 buildPythonPackage rec {
   pname = "jupytext";
-  version = "0.8.6";
+  version = "1.7.1";
+
+  disabled = isPy27;
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "1m35m9z4vy480d2200nd4lk9n5s4z3zcnq0d9rdlh4yv5264mrgf";
+    sha256 = "23123b90c267c67716fe6a022dfae49b84fd3809370d83211f2920eb3106bf40";
   };
 
   propagatedBuildInputs = [
-    pyyaml
+    markdown-it-py
     nbformat
-    testfixtures
+    pyyaml
+    toml
   ];
+
   checkInputs = [
-    pytest
-  ];
-  # setup.py checks for those even though they're not needed at runtime (only
-  # for tests), thus not propagated
-  buildInputs = [
-    mock
     pytest
   ];
 
   # requires test notebooks which are not shipped with the pypi release
+  # also, pypi no longer includes tests
   doCheck = false;
   checkPhase = ''
-    py.test
+    pytest
   '';
 
   meta = with lib; {
     description = "Jupyter notebooks as Markdown documents, Julia, Python or R scripts";
-    homepage = https://github.com/mwouts/jupytext;
+    homepage = "https://github.com/mwouts/jupytext";
     license = licenses.mit;
     maintainers = with maintainers; [ timokau ];
   };

@@ -1,1 +1,1 @@
-WGET_ARGS=( https://download.kde.org/stable/applications/18.12.0/ -A '*.tar.xz' )
+WGET_ARGS=( http://download.kde.org/stable/release-service/20.12.2/src -A '*.tar.xz' )

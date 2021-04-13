@@ -1,42 +1,75 @@
-{ stdenv, buildPythonPackage, fetchPypi
-, geos, glibcLocales, pytest, cython
+{ lib
+, stdenv
+, buildPythonPackage
+, fetchPypi
+, substituteAll
+, pythonOlder
+, geos
+, pytestCheckHook
+, cython
 , numpy
+, fetchpatch
 }:
 
 buildPythonPackage rec {
   pname = "Shapely";
-  version = "1.6.4.post2";
+  version = "1.7.1";
+  disabled = pythonOlder "3.5";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "c4b87bb61fc3de59fc1f85e71a79b0c709dc68364d9584473697aad4aa13240f";
+    sha256 = "0adiz4jwmwxk7k1awqifb1a9bj5x4nx4gglb5dz9liam21674h8n";
   };
 
-  buildInputs = [ geos glibcLocales cython ];
+  nativeBuildInputs = [
+    geos # for geos-config
+    cython
+  ];
 
-  checkInputs = [ pytest ];
+  propagatedBuildInputs = [
+    numpy
+  ];
 
-  propagatedBuildInputs = [ numpy ];
+  checkInputs = [
+    pytestCheckHook
+  ];
 
-  preConfigure = ''
-    export LANG="en_US.UTF-8";
+  # Environment variable used in shapely/_buildcfg.py
+  GEOS_LIBRARY_PATH = "${geos}/lib/libgeos_c${stdenv.hostPlatform.extensions.sharedLibrary}";
+
+  patches = [
+    # Fix with geos 3.9. This patch will be part of the next release after 1.7.1
+    (fetchpatch {
+      url = "https://github.com/Toblerity/Shapely/commit/77879a954d24d1596f986d16ba3eff5e13861164.patch";
+      sha256 = "1w7ngjqbpf9vnvrfg4nyv34kckim9a60gvx20h6skc79xwihd4m5";
+      excludes = [
+        "tests/test_create_inconsistent_dimensionality.py"
+        "appveyor.yml"
+        ".travis.yml"
+      ];
+    })
+    # Patch to search form GOES .so/.dylib files in a Nix-aware way
+    (substituteAll {
+      src = ./library-paths.patch;
+      libgeos_c = GEOS_LIBRARY_PATH;
+      libc = lib.optionalString (!stdenv.isDarwin) "${stdenv.cc.libc}/lib/libc${stdenv.hostPlatform.extensions.sharedLibrary}.6";
+    })
+ ];
+
+  preCheck = ''
+    rm -r shapely # prevent import of local shapely
   '';
 
-  patchPhase = let
-    libc = if stdenv.isDarwin then "libc.dylib" else "libc.so.6";
-  in ''
-    sed -i "s|_lgeos = load_dll('geos_c', fallbacks=.*)|_lgeos = load_dll('geos_c', fallbacks=['${geos}/lib/libgeos_c${stdenv.hostPlatform.extensions.sharedLibrary}'])|" shapely/geos.py
-    sed -i "s|free = load_dll('c').free|free = load_dll('c', fallbacks=['${stdenv.cc.libc}/lib/${libc}']).free|" shapely/geos.py
-  '';
+  disabledTests = [
+    "test_collection"
+  ];
 
-  # Disable the tests that improperly try to use the built extensions
-  checkPhase = ''
-    py.test -k 'not test_vectorized and not test_fallbacks' tests
-  '';
+  pythonImportsCheck = [ "shapely" ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Geometric objects, predicates, and operations";
-    maintainers = with maintainers; [ knedlsepp ];
     homepage = "https://pypi.python.org/pypi/Shapely/";
+    license = with licenses; [ bsd3 ];
+    maintainers = with maintainers; [ knedlsepp ];
   };
 }

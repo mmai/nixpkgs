@@ -3,18 +3,18 @@
 
 buildPythonPackage rec {
   pname = "plyfile";
-  version = "0.6";
+  version = "0.7.3";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "067e384e3723f28dbbd8e8f976a9712dadf6761b2d62c4c1a90821e3c5310bce";
+    sha256 = "5ac55b685cfcb3e8f70f3c5c2660bd1f6431a892a5319a612792b1ec09aec0f0";
   };
 
   propagatedBuildInputs = [ numpy ];
 
   meta = with lib; {
     description = "NumPy-based text/binary PLY file reader/writer for Python";
-    homepage    = https://github.com/dranjan/python-plyfile;
+    homepage    = "https://github.com/dranjan/python-plyfile";
     maintainers = with maintainers; [ abbradar ];
   };
 

@@ -1,11 +1,11 @@
-{ stdenv, skawarePackages }:
+{ skawarePackages }:
 
 with skawarePackages;
 
 buildPackage {
   pname = "utmps";
-  version = "0.0.1.3";
-  sha256 = "0dwskdclac4afmh7f7zn6jdiydgaf59a65q43r6b813mghczjvvd";
+  version = "0.1.0.0";
+  sha256 = "09p0k2sgxr7jlsbrn66fzvzf9zxvpjp85y79xk10hxjglypszyml";
 
   description = "A secure utmpx and wtmp implementation";
 
@@ -29,4 +29,3 @@ buildPackage {
     mv examples $doc/share/doc/utmps/examples
   '';
 }
-

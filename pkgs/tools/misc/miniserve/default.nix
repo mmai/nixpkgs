@@ -1,25 +1,44 @@
-{ stdenv, rustPlatform, fetchFromGitHub, cmake, pkgconfig, zlib }:
+{ lib
+, stdenv
+, rustPlatform
+, fetchFromGitHub
+, installShellFiles
+, pkg-config
+, zlib
+, libiconv
+, Security
+}:
 
 rustPlatform.buildRustPackage rec {
-  name    = "miniserve-${version}";
-  version = "0.2.1";
+  pname = "miniserve";
+  version = "0.13.0";
 
   src = fetchFromGitHub {
-    owner  = "svenstaro";
-    repo   = "miniserve";
-    rev    = "v${version}";
-    sha256 = "1g8ggqs4fyscb1r98qj22f61jgkqnr4vdyps0drrvydl9lafdmpl";
+    owner = "svenstaro";
+    repo = "miniserve";
+    rev = "v${version}";
+    sha256 = "sha256-1nXhAYvvvUQb0RcWidsRMQOhU8eXt7ngzodsMkYvqvg=";
   };
 
-  cargoSha256 = "18wyr0q5pkxds5hrl4g3mqmk46mr0nvs0id94aiw87729ly4vi8c";
+  cargoSha256 = "sha256-P5ukE7eXBRJMrc7+T9/TMq2uGs0AuZliHTtoqiZXNZw=";
 
-  nativeBuildInputs = [ cmake pkgconfig zlib ];
+  nativeBuildInputs = [ installShellFiles pkg-config zlib ];
+  buildInputs = lib.optionals stdenv.isDarwin [ libiconv Security ];
 
-  meta = with stdenv.lib; {
+  checkFlags = [ "--skip=cant_navigate_up_the_root" ];
+
+  postInstall = ''
+    installShellCompletion --cmd miniserve \
+      --bash <($out/bin/miniserve --print-completions bash) \
+      --fish <($out/bin/miniserve --print-completions fish) \
+      --zsh <($out/bin/miniserve --print-completions zsh)
+  '';
+
+  meta = with lib; {
     description = "For when you really just want to serve some files over HTTP right now!";
-    homepage    = https://github.com/svenstaro/miniserve;
-    license     = with licenses; [ mit ];
-    maintainers = with maintainers; [ nequissimus ];
-    platforms   = platforms.linux;
+    homepage = "https://github.com/svenstaro/miniserve";
+    license = with licenses; [ mit ];
+    maintainers = with maintainers; [ zowoq ];
+    platforms = platforms.unix;
   };
 }

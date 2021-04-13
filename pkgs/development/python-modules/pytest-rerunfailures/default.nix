@@ -1,27 +1,28 @@
-{ stdenv, buildPythonPackage, fetchPypi, pytest, mock }:
+{ lib, buildPythonPackage, pythonOlder, fetchPypi, pytest, mock }:
 
 buildPythonPackage rec {
   pname = "pytest-rerunfailures";
-  version = "4.2";
+  version = "9.1.1";
+
+  disabled = pythonOlder "3.5";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "97216f8a549f74da3cc786236d9093fbd43150a6fbe533ba622cb311f7431774";
+    sha256 = "1cb11a17fc121b3918414eb5eaf314ee325f2e693ac7cb3f6abf7560790827f2";
   };
 
-  checkInputs = [ mock ];
+  buildInputs = [ pytest ];
 
-  propagatedBuildInputs = [ pytest ];
+  checkInputs = [ mock pytest ];
 
-  # disable tests that fail with pytest 3.7.4
   checkPhase = ''
-    py.test test_pytest_rerunfailures.py -k 'not test_reruns_with_delay'
+    py.test test_pytest_rerunfailures.py
   '';
 
-  meta = with stdenv.lib; {
-    description = "pytest plugin to re-run tests to eliminate flaky failures.";
-    homepage = https://github.com/pytest-dev/pytest-rerunfailures;
+  meta = with lib; {
+    description = "pytest plugin to re-run tests to eliminate flaky failures";
+    homepage = "https://github.com/pytest-dev/pytest-rerunfailures";
     license = licenses.mpl20;
-    maintainers = with maintainers; [ jgeerds ];
+    maintainers = with maintainers; [ das-g ];
   };
 }

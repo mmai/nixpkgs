@@ -1,26 +1,49 @@
-{ stdenv, fetchFromGitHub, cmake, qt5 }:
+{ lib
+, mkDerivation
+, fetchFromGitHub
+, cmake
+, kwindowsystem
+, liblxqt
+, libqtxdg
+, lxqt-build-tools
+, lxqtUpdateScript
+, qtbase
+, qttools
+, qtx11extras
+}:
 
-stdenv.mkDerivation rec {
-  name = "${pname}-${version}";
+mkDerivation rec {
   pname = "qps";
-  version = "1.10.18";
+  version = "2.2.0";
 
   src = fetchFromGitHub {
     owner = "lxqt";
     repo = pname;
     rev = version;
-    sha256 = "1cq5z4w2n119z2bq0njn508g5582jljdx2n38cv5b3cf35k91a49";
+    sha256 = "0gfw7iz7jzyfl9hiq3aivbgkkl61fz319cfg57fgn2kldlcljhwa";
   };
 
-  nativeBuildInputs = [ cmake ];
+  nativeBuildInputs = [
+    cmake
+    lxqt-build-tools
+  ];
 
-  buildInputs = [ qt5.qtbase qt5.qtx11extras qt5.qttools ];
+  buildInputs = [
+    kwindowsystem
+    liblxqt
+    libqtxdg
+    qtbase
+    qttools
+    qtx11extras
+  ];
 
-  meta = with stdenv.lib; {
-    description = "The Qt process manager";
-    homepage = https://github.com/lxqt/qps;
-    license = licenses.gpl2;
+  passthru.updateScript = lxqtUpdateScript { inherit pname version src; };
+
+  meta = with lib; {
+    homepage = "https://github.com/lxqt/qps";
+    description = "Qt based process manager";
+    license = licenses.gpl2Plus;
+    platforms = with platforms; linux; # does not build on darwin
     maintainers = with maintainers; [ romildo ];
-    platforms = with platforms; unix;
   };
 }

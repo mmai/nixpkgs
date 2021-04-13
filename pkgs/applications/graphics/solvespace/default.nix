@@ -1,26 +1,25 @@
-{ stdenv, fetchgit, cmake, pkgconfig, zlib, libpng, cairo, freetype
-, json_c, fontconfig, gtkmm3, pangomm, glew, libGLU, xorg, pcre
-, wrapGAppsHook
+{ lib, stdenv, fetchFromGitHub, cmake, pkg-config, zlib, libpng, cairo, freetype
+, json_c, fontconfig, gtkmm3, pangomm, glew, libGLU, xorg, pcre, wrapGAppsHook
 }:
 stdenv.mkDerivation rec {
-  name = "solvespace-2.3-20180906";
-  rev = "258545a334098cf25c1c9f4cd59b778dfe0b0d29";
-  src = fetchgit {
-    url = https://github.com/solvespace/solvespace;
-    inherit rev;
-    sha256 = "1wimh6l0zpk0vywcsd2minijjf6g550z8i3l8lpmfnl5przymc2v";
+  pname = "solvespace";
+  version = "v3.0.rc2";
+  src = fetchFromGitHub {
+    owner = pname;
+    repo = pname;
+    rev = version;
+    sha256 = "1z0873gwcr0hybrpqy4hwislir6k2zb4s62lbsivq5nbkizy7gjm";
     fetchSubmodules = true;
   };
 
   nativeBuildInputs = [
-    pkgconfig cmake wrapGAppsHook
+    pkg-config cmake wrapGAppsHook
   ];
   buildInputs = [
     zlib libpng cairo freetype
     json_c fontconfig gtkmm3 pangomm glew libGLU
     xorg.libpthreadstubs xorg.libXdmcp pcre
   ];
-  enableParallelBuilding = true;
 
   preConfigure = ''
     patch CMakeLists.txt <<EOF
@@ -32,7 +31,7 @@ stdenv.mkDerivation rec {
     +# include(GetGitCommitHash)
      # and instead uncomment the following, adding the complete git hash of the checkout you are using:
     -# set(GIT_COMMIT_HASH 0000000000000000000000000000000000000000)
-    +set(GIT_COMMIT_HASH $rev)
+    +set(GIT_COMMIT_HASH $version)
     EOF
   '';
 
@@ -41,11 +40,11 @@ stdenv.mkDerivation rec {
       --replace /usr/bin/ $out/bin/
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A parametric 3d CAD program";
-    license = licenses.gpl3;
+    license = licenses.gpl3Plus;
     maintainers = [ maintainers.edef ];
     platforms = platforms.linux;
-    homepage = http://solvespace.com;
+    homepage = "http://solvespace.com";
   };
 }

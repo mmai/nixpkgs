@@ -1,29 +1,27 @@
-{ stdenv, fetchurl, writeText, conf? null}:
-
-with stdenv.lib;
+{ lib, stdenv, fetchFromGitHub, writeText, conf ? null }:
 
 stdenv.mkDerivation rec {
-    name = "abduco-0.6";
+  pname = "abduco";
+  version = "2020-04-30";
 
-    meta = {
-        homepage = http://brain-dump.org/projects/abduco;
-        license = licenses.isc;
-        description = "Allows programs to be run independently from its controlling terminal";
-        maintainers = with maintainers; [ pSub ];
-        platforms = platforms.unix;
-    };
+  src = fetchFromGitHub {
+    owner = "martanne";
+    repo = "abduco";
+    rev = "8c32909a159aaa9484c82b71f05b7a73321eb491";
+    sha256 = "0a3p8xljhpk7zh203s75248blfir15smgw5jmszwbmdpy4mqzd53";
+  };
 
-    CFLAGS = stdenv.lib.optionalString stdenv.isDarwin "-D_DARWIN_C_SOURCE";
+  preBuild = lib.optionalString (conf != null)
+    "cp ${writeText "config.def.h" conf} config.def.h";
 
-    src = fetchurl {
-        url = "http://www.brain-dump.org/projects/abduco/${name}.tar.gz";
-        sha256 = "1x1m58ckwsprljgmdy93mvgjyg9x3cqrzdf3mysp0mx97zhhj2f9";
-    };
+  installFlags = [ "install-completion" ];
+  CFLAGS = lib.optionalString stdenv.isDarwin "-D_DARWIN_C_SOURCE";
 
-    configFile = optionalString (conf!=null) (writeText "config.def.h" conf);
-    preBuild = optionalString (conf!=null) "cp ${configFile} config.def.h";
-
-    installPhase = ''
-      make PREFIX=$out install
-    '';
+  meta = with lib; {
+    homepage = "http://brain-dump.org/projects/abduco";
+    license = licenses.isc;
+    description = "Allows programs to be run independently from its controlling terminal";
+    maintainers = with maintainers; [ pSub ];
+    platforms = platforms.unix;
+  };
 }

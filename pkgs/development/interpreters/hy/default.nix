@@ -1,27 +1,37 @@
-{ stdenv, fetchurl, pythonPackages }:
+{ lib, python3Packages }:
 
-pythonPackages.buildPythonApplication rec {
-  name = "hy-${version}";
-  version = "0.15.0";
+python3Packages.buildPythonApplication rec {
+  pname = "hy";
+  version = "0.19.0";
 
-  src = fetchurl {
-    url = "mirror://pypi/h/hy/${name}.tar.gz";
-    sha256 = "01vzaib1imr00j5d7f7xk44v800h06s3yv9inhlqm6f3b25ywpl1";
+  src = python3Packages.fetchPypi {
+    inherit pname version;
+    sha256 = "05k05qmiiysiwdc05sxmanwhv1crfwbb3l8swxfisbzbvmv1snis";
   };
 
-  propagatedBuildInputs = with pythonPackages; [
+  checkInputs = with python3Packages; [ flake8 pytest ];
+
+  propagatedBuildInputs = with python3Packages; [
     appdirs
     astor
     clint
+    colorama
+    fastentrypoints
     funcparserlib
     rply
+    pygments
   ];
 
-  meta = {
+  # Hy does not include tests in the source distribution from PyPI, so only test executable.
+  checkPhase = ''
+    $out/bin/hy --help > /dev/null
+  '';
+
+  meta = with lib; {
     description = "A LISP dialect embedded in Python";
-    homepage = http://hylang.org/;
-    license = stdenv.lib.licenses.mit;
-    maintainers = [ stdenv.lib.maintainers.nixy ];
-    platforms = stdenv.lib.platforms.all;
+    homepage = "http://hylang.org/";
+    license = licenses.mit;
+    maintainers = with maintainers; [ nixy ];
+    platforms = platforms.all;
   };
 }

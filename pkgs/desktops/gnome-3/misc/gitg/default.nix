@@ -1,24 +1,44 @@
-{ stdenv, fetchurl, vala, intltool, pkgconfig, gtk3, glib
-, json-glib, wrapGAppsHook, libpeas, bash, gobject-introspection
-, gnome3, gtkspell3, shared-mime-info, libgee, libgit2-glib, libsecret
-, meson, ninja, python3
- }:
+{ lib, stdenv
+, fetchurl
+, fetchpatch
+, vala
+, gettext
+, pkg-config
+, gtk3
+, glib
+, json-glib
+, wrapGAppsHook
+, libpeas
+, bash
+, gobject-introspection
+, libsoup
+, gtksourceview
+, gsettings-desktop-schemas
+, adwaita-icon-theme
+, gnome3
+, gtkspell3
+, shared-mime-info
+, libgee
+, libgit2-glib
+, libsecret
+, meson
+, ninja
+, python3
+, libdazzle
+}:
 
-let
+stdenv.mkDerivation rec {
   pname = "gitg";
-  version = "3.30.1";
-in stdenv.mkDerivation rec {
-  name = "${pname}-${version}";
+  version = "3.32.1";
 
   src = fetchurl {
-    url = "mirror://gnome/sources/${pname}/${stdenv.lib.versions.majorMinor version}/${name}.tar.xz";
-    sha256 = "1fz8q1aiql6k740savdjh0vzbyhcflgf94cfdhvzcrrvm929n2ss";
+    url = "mirror://gnome/sources/${pname}/${lib.versions.majorMinor version}/${pname}-${version}.tar.xz";
+    sha256 = "0npg4kqpwl992fgjd2cn3fh84aiwpdp9kd8z7rw2xaj2iazsm914";
   };
 
   postPatch = ''
     chmod +x meson_post_install.py
     patchShebangs meson_post_install.py
-    sed -i '/gtk-update-icon-cache/s/^/#/' meson_post_install.py
 
     substituteInPlace tests/libgitg/test-commit.vala --replace "/bin/bash" "${bash}/bin/bash"
   '';
@@ -28,12 +48,31 @@ in stdenv.mkDerivation rec {
   enableParallelBuilding = true;
 
   buildInputs = [
-    gtk3 glib json-glib libgee libpeas gnome3.libsoup
-    libgit2-glib gtkspell3 gnome3.gtksourceview gnome3.gsettings-desktop-schemas
-    libsecret gobject-introspection gnome3.adwaita-icon-theme
+    adwaita-icon-theme
+    glib
+    gsettings-desktop-schemas
+    gtk3
+    gtksourceview
+    gtkspell3
+    json-glib
+    libdazzle
+    libgee
+    libgit2-glib
+    libpeas
+    libsecret
+    libsoup
   ];
 
-  nativeBuildInputs = [ meson ninja python3 vala wrapGAppsHook intltool pkgconfig ];
+  nativeBuildInputs = [
+    gobject-introspection
+    gettext
+    meson
+    ninja
+    pkg-config
+    python3
+    vala
+    wrapGAppsHook
+  ];
 
   preFixup = ''
     gappsWrapperArgs+=(
@@ -48,8 +87,8 @@ in stdenv.mkDerivation rec {
     };
   };
 
-  meta = with stdenv.lib; {
-    homepage = https://wiki.gnome.org/Apps/Gitg;
+  meta = with lib; {
+    homepage = "https://wiki.gnome.org/Apps/Gitg";
     description = "GNOME GUI client to view git repositories";
     maintainers = with maintainers; [ domenkozar ];
     license = licenses.gpl2;

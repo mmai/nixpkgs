@@ -1,31 +1,31 @@
-{ stdenv, rustPlatform, fetchFromGitHub, CoreServices, CoreFoundation }:
+{ lib, stdenv, rustPlatform, fetchFromGitHub, CoreServices, installShellFiles, libiconv }:
 
 rustPlatform.buildRustPackage rec {
-  name = "watchexec-${version}";
-  version = "1.9.0";
+  pname = "watchexec";
+  version = "1.15.0";
 
   src = fetchFromGitHub {
-    owner = "watchexec";
-    repo = "watchexec";
+    owner = pname;
+    repo = pname;
     rev = version;
-    sha256 = "0zp5s2dy5zbar0virvy1izjpvvgwbz7rvjmcy6bph6rb5c4bhm70";
+    sha256 = "1b0ds04q4g8xcgwkziwb5hsi7v73w9y0prvhxz880zzh930652n2";
   };
 
-  cargoSha256 = "1li84kq9myaw0zwx69y72f3lx01s7i9p8yays4rwvl1ymr614y1l";
+  cargoSha256 = "0jpfgyz5l4fdb5cnqmadzjzrvc6dwgray4b0mx80pghpjw8a8qfb";
 
-  buildInputs = stdenv.lib.optionals stdenv.isDarwin [ CoreServices ];
+  nativeBuildInputs = [ installShellFiles ];
 
-  # FIXME: Use impure version of CoreFoundation because of missing symbols.
-  #   Undefined symbols for architecture x86_64: "_CFURLResourceIsReachable"
-  preConfigure = stdenv.lib.optionalString stdenv.isDarwin ''
-    export NIX_LDFLAGS="-F${CoreFoundation}/Library/Frameworks -framework CoreFoundation $NIX_LDFLAGS"
+  buildInputs = lib.optionals stdenv.isDarwin [ CoreServices libiconv ];
+
+  postInstall = ''
+    installManPage doc/watchexec.1
+    installShellCompletion --zsh --name _watchexec completions/zsh
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Executes commands in response to file modifications";
-    homepage = https://github.com/watchexec/watchexec;
+    homepage = "https://github.com/watchexec/watchexec";
     license = with licenses; [ asl20 ];
     maintainers = [ maintainers.michalrus ];
-    platforms = platforms.linux ++ platforms.darwin;
   };
 }

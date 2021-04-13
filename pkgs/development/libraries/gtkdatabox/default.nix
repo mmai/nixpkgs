@@ -1,22 +1,22 @@
-{ stdenv, fetchurl, pkgconfig, gtk2 }:
+{ lib, stdenv, fetchurl, pkg-config, gtk2 }:
 
 stdenv.mkDerivation rec {
-  name = "gtkdatabox-0.9.3.0";
+  name = "gtkdatabox-0.9.3.1";
 
   src = fetchurl {
     url = "mirror://sourceforge/gtkdatabox/${name}.tar.gz";
-    sha256 = "1wigd4bdlrz4pma2l2wd3z8sx7pqmsvq845nya5vma9ibi96nhhz";
+    sha256 = "1rdxnjgh6v3yjqgsfmamyzpfxckzchps4kqvvz88nifmd7ckhjfh";
   };
 
-  nativeBuildInputs = [ pkgconfig ];
+  nativeBuildInputs = [ pkg-config ];
 
   propagatedBuildInputs = [ gtk2 ];
 
   meta = {
-    description = "Gtk+ widget for displaying large amounts of numerical data";
+    description = "GTK widget for displaying large amounts of numerical data";
 
-    license = stdenv.lib.licenses.lgpl2;
+    license = lib.licenses.lgpl2;
 
-    platforms = stdenv.lib.platforms.linux;
+    platforms = lib.platforms.unix;
   };
 }

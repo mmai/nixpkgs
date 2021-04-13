@@ -1,39 +1,36 @@
-{ stdenv, fetchFromGitHub, fetchpatch, vala_0_40, pkgconfig, meson, ninja, python3
-, granite, gtk3, desktop-file-utils, gnome3, gtksourceview, webkitgtk, gtkspell3
-, discount, gobject-introspection, wrapGAppsHook }:
+{ lib, stdenv, fetchFromGitHub, nix-update-script, pkg-config, meson, ninja, python3, vala
+, gtk3, desktop-file-utils, gtksourceview, webkitgtk, gtkspell3, pantheon
+, libgee, discount, wrapGAppsHook }:
 
 stdenv.mkDerivation rec {
   pname = "quilter";
-  version = "1.6.8";
-
-  name = "${pname}-${version}";
+  version = "2.5.4";
 
   src = fetchFromGitHub {
     owner = "lainsce";
     repo = pname;
     rev = version;
-    sha256 = "07i9pivpddgixn1wzbr15gvzf0n5pklx0gkjjaa35kvj2z8k31x5";
+    sha256 = "sha256-A8Ov0rITHuMLDYTueeDO89KtxlP0pNk1pA7O4x3Q9fE=";
   };
 
   nativeBuildInputs = [
     desktop-file-utils
-    gobject-introspection
     meson
     ninja
-    pkgconfig
+    vala
+    pkg-config
     python3
-    vala_0_40 # should be `elementary.vala` when elementary attribute set is merged
     wrapGAppsHook
   ];
 
   buildInputs = [
     discount
-    gnome3.defaultIconTheme # should be `elementary.defaultIconTheme`when elementary attribute set is merged
-    gnome3.libgee
-    granite
     gtk3
     gtksourceview
     gtkspell3
+    libgee
+    pantheon.elementary-icon-theme
+    pantheon.granite
     webkitgtk
   ];
 
@@ -42,11 +39,17 @@ stdenv.mkDerivation rec {
     patchShebangs meson/post_install.py
   '';
 
-  meta = with stdenv.lib; {
+  passthru = {
+    updateScript = nix-update-script {
+      attrPath = pname;
+    };
+  };
+
+  meta = with lib; {
     description = "Focus on your writing - designed for elementary OS";
-    homepage = https://github.com/lainsce/quilter;
+    homepage = "https://github.com/lainsce/quilter";
     license = licenses.gpl2Plus;
-    maintainers = with maintainers; [ worldofpeace ];
+    maintainers = pantheon.maintainers;
     platforms = platforms.linux;
   };
 }

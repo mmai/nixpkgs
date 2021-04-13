@@ -1,33 +1,30 @@
-{ stdenv, buildPythonPackage, fetchPypi, fetchpatch
-, mock, pytest, sybil, zope_component }:
+{ lib, buildPythonPackage, fetchPypi, fetchpatch, isPy27
+, mock, pytest, sybil, zope_component, twisted }:
 
 buildPythonPackage rec {
   pname = "testfixtures";
-  version = "6.3.0";
+  version = "6.15.0";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "1x16xkw483nb1ngv74s7lgaj514pb1ldklal7kb7iwqbxcgnrh2k";
+    sha256 = "409f77cfbdad822d12a8ce5c4aa8fb4d0bb38073f4a5444fede3702716a2cec2";
   };
 
-  checkInputs = [ pytest mock sybil zope_component ];
+  checkInputs = [ pytest mock sybil zope_component twisted ];
 
-  patches = [
-    # Fix tests for Python 3.7. Remove with the next release
-    (fetchpatch {
-      url = https://github.com/Simplistix/testfixtures/commit/6e8807543b804946aba58e2c9e92f5bdc3656a57.patch;
-      sha256 = "1584jz2qz04arx8z8f6d1l1vab7gi38k3akzm223rmp7j4m7yrii";
-    })
-  ];
-
+  doCheck = !isPy27;
   checkPhase = ''
     # django is too much hasle to setup at the moment
-    pytest -W ignore::DeprecationWarning --ignore=testfixtures/tests/test_django testfixtures/tests
+    pytest -W ignore::DeprecationWarning \
+      --ignore=testfixtures/tests/test_django \
+      -k 'not (log_then_patch or our_wrap_dealing_with_mock_patch or patch_with_dict)' \
+      testfixtures/tests
   '';
 
-  meta = with stdenv.lib; {
-    homepage = https://github.com/Simplistix/testfixtures;
+  meta = with lib; {
+    homepage = "https://github.com/Simplistix/testfixtures";
     description = "A collection of helpers and mock objects for unit tests and doc tests";
     license = licenses.mit;
+    maintainers = with maintainers; [ siriobalmelli ];
   };
 }

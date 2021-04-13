@@ -3,7 +3,7 @@
 with import pkgspath { inherit system; };
 
 let
-  llvmPackages = llvmPackages_5;
+  llvmPackages = llvmPackages_7;
 in rec {
   coreutils_ = coreutils.override (args: {
     # We want coreutils without ACL support.
@@ -12,15 +12,13 @@ in rec {
     singleBinary = false;
   });
 
-  # We want a version of cctools without LLVM, because the LTO support ends up making
-  # the bootstrap tools huge and isn't really necessary for bootstrap
-  cctools_ = darwin.cctools.override { llvm = null; };
+  cctools_ = darwin.cctools;
 
   # Avoid debugging larger changes for now.
   bzip2_ = bzip2.override (args: { linkStatic = true; });
 
   # Avoid messing with libkrb5 and libnghttp2.
-  curl_ = curl.override (args: { gssSupport = false; http2Support = false; });
+  curl_ = curlMinimal.override (args: { gssSupport = false; http2Support = false; });
 
   build = stdenv.mkDerivation {
     name = "stdenv-bootstrap-tools";
@@ -30,11 +28,8 @@ in rec {
     buildCommand = ''
       mkdir -p $out/bin $out/lib $out/lib/system
 
-      # We're not going to bundle the actual libSystem.dylib; instead we reconstruct it on
-      # the other side. See the notes in stdenv/darwin/default.nix for more information.
-      # We also need the .o files for various low-level boot stuff.
+      # Copy libSystem's .o files for various low-level boot stuff.
       cp -d ${darwin.Libsystem}/lib/*.o $out/lib
-      cp -d ${darwin.Libsystem}/lib/system/*.dylib $out/lib/system
 
       # Resolv is actually a link to another package, so let's copy it properly
       cp -L ${darwin.Libsystem}/lib/libresolv.9.dylib $out/lib
@@ -80,14 +75,14 @@ in rec {
       cp -d ${libxml2.out}/lib/libxml2*.dylib $out/lib
 
       # Copy what we need of clang
-      cp -d ${llvmPackages.clang-unwrapped}/bin/clang $out/bin
-      cp -d ${llvmPackages.clang-unwrapped}/bin/clang++ $out/bin
-      cp -d ${llvmPackages.clang-unwrapped}/bin/clang-[0-9].[0-9] $out/bin
+      cp -d ${llvmPackages.clang-unwrapped}/bin/clang* $out/bin
 
       cp -rL ${llvmPackages.clang-unwrapped}/lib/clang $out/lib
 
       cp -d ${llvmPackages.libcxx}/lib/libc++*.dylib $out/lib
       cp -d ${llvmPackages.libcxxabi}/lib/libc++abi*.dylib $out/lib
+      cp -d ${llvmPackages.llvm.lib}/lib/libLLVM.dylib $out/lib
+      cp -d ${libffi}/lib/libffi*.dylib $out/lib
 
       mkdir $out/include
       cp -rd ${llvmPackages.libcxx}/include/c++     $out/include
@@ -98,9 +93,11 @@ in rec {
       cp -d ${xz.out}/lib/liblzma*.*     $out/lib
 
       # Copy binutils.
-      for i in as ld ar ranlib nm strip otool install_name_tool dsymutil lipo; do
+      for i in as ld ar ranlib nm strip otool install_name_tool lipo; do
         cp ${cctools_}/bin/$i $out/bin
       done
+
+      cp -d ${darwin.libtapi}/lib/libtapi* $out/lib
 
       cp -rd ${pkgs.darwin.CF}/Library $out
 
@@ -155,7 +152,7 @@ in rec {
     allowedReferences = [];
 
     meta = {
-      maintainers = [ stdenv.lib.maintainers.copumpkin ];
+      maintainers = [ lib.maintainers.copumpkin ];
     };
   };
 
@@ -183,9 +180,6 @@ in rec {
   unpack = stdenv.mkDerivation (bootstrapFiles // {
     name = "unpack";
 
-    reexportedLibrariesFile =
-      ../../os-specific/darwin/apple-source-releases/Libsystem/reexported_libraries;
-
     # This is by necessity a near-duplicate of unpack-bootstrap-tools.sh. If we refer to it directly,
     # we can't make any changes to it due to our testing stdenv depending on it. Think of this as the
     # unpack-bootstrap-tools.sh for the next round of bootstrap tools.
@@ -206,39 +200,6 @@ in rec {
           echo patching $i
           install_name_tool -add_rpath $out/lib $i || true
         fi
-      done
-
-      install_name_tool \
-        -id $out/lib/system/libsystem_c.dylib \
-        $out/lib/system/libsystem_c.dylib
-
-      install_name_tool \
-        -id $out/lib/system/libsystem_kernel.dylib \
-        $out/lib/system/libsystem_kernel.dylib
-
-      # TODO: this logic basically duplicates similar logic in the Libsystem expression. Deduplicate them!
-      libs=$(cat $reexportedLibrariesFile | grep -v '^#')
-
-      for i in $libs; do
-        if [ "$i" != "/usr/lib/system/libsystem_kernel.dylib" ] && [ "$i" != "/usr/lib/system/libsystem_c.dylib" ]; then
-          args="$args -reexport_library $i"
-        fi
-      done
-
-      ld -macosx_version_min 10.7 \
-         -arch x86_64 \
-         -dylib \
-         -o $out/lib/libSystem.B.dylib \
-         -compatibility_version 1.0 \
-         -current_version 1226.10.1 \
-         -reexport_library $out/lib/system/libsystem_c.dylib \
-         -reexport_library $out/lib/system/libsystem_kernel.dylib \
-         $args
-
-      ln -s libSystem.B.dylib $out/lib/libSystem.dylib
-
-      for name in c dbm dl info m mx poll proc pthread rpcsvc util gcc_s.10.4 gcc_s.10.5; do
-        ln -s libSystem.dylib $out/lib/lib$name.dylib
       done
 
       ln -s libresolv.9.dylib $out/lib/libresolv.dylib
@@ -309,7 +270,20 @@ in rec {
 
       ${build}/on-server/sh -c 'echo Hello World'
 
-      export flags="-idirafter ${unpack}/include-Libsystem --sysroot=${unpack} -L${unpack}/lib"
+      # This approximates a bootstrap version of libSystem can that be
+      # assembled via fetchurl. Adapted from main libSystem expression.
+      mkdir libSystem-boot
+      cp -vr \
+        ${darwin.darwin-stubs}/usr/lib/libSystem.B.tbd \
+        ${darwin.darwin-stubs}/usr/lib/system \
+        libSystem-boot
+
+      substituteInPlace libSystem-boot/libSystem.B.tbd \
+        --replace "/usr/lib/system/" "$PWD/libSystem-boot/system/"
+      ln -s libSystem.B.tbd libSystem-boot/libSystem.tbd
+      # End of bootstrap libSystem
+
+      export flags="-idirafter ${unpack}/include-Libsystem --sysroot=${unpack} -L${unpack}/lib -L$PWD/libSystem-boot"
 
       export CPP="clang -E $flags"
       export CC="clang $flags -Wl,-rpath,${unpack}/lib -Wl,-v -Wl,-sdk_version,10.10"

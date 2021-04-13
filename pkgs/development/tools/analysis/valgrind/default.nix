@@ -1,30 +1,28 @@
-{ stdenv, fetchurl, perl, gdb, llvm, cctools, xnu, bootstrap_cmds, autoreconfHook }:
+{ lib, stdenv, fetchurl, perl, gdb, cctools, xnu, bootstrap_cmds }:
 
 stdenv.mkDerivation rec {
-  name = "valgrind-3.14.0";
+  name = "valgrind-3.16.1";
 
   src = fetchurl {
     url = "https://sourceware.org/pub/valgrind/${name}.tar.bz2";
-    sha256 = "19ds42jwd89zrsjb94g7gizkkzipn8xik3xykrpcqxylxyzi2z03";
+    sha256 = "1jik19rcd34ip8a5c9nv5wfj8k8maqb8cyclr4xhznq2gcpkl7y9";
   };
-
-  # autoreconfHook is needed to pick up patching of Makefile.am
-  # Remove when the patch no longer applies.
-  patches = [ ./coregrind-makefile-race.patch ];
-  nativeBuildInputs = [ autoreconfHook ];
 
   outputs = [ "out" "dev" "man" "doc" ];
 
   hardeningDisable = [ "stackprotector" ];
 
-  # Perl is needed for `cg_annotate'.
   # GDB is needed to provide a sane default for `--db-command'.
-  buildInputs = [ perl gdb ]  ++ stdenv.lib.optionals (stdenv.isDarwin) [ bootstrap_cmds xnu ];
+  # Perl is needed for `callgrind_{annotate,control}'.
+  buildInputs = [ gdb perl ]  ++ lib.optionals (stdenv.isDarwin) [ bootstrap_cmds xnu ];
+
+  # Perl is also a native build input.
+  nativeBuildInputs = [ perl ];
 
   enableParallelBuilding = true;
   separateDebugInfo = stdenv.isLinux;
 
-  preConfigure = stdenv.lib.optionalString stdenv.isDarwin (
+  preConfigure = lib.optionalString stdenv.isDarwin (
     let OSRELEASE = ''
       $(awk -F '"' '/#define OSRELEASE/{ print $2 }' \
       <${xnu}/Library/Frameworks/Kernel.framework/Headers/libkern/version.h)'';
@@ -40,18 +38,8 @@ stdenv.mkDerivation rec {
       sed -i coregrind/link_tool_exe_darwin.in \
           -e 's/^my \$archstr = .*/my $archstr = "x86_64";/g'
 
-      echo "substitute hardcoded /usr/include/mach with ${xnu}/include/mach"
-      substituteInPlace coregrind/Makefile.in \
-         --replace /usr/include/mach ${xnu}/include/mach
-
-      echo "substitute hardcoded dsymutil with ${llvm}/bin/llvm-dsymutil"
-      find -name "Makefile.in" | while read file; do
-         substituteInPlace "$file" \
-           --replace dsymutil ${llvm}/bin/llvm-dsymutil
-      done
-
       substituteInPlace coregrind/m_debuginfo/readmacho.c \
-         --replace /usr/bin/dsymutil ${llvm}/bin/llvm-dsymutil
+         --replace /usr/bin/dsymutil ${stdenv.cc.bintools.bintools}/bin/dsymutil
 
       echo "substitute hardcoded /usr/bin/ld with ${cctools}/bin/ld"
       substituteInPlace coregrind/link_tool_exe_darwin.in \
@@ -62,7 +50,8 @@ stdenv.mkDerivation rec {
   postPatch = "";
 
   configureFlags =
-    stdenv.lib.optional (stdenv.hostPlatform.system == "x86_64-linux" || stdenv.hostPlatform.system == "x86_64-darwin") "--enable-only64bit";
+    lib.optional (stdenv.hostPlatform.system == "x86_64-linux" || stdenv.hostPlatform.system == "x86_64-darwin") "--enable-only64bit"
+    ++ lib.optional stdenv.hostPlatform.isDarwin "--with-xcodedir=${xnu}/include";
 
   doCheck = false; # fails
 
@@ -73,12 +62,10 @@ stdenv.mkDerivation rec {
         --replace 'obj:/usr/X11R6/lib' 'obj:*/lib' \
         --replace 'obj:/usr/lib' 'obj:*/lib'
     done
-
-    paxmark m $out/lib/valgrind/*-*-linux
   '';
 
   meta = {
-    homepage = http://www.valgrind.org/;
+    homepage = "http://www.valgrind.org/";
     description = "Debugging and profiling tool suite";
 
     longDescription = ''
@@ -89,9 +76,16 @@ stdenv.mkDerivation rec {
       Valgrind to build new tools.
     '';
 
-    license = stdenv.lib.licenses.gpl2Plus;
+    license = lib.licenses.gpl2Plus;
 
-    maintainers = [ stdenv.lib.maintainers.eelco ];
-    platforms = stdenv.lib.platforms.unix;
+    maintainers = [ lib.maintainers.eelco ];
+    platforms = lib.platforms.unix;
+    badPlatforms = [
+      "armv5tel-linux" "armv6l-linux" "armv6m-linux"
+      "sparc-linux" "sparc64-linux"
+      "riscv32-linux" "riscv64-linux"
+      "alpha-linux"
+    ];
+    broken = stdenv.isDarwin; # https://hydra.nixos.org/build/128521440/nixlog/2
   };
 }

@@ -1,22 +1,22 @@
-{ stdenv, fetchurl, meson, ninja, pkgconfig, gnome3, gettext }:
+{ lib, stdenv, fetchurl, meson, ninja, pkg-config, gnome3, gettext }:
 
 stdenv.mkDerivation rec {
-  name = "gnome-backgrounds-${version}";
-  version = "3.30.0";
+  pname = "gnome-backgrounds";
+  version = "3.38.0";
 
   src = fetchurl {
-    url = "mirror://gnome/sources/gnome-backgrounds/${stdenv.lib.versions.majorMinor version}/${name}.tar.xz";
-    sha256 = "1179jrl16bp9gqabqhw7nnfp8qzf5y1vf9fi45bni6rfmwm3mrpc";
+    url = "mirror://gnome/sources/gnome-backgrounds/${lib.versions.majorMinor version}/${pname}-${version}.tar.xz";
+    sha256 = "1qqygm15rcdgm36vz2iy7b9axndjzvpi29lmygyakjc07a3jlwgp";
   };
 
   passthru = {
     updateScript = gnome3.updateScript { packageName = "gnome-backgrounds"; attrPath = "gnome3.gnome-backgrounds"; };
   };
 
-  nativeBuildInputs = [ meson ninja pkgconfig gettext ];
+  nativeBuildInputs = [ meson ninja pkg-config gettext ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     platforms = platforms.unix;
-    maintainers = gnome3.maintainers;
+    maintainers = teams.gnome.members;
   };
 }

@@ -1,17 +1,18 @@
 { stdenv, fetchFromGitHub
-, withMySQL ? false, withPSQL ? false, withSQLite ? false
-, mysql, postgresql, sqlite, gawk, which
+, withMySQL ? true, withPSQL ? false, withSQLite ? false
+, mariadb, postgresql, sqlite, gawk, gnugrep, findutils, gnused
 , lib
 }:
 
-stdenv.mkDerivation {
-  name = "shmig-2017-07-24";
+stdenv.mkDerivation rec {
+  pname = "shmig";
+  version = "1.0.0";
 
   src = fetchFromGitHub {
     owner = "mbucc";
     repo = "shmig";
-    rev = "aff54e03d13f8f95b422cf898505490a56152a4a";
-    sha256 = "08q94dka5yqkzkis3w7j1q8kc7d3kk7mb2drx8ms59jcqvp847j3";
+    rev = "v${version}";
+    sha256 = "15ry1d51d6dlzzzhck2x57wrq48vs4n9pp20bv2sz6nk92fva5l5";
   };
 
   makeFlags = [ "PREFIX=$(out)" ];
@@ -20,18 +21,20 @@ stdenv.mkDerivation {
     patchShebangs .
 
     substituteInPlace shmig \
-      --replace "\`which mysql\`" "${lib.optionalString withMySQL "${mysql.client}/bin/mysql"}" \
+      --replace "\`which mysql\`" "${lib.optionalString withMySQL "${mariadb.client}/bin/mysql"}" \
       --replace "\`which psql\`" "${lib.optionalString withPSQL "${postgresql}/bin/psql"}" \
       --replace "\`which sqlite3\`" "${lib.optionalString withSQLite "${sqlite}/bin/sqlite3"}" \
       --replace "awk" "${gawk}/bin/awk" \
-      --replace "which" "${which}/bin/which"
+      --replace "grep" "${gnugrep}/bin/grep" \
+      --replace "find" "${findutils}/bin/find" \
+      --replace "sed" "${gnused}/bin/sed"
   '';
 
   preBuild = ''
     mkdir -p $out/bin
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Minimalistic database migration tool with MySQL, PostgreSQL and SQLite support";
     homepage = "https://github.com/mbucc/shmig";
     license = licenses.bsd3;

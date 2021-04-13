@@ -1,28 +1,27 @@
-{ stdenv
+{ lib, stdenv
 , fetchFromGitHub
 , cmake
 , gfortran
 , blas
 , boost
-, python
+, python3
 , ocl-icd
 , opencl-headers
 , Accelerate, CoreGraphics, CoreVideo, OpenCL
-, gtest
 }:
 
 stdenv.mkDerivation rec {
-  name = "clblas-${version}"; 
+  pname = "clblas";
   version = "2.12";
 
   src = fetchFromGitHub {
-    owner = "clMathLibraries"; 
+    owner = "clMathLibraries";
     repo = "clBLAS";
     rev = "v${version}";
     sha256 = "154mz52r5hm0jrp5fqrirzzbki14c1jkacj75flplnykbl36ibjs";
-  }; 
+  };
 
-  patches = [ ./platform.patch ]; 
+  patches = [ ./platform.patch ];
 
   postPatch = ''
     sed -i -re 's/(set\(\s*Boost_USE_STATIC_LIBS\s+).*/\1OFF\ \)/g' src/CMakeLists.txt
@@ -33,35 +32,34 @@ stdenv.mkDerivation rec {
   '';
 
   cmakeFlags = [
-    "-DUSE_SYSTEM_GTEST=ON"
+     "-DBUILD_TEST=OFF"
   ];
 
+  nativeBuildInputs = [ cmake ];
   buildInputs = [
-    cmake
     gfortran
     blas
-    python
+    python3
     boost
-    gtest
-  ] ++ stdenv.lib.optionals (!stdenv.isDarwin) [
+  ] ++ lib.optionals (!stdenv.isDarwin) [
     ocl-icd
     opencl-headers
-  ] ++ stdenv.lib.optionals stdenv.isDarwin [
+  ] ++ lib.optionals stdenv.isDarwin [
     Accelerate
     CoreGraphics
     CoreVideo
   ];
-  propagatedBuildInputs = stdenv.lib.optionals stdenv.isDarwin [
+  propagatedBuildInputs = lib.optionals stdenv.isDarwin [
     OpenCL
   ];
 
-  enableParallelBuilding = true;
+  strictDeps = true;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://github.com/clMathLibraries/clBLAS";
     description = "A software library containing BLAS functions written in OpenCL";
     longDescription = ''
-      This package contains a library of BLAS functions on top of OpenCL. 
+      This package contains a library of BLAS functions on top of OpenCL.
     '';
     license = licenses.asl20;
     maintainers = with maintainers; [ artuuge ];

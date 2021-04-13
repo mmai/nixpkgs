@@ -1,20 +1,22 @@
-{ stdenv, fetchFromGitHub, python3, wafHook }:
+{ lib, stdenv, fetchFromGitHub }:
 
 stdenv.mkDerivation rec {
-  name = "termbox-${version}";
-  version = "1.1.2";
+  pname = "termbox";
+  version = "1.1.4";
   src = fetchFromGitHub {
-    owner = "nsf";
+    owner = "termbox";
     repo = "termbox";
     rev = "v${version}";
-    sha256 = "08yqxzb8fny8806p7x8a6f3phhlbfqdd7dhkv25calswj7w1ssvs";
+    sha256 = "075swv6ajx8m424dbmgbf6fs6nd5q004gjpvx48gkxmnf9spvykl";
   };
-  nativeBuildInputs = [ python3 wafHook ];
-  meta = with stdenv.lib; {
+
+  makeFlags = [ "prefix=${placeholder "out"}" ];
+
+  meta = with lib; {
     description = "Library for writing text-based user interfaces";
     license = licenses.mit;
-    homepage = "https://github.com/nsf/termbox#readme";
-    downloadPage = "https://github.com/nsf/termbox/releases";
+    homepage = "https://github.com/termbox/termbox#readme";
+    downloadPage = "https://github.com/termbox/termbox/releases";
     maintainers = with maintainers; [ fgaz ];
   };
 }

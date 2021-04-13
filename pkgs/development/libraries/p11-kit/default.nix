@@ -1,22 +1,28 @@
-{ stdenv, fetchFromGitHub, autoreconfHook, which, pkgconfig, libiconv
-, libffi, libtasn1 }:
+{ lib, stdenv, fetchFromGitHub, fetchpatch, autoreconfHook, pkg-config, which
+, gettext, libffi, libiconv, libtasn1
+}:
 
 stdenv.mkDerivation rec {
-  name = "p11-kit-${version}";
-  version = "0.23.14";
+  pname = "p11-kit";
+  version = "0.23.22";
 
   src = fetchFromGitHub {
     owner = "p11-glue";
-    repo = "p11-kit";
+    repo = pname;
     rev = version;
-    sha256 = "0zmrw1ciybhnxjlsfb07wnf11ak5vrmy8y8fnz3mwm8v3w8dzlvw";
+    sha256 = "sha256-erWqElJr0iESNUk9EZiJRmSMYhns8GxuFLNw7mIIIWs=";
   };
 
   outputs = [ "out" "dev"];
   outputBin = "dev";
 
-  nativeBuildInputs = [ autoreconfHook which pkgconfig ];
-  buildInputs = [ libffi libtasn1 libiconv ];
+  # for cross platform builds of p11-kit, libtasn1 in nativeBuildInputs
+  # provides the asn1Parser binary on the hostPlatform needed for building.
+  # at the same time, libtasn1 in buildInputs provides the libasn1 library
+  # to link against for the target platform.
+  # hence, libtasn1 is required in both native and build inputs.
+  nativeBuildInputs = [ autoreconfHook pkg-config which libtasn1 ];
+  buildInputs = [ gettext libffi libiconv libtasn1 ];
 
   autoreconfPhase = ''
     NOCONFIGURE=1 ./autogen.sh
@@ -25,18 +31,33 @@ stdenv.mkDerivation rec {
   configureFlags = [
     "--sysconfdir=/etc"
     "--localstatedir=/var"
-    "--without-trust-paths"
+    "--with-trust-paths=/etc/ssl/certs/ca-certificates.crt"
   ];
 
-  installFlags = [ "exampledir=\${out}/etc/pkcs11" ];
-
-  doInstallCheck = false; # probably a bug in this derivation
   enableParallelBuilding = true;
 
-  meta = with stdenv.lib; {
-    homepage = https://p11-glue.freedesktop.org/;
+  # Tests run in fakeroot for non-root users
+  preCheck = ''
+    if [ "$(id -u)" != "0" ]; then
+      export FAKED_MODE=1
+    fi
+  '';
+
+  doCheck = !stdenv.isDarwin;
+
+  installFlags = [
+    "exampledir=${placeholder "out"}/etc/pkcs11"
+  ];
+
+  meta = with lib; {
+    description = "Library for loading and sharing PKCS#11 modules";
+    longDescription = ''
+      Provides a way to load and enumerate PKCS#11 modules.
+      Provides a standard configuration setup for installing
+      PKCS#11 modules in such a way that they're discoverable.
+    '';
+    homepage = "https://p11-glue.github.io/p11-glue/p11-kit.html";
     platforms = platforms.all;
-    maintainers = with maintainers; [ wkennington ];
-    license = licenses.mit;
+    license = licenses.bsd3;
   };
 }

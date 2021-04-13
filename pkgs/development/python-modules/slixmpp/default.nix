@@ -1,26 +1,52 @@
-{ lib, buildPythonPackage, fetchPypi, pythonOlder, fetchurl, aiodns, pyasn1, pyasn1-modules, gnupg }:
+{ lib
+, buildPythonPackage
+, aiodns
+, aiohttp
+, fetchPypi
+, gnupg
+, isPy3k
+, pyasn1
+, pyasn1-modules
+, pytestCheckHook
+, substituteAll
+}:
 
 buildPythonPackage rec {
   pname = "slixmpp";
-  version = "1.4.1";
+  version = "1.7.0";
 
-  disabled = pythonOlder "3.4";
+  disabled = !isPy3k;
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "020acd4507fd00c38835b78b5f338db60d3df840187623e0d41ab2ca89d7ae57";
+    sha256 = "sha256-fy7sRKS7ih4JmjOW/noL8qJ1xWVpQLbBbObHnMwT3Bc=";
   };
 
-  patchPhase = ''
-    substituteInPlace slixmpp/thirdparty/gnupg.py \
-      --replace "gpgbinary='gpg'" "gpgbinary='${gnupg}/bin/gpg'"
-  '';
+  patches = [
+    (substituteAll {
+      src = ./hardcode-gnupg-path.patch;
+      inherit gnupg;
+    })
+  ];
 
-  propagatedBuildInputs = [ aiodns pyasn1 pyasn1-modules gnupg ];
+  propagatedBuildInputs = [
+    aiodns
+    aiohttp
+    pyasn1
+    pyasn1-modules
+  ];
 
-  meta = {
+  checkInputs = [ pytestCheckHook ];
+
+  # Exclude live tests
+  disabledTestPaths = [ "tests/live_test.py" ];
+
+  pythonImportsCheck = [ "slixmpp" ];
+
+  meta = with lib; {
     description = "Elegant Python library for XMPP";
-    license = lib.licenses.mit;
-    homepage = https://dev.louiz.org/projects/slixmpp;
+    homepage = "https://slixmpp.readthedocs.io/";
+    license = licenses.mit;
+    maintainers = with maintainers; [ fab ];
   };
 }

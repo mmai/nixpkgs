@@ -36,13 +36,36 @@ let
         '';
       };
 
+      p11Auth = mkOption {
+        default = config.security.pam.p11.enable;
+        type = types.bool;
+        description = ''
+          If set, keys listed in
+          <filename>~/.ssh/authorized_keys</filename> and
+          <filename>~/.eid/authorized_certificates</filename>
+          can be used to log in with the associated PKCS#11 tokens.
+        '';
+      };
+
       u2fAuth = mkOption {
-        default = config.security.pam.enableU2F;
+        default = config.security.pam.u2f.enable;
         type = types.bool;
         description = ''
           If set, users listed in
-          <filename>~/.config/Yubico/u2f_keys</filename> are able to log in
-          with the associated U2F key.
+          <filename>$XDG_CONFIG_HOME/Yubico/u2f_keys</filename> (or
+          <filename>$HOME/.config/Yubico/u2f_keys</filename> if XDG variable is
+          not set) are able to log in with the associated U2F key. Path can be
+          changed using <option>security.pam.u2f.authFile</option> option.
+        '';
+      };
+
+      yubicoAuth = mkOption {
+        default = config.security.pam.yubico.enable;
+        type = types.bool;
+        description = ''
+          If set, users listed in
+          <filename>~/.yubico/authorized_yubikeys</filename>
+          are able to log in with the associated Yubikey tokens.
         '';
       };
 
@@ -129,6 +152,18 @@ let
         '';
       };
 
+      duoSecurity = {
+        enable = mkOption {
+          default = false;
+          type = types.bool;
+          description = ''
+            If set, use the Duo Security pam module
+            <literal>pam_duo</literal> for authentication.  Requires
+            configuration of <option>security.duosec</option> options.
+          '';
+        };
+      };
+
       startSession = mkOption {
         default = false;
         type = types.bool;
@@ -192,6 +227,14 @@ let
           field set to <literal>!</literal>).  Note that regardless of
           what the pam_unix documentation says, accounts with hashed
           empty passwords are always allowed to log in.
+        '';
+      };
+
+      nodelay = mkOption {
+        default = false;
+        type = types.bool;
+        description = ''
+          Wheather the delay after typing a wrong password should be disabled.
         '';
       };
 
@@ -275,6 +318,42 @@ let
         '';
       };
 
+      gnupg = {
+        enable = mkOption {
+          type = types.bool;
+          default = false;
+          description = ''
+            If enabled, pam_gnupg will attempt to automatically unlock the
+            user's GPG keys with the login password via
+            <command>gpg-agent</command>. The keygrips of all keys to be
+            unlocked should be written to <filename>~/.pam-gnupg</filename>,
+            and can be queried with <command>gpg -K --with-keygrip</command>.
+            Presetting passphrases must be enabled by adding
+            <literal>allow-preset-passphrase</literal> in
+            <filename>~/.gnupg/gpg-agent.conf</filename>.
+          '';
+        };
+
+        noAutostart = mkOption {
+          type = types.bool;
+          default = false;
+          description = ''
+            Don't start <command>gpg-agent</command> if it is not running.
+            Useful in conjunction with starting <command>gpg-agent</command> as
+            a systemd user service.
+          '';
+        };
+
+        storeOnly = mkOption {
+          type = types.bool;
+          default = false;
+          description = ''
+            Don't send the password immediately after login, but store for PAM
+            <literal>session</literal>.
+          '';
+        };
+      };
+
       text = mkOption {
         type = types.nullOr types.lines;
         description = "Contents of the PAM service file.";
@@ -315,17 +394,21 @@ let
           ${optionalString cfg.requireWheel
               "auth required pam_wheel.so use_uid"}
           ${optionalString cfg.logFailures
-              "auth required pam_tally.so"}
+              "auth required pam_faillock.so"}
           ${optionalString (config.security.pam.enableSSHAgentAuth && cfg.sshAgentAuth)
-              "auth sufficient ${pkgs.pam_ssh_agent_auth}/libexec/pam_ssh_agent_auth.so file=~/.ssh/authorized_keys:~/.ssh/authorized_keys2:/etc/ssh/authorized_keys.d/%u"}
+              "auth sufficient ${pkgs.pam_ssh_agent_auth}/libexec/pam_ssh_agent_auth.so file=${lib.concatStringsSep ":" config.services.openssh.authorizedKeysFiles}"}
           ${optionalString cfg.fprintAuth
               "auth sufficient ${pkgs.fprintd}/lib/security/pam_fprintd.so"}
-          ${optionalString cfg.u2fAuth
-              "auth sufficient ${pkgs.pam_u2f}/lib/security/pam_u2f.so"}
+          ${let p11 = config.security.pam.p11; in optionalString cfg.p11Auth
+              "auth ${p11.control} ${pkgs.pam_p11}/lib/security/pam_p11.so ${pkgs.opensc}/lib/opensc-pkcs11.so"}
+          ${let u2f = config.security.pam.u2f; in optionalString cfg.u2fAuth
+              "auth ${u2f.control} ${pkgs.pam_u2f}/lib/security/pam_u2f.so ${optionalString u2f.debug "debug"} ${optionalString (u2f.authFile != null) "authfile=${u2f.authFile}"} ${optionalString u2f.interactive "interactive"} ${optionalString u2f.cue "cue"} ${optionalString (u2f.appId != null) "appid=${u2f.appId}"}"}
           ${optionalString cfg.usbAuth
               "auth sufficient ${pkgs.pam_usb}/lib/security/pam_usb.so"}
           ${let oath = config.security.pam.oath; in optionalString cfg.oathAuth
               "auth requisite ${pkgs.oathToolkit}/lib/security/pam_oath.so window=${toString oath.window} usersfile=${toString oath.usersFile} digits=${toString oath.digits}"}
+          ${let yubi = config.security.pam.yubico; in optionalString cfg.yubicoAuth
+              "auth ${yubi.control} ${pkgs.yubico-pam}/lib/security/pam_yubico.so mode=${toString yubi.mode} ${optionalString (yubi.mode == "client") "id=${toString yubi.id}"} ${optionalString yubi.debug "debug"}"}
         '' +
           # Modules in this block require having the password set in PAM_AUTHTOK.
           # pam_unix is marked as 'sufficient' on NixOS which means nothing will run
@@ -338,22 +421,30 @@ let
             || cfg.pamMount
             || cfg.enableKwallet
             || cfg.enableGnomeKeyring
-            || cfg.googleAuthenticator.enable)) ''
-              auth required pam_unix.so ${optionalString cfg.allowNullPassword "nullok"} likeauth
+            || cfg.googleAuthenticator.enable
+            || cfg.gnupg.enable
+            || cfg.duoSecurity.enable)) ''
+              auth required pam_unix.so ${optionalString cfg.allowNullPassword "nullok"} ${optionalString cfg.nodelay "nodelay"} likeauth
               ${optionalString config.security.pam.enableEcryptfs
                 "auth optional ${pkgs.ecryptfs}/lib/security/pam_ecryptfs.so unwrap"}
               ${optionalString cfg.pamMount
                 "auth optional ${pkgs.pam_mount}/lib/security/pam_mount.so"}
               ${optionalString cfg.enableKwallet
-                ("auth optional ${pkgs.plasma5.kwallet-pam}/lib/security/pam_kwallet5.so" +
-                 " kwalletd=${pkgs.libsForQt5.kwallet.bin}/bin/kwalletd5")}
+                ("auth optional ${pkgs.plasma5Packages.kwallet-pam}/lib/security/pam_kwallet5.so" +
+                 " kwalletd=${pkgs.plasma5Packages.kwallet.bin}/bin/kwalletd5")}
               ${optionalString cfg.enableGnomeKeyring
-                ("auth optional ${pkgs.gnome3.gnome-keyring}/lib/security/pam_gnome_keyring.so")}
+                "auth optional ${pkgs.gnome3.gnome-keyring}/lib/security/pam_gnome_keyring.so"}
+              ${optionalString cfg.gnupg.enable
+                "auth optional ${pkgs.pam_gnupg}/lib/security/pam_gnupg.so"
+                + optionalString cfg.gnupg.storeOnly " store-only"
+               }
               ${optionalString cfg.googleAuthenticator.enable
-                  "auth required ${pkgs.googleAuthenticator}/lib/security/pam_google_authenticator.so no_increment_hotp"}
+                "auth required ${pkgs.googleAuthenticator}/lib/security/pam_google_authenticator.so no_increment_hotp"}
+              ${optionalString cfg.duoSecurity.enable
+                "auth required ${pkgs.duo-unix}/lib/security/pam_duo.so"}
             '') + ''
           ${optionalString cfg.unixAuth
-              "auth sufficient pam_unix.so ${optionalString cfg.allowNullPassword "nullok"} likeauth try_first_pass"}
+              "auth sufficient pam_unix.so ${optionalString cfg.allowNullPassword "nullok"} ${optionalString cfg.nodelay "nodelay"} likeauth try_first_pass"}
           ${optionalString cfg.otpwAuth
               "auth sufficient ${pkgs.otpw}/lib/security/pam_otpw.so"}
           ${optionalString use_ldap
@@ -368,7 +459,7 @@ let
           auth required pam_deny.so
 
           # Password management.
-          password requisite pam_unix.so nullok sha512
+          password sufficient pam_unix.so nullok sha512
           ${optionalString config.security.pam.enableEcryptfs
               "password optional ${pkgs.ecryptfs}/lib/security/pam_ecryptfs.so"}
           ${optionalString cfg.pamMount
@@ -379,12 +470,12 @@ let
               "password sufficient ${pkgs.sssd}/lib/security/pam_sss.so use_authtok"}
           ${optionalString config.krb5.enable
               "password sufficient ${pam_krb5}/lib/security/pam_krb5.so use_first_pass"}
-          ${optionalString config.services.samba.syncPasswordsByPam
-              "password optional ${pkgs.samba}/lib/security/pam_smbpass.so nullok use_authtok try_first_pass"}
+          ${optionalString cfg.enableGnomeKeyring
+              "password optional ${pkgs.gnome3.gnome-keyring}/lib/security/pam_gnome_keyring.so use_authtok"}
 
           # Session management.
           ${optionalString cfg.setEnvironment ''
-            session required pam_env.so envfile=${config.system.build.pamEnvironment}
+            session required pam_env.so conffile=${config.system.build.pamEnvironment} readenv=0
           ''}
           session required pam_unix.so
           ${optionalString cfg.setLoginUid
@@ -397,6 +488,8 @@ let
               "session required ${pkgs.pam}/lib/security/pam_lastlog.so silent"}
           ${optionalString config.security.pam.enableEcryptfs
               "session optional ${pkgs.ecryptfs}/lib/security/pam_ecryptfs.so"}
+          ${optionalString cfg.pamMount
+              "session optional ${pkgs.pam_mount}/lib/security/pam_mount.so"}
           ${optionalString use_ldap
               "session optional ${pam_ldap}/lib/security/pam_ldap.so"}
           ${optionalString config.services.sssd.enable
@@ -413,15 +506,17 @@ let
               "session required ${pkgs.pam}/lib/security/pam_limits.so conf=${makeLimitsConf cfg.limits}"}
           ${optionalString (cfg.showMotd && config.users.motd != null)
               "session optional ${pkgs.pam}/lib/security/pam_motd.so motd=${motd}"}
-          ${optionalString cfg.pamMount
-              "session optional ${pkgs.pam_mount}/lib/security/pam_mount.so"}
           ${optionalString (cfg.enableAppArmor && config.security.apparmor.enable)
               "session optional ${pkgs.apparmor-pam}/lib/security/pam_apparmor.so order=user,group,default debug"}
           ${optionalString (cfg.enableKwallet)
-              ("session optional ${pkgs.plasma5.kwallet-pam}/lib/security/pam_kwallet5.so" +
-               " kwalletd=${pkgs.libsForQt5.kwallet.bin}/bin/kwalletd5")}
+              ("session optional ${pkgs.plasma5Packages.kwallet-pam}/lib/security/pam_kwallet5.so" +
+               " kwalletd=${pkgs.plasma5Packages.kwallet.bin}/bin/kwalletd5")}
           ${optionalString (cfg.enableGnomeKeyring)
               "session optional ${pkgs.gnome3.gnome-keyring}/lib/security/pam_gnome_keyring.so auto_start"}
+          ${optionalString cfg.gnupg.enable
+              "session optional ${pkgs.pam_gnupg}/lib/security/pam_gnupg.so"
+              + optionalString cfg.gnupg.noAutostart " no-autostart"
+           }
           ${optionalString (config.virtualisation.lxc.lxcfs.enable)
                "session optional ${pkgs.lxc}/lib/security/pam_cgfs.so -c all"}
         '');
@@ -444,14 +539,18 @@ let
 
   motd = pkgs.writeText "motd" config.users.motd;
 
-  makePAMService = pamService:
-    { source = pkgs.writeText "${pamService.name}.pam" pamService.text;
-      target = "pam.d/${pamService.name}";
+  makePAMService = name: service:
+    { name = "pam.d/${name}";
+      value.source = pkgs.writeText "${name}.pam" service.text;
     };
 
 in
 
 {
+
+  imports = [
+    (mkRenamedOptionModule [ "security" "pam" "enableU2F" ] [ "security" "pam" "u2f" "enable" ])
+  ];
 
   ###### interface
 
@@ -488,7 +587,7 @@ in
 
     security.pam.services = mkOption {
       default = [];
-      type = with types; loaOf (submodule pamOpts);
+      type = with types; attrsOf (submodule pamOpts);
       description =
         ''
           This option defines the PAM services.  A service typically
@@ -510,6 +609,7 @@ in
     };
 
     security.pam.enableSSHAgentAuth = mkOption {
+      type = types.bool;
       default = false;
       description =
         ''
@@ -520,26 +620,215 @@ in
         '';
     };
 
-    security.pam.enableOTPW = mkOption {
-      default = false;
-      description = ''
-        Enable the OTPW (one-time password) PAM module.
-      '';
+    security.pam.enableOTPW = mkEnableOption "the OTPW (one-time password) PAM module";
+
+    security.pam.p11 = {
+      enable = mkOption {
+        default = false;
+        type = types.bool;
+        description = ''
+          Enables P11 PAM (<literal>pam_p11</literal>) module.
+
+          If set, users can log in with SSH keys and PKCS#11 tokens.
+
+          More information can be found <link
+          xlink:href="https://github.com/OpenSC/pam_p11">here</link>.
+        '';
+      };
+
+      control = mkOption {
+        default = "sufficient";
+        type = types.enum [ "required" "requisite" "sufficient" "optional" ];
+        description = ''
+          This option sets pam "control".
+          If you want to have multi factor authentication, use "required".
+          If you want to use the PKCS#11 device instead of the regular password,
+          use "sufficient".
+
+          Read
+          <citerefentry>
+            <refentrytitle>pam.conf</refentrytitle>
+            <manvolnum>5</manvolnum>
+          </citerefentry>
+          for better understanding of this option.
+        '';
+      };
     };
 
-    security.pam.enableU2F = mkOption {
-      default = false;
-      description = ''
-        Enable the U2F PAM module.
-      '';
+    security.pam.u2f = {
+      enable = mkOption {
+        default = false;
+        type = types.bool;
+        description = ''
+          Enables U2F PAM (<literal>pam-u2f</literal>) module.
+
+          If set, users listed in
+          <filename>$XDG_CONFIG_HOME/Yubico/u2f_keys</filename> (or
+          <filename>$HOME/.config/Yubico/u2f_keys</filename> if XDG variable is
+          not set) are able to log in with the associated U2F key. The path can
+          be changed using <option>security.pam.u2f.authFile</option> option.
+
+          File format is:
+          <literal>username:first_keyHandle,first_public_key: second_keyHandle,second_public_key</literal>
+          This file can be generated using <command>pamu2fcfg</command> command.
+
+          More information can be found <link
+          xlink:href="https://developers.yubico.com/pam-u2f/">here</link>.
+        '';
+      };
+
+      authFile = mkOption {
+        default = null;
+        type = with types; nullOr path;
+        description = ''
+          By default <literal>pam-u2f</literal> module reads the keys from
+          <filename>$XDG_CONFIG_HOME/Yubico/u2f_keys</filename> (or
+          <filename>$HOME/.config/Yubico/u2f_keys</filename> if XDG variable is
+          not set).
+
+          If you want to change auth file locations or centralize database (for
+          example use <filename>/etc/u2f-mappings</filename>) you can set this
+          option.
+
+          File format is:
+          <literal>username:first_keyHandle,first_public_key: second_keyHandle,second_public_key</literal>
+          This file can be generated using <command>pamu2fcfg</command> command.
+
+          More information can be found <link
+          xlink:href="https://developers.yubico.com/pam-u2f/">here</link>.
+        '';
+      };
+
+      appId = mkOption {
+        default = null;
+        type = with types; nullOr str;
+        description = ''
+            By default <literal>pam-u2f</literal> module sets the application
+            ID to <literal>pam://$HOSTNAME</literal>.
+
+            When using <command>pamu2fcfg</command>, you can specify your
+            application ID with the <literal>-i</literal> flag.
+
+            More information can be found <link
+            xlink:href="https://developers.yubico.com/pam-u2f/Manuals/pam_u2f.8.html">
+            here</link>
+        '';
+      };
+
+      control = mkOption {
+        default = "sufficient";
+        type = types.enum [ "required" "requisite" "sufficient" "optional" ];
+        description = ''
+          This option sets pam "control".
+          If you want to have multi factor authentication, use "required".
+          If you want to use U2F device instead of regular password, use "sufficient".
+
+          Read
+          <citerefentry>
+            <refentrytitle>pam.conf</refentrytitle>
+            <manvolnum>5</manvolnum>
+          </citerefentry>
+          for better understanding of this option.
+        '';
+      };
+
+      debug = mkOption {
+        default = false;
+        type = types.bool;
+        description = ''
+          Debug output to stderr.
+        '';
+      };
+
+      interactive = mkOption {
+        default = false;
+        type = types.bool;
+        description = ''
+          Set to prompt a message and wait before testing the presence of a U2F device.
+          Recommended if your device doesn’t have a tactile trigger.
+        '';
+      };
+
+      cue = mkOption {
+        default = false;
+        type = types.bool;
+        description = ''
+          By default <literal>pam-u2f</literal> module does not inform user
+          that he needs to use the u2f device, it just waits without a prompt.
+
+          If you set this option to <literal>true</literal>,
+          <literal>cue</literal> option is added to <literal>pam-u2f</literal>
+          module and reminder message will be displayed.
+        '';
+      };
     };
 
-    security.pam.enableEcryptfs = mkOption {
-      default = false;
-      description = ''
-        Enable eCryptfs PAM module (mounting ecryptfs home directory on login).
-      '';
+    security.pam.yubico = {
+      enable = mkOption {
+        default = false;
+        type = types.bool;
+        description = ''
+          Enables Yubico PAM (<literal>yubico-pam</literal>) module.
+
+          If set, users listed in
+          <filename>~/.yubico/authorized_yubikeys</filename>
+          are able to log in with the associated Yubikey tokens.
+
+          The file must have only one line:
+          <literal>username:yubikey_token_id1:yubikey_token_id2</literal>
+          More information can be found <link
+          xlink:href="https://developers.yubico.com/yubico-pam/">here</link>.
+        '';
+      };
+      control = mkOption {
+        default = "sufficient";
+        type = types.enum [ "required" "requisite" "sufficient" "optional" ];
+        description = ''
+          This option sets pam "control".
+          If you want to have multi factor authentication, use "required".
+          If you want to use Yubikey instead of regular password, use "sufficient".
+
+          Read
+          <citerefentry>
+            <refentrytitle>pam.conf</refentrytitle>
+            <manvolnum>5</manvolnum>
+          </citerefentry>
+          for better understanding of this option.
+        '';
+      };
+      id = mkOption {
+        example = "42";
+        type = types.str;
+        description = "client id";
+      };
+
+      debug = mkOption {
+        default = false;
+        type = types.bool;
+        description = ''
+          Debug output to stderr.
+        '';
+      };
+      mode = mkOption {
+        default = "client";
+        type = types.enum [ "client" "challenge-response" ];
+        description = ''
+          Mode of operation.
+
+          Use "client" for online validation with a YubiKey validation service such as
+          the YubiCloud.
+
+          Use "challenge-response" for offline validation using YubiKeys with HMAC-SHA-1
+          Challenge-Response configurations. See the man-page ykpamcfg(1) for further
+          details on how to configure offline Challenge-Response validation.
+
+          More information can be found <link
+          xlink:href="https://developers.yubico.com/yubico-pam/Authentication_Using_Challenge-Response.html">here</link>.
+        '';
+      };
     };
+
+    security.pam.enableEcryptfs = mkEnableOption "eCryptfs PAM module (mounting ecryptfs home directory on login)";
 
     users.motd = mkOption {
       default = null;
@@ -563,7 +852,8 @@ in
       ++ optionals config.krb5.enable [pam_krb5 pam_ccreds]
       ++ optionals config.security.pam.enableOTPW [ pkgs.otpw ]
       ++ optionals config.security.pam.oath.enable [ pkgs.oathToolkit ]
-      ++ optionals config.security.pam.enableU2F [ pkgs.pam_u2f ];
+      ++ optionals config.security.pam.p11.enable [ pkgs.pam_p11 ]
+      ++ optionals config.security.pam.u2f.enable [ pkgs.pam_u2f ];
 
     boot.supportedFilesystems = optionals config.security.pam.enableEcryptfs [ "ecryptfs" ];
 
@@ -575,15 +865,7 @@ in
       };
     };
 
-    environment.etc =
-      mapAttrsToList (n: v: makePAMService v) config.security.pam.services;
-
-    systemd.tmpfiles.rules = optionals
-      (any (s: s.updateWtmp) (attrValues config.security.pam.services))
-      [
-        "f /var/log/wtmp"
-        "f /var/log/lastlog"
-      ];
+    environment.etc = mapAttrs' makePAMService config.security.pam.services;
 
     security.pam.services =
       { other.text =
@@ -599,11 +881,8 @@ in
           '';
 
         # Most of these should be moved to specific modules.
-        cups = {};
-        ftp = {};
         i3lock = {};
         i3lock-color = {};
-        screen = {};
         vlock = {};
         xlock = {};
         xscreensaver = {};

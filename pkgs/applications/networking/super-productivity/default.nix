@@ -1,13 +1,13 @@
-{ stdenv, fetchurl, dpkg, makeWrapper
+{ lib, stdenv, fetchurl, dpkg, makeWrapper
 , alsaLib, atk, cairo, cups, curl, dbus, expat, fontconfig, freetype, glib
-, gnome2, gtk3, gdk_pixbuf, libnotify, libxcb, nspr, nss, pango
+, gnome2, gtk3, gdk-pixbuf, libnotify, libxcb, nspr, nss, pango
 , systemd, xorg, xprintidle-ng }:
 
 let
 
   version = "1.10.45";
 
-  rpath = stdenv.lib.makeLibraryPath [
+  rpath = lib.makeLibraryPath [
     alsaLib
     atk
     cairo
@@ -19,7 +19,7 @@ let
     freetype
     glib
     gnome2.GConf
-    gdk_pixbuf
+    gdk-pixbuf
     gtk3
     pango
     libnotify
@@ -53,7 +53,8 @@ let
       throw "super-productivity is not supported on ${stdenv.hostPlatform.system}";
 
 in stdenv.mkDerivation {
-  name = "super-productivity-${version}";
+  pname = "super-productivity";
+  inherit version;
 
   inherit src;
 
@@ -95,9 +96,9 @@ in stdenv.mkDerivation {
 
   dontStrip = true;
 
-  meta = with stdenv.lib; {
-    description = "To Do List / Time Tracker with Jira Integration.";
-    homepage = https://super-productivity.com;
+  meta = with lib; {
+    description = "To Do List / Time Tracker with Jira Integration";
+    homepage = "https://super-productivity.com";
     license = licenses.mit;
     platforms = [ "x86_64-linux" ];
     maintainers = with maintainers; [ offline ];

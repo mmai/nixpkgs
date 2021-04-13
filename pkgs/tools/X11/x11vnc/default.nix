@@ -1,26 +1,34 @@
-{ stdenv, fetchFromGitHub,
+{ lib, stdenv, fetchFromGitHub, fetchpatch,
   openssl, zlib, libjpeg, xorg, coreutils, libvncserver,
-  autoreconfHook, pkgconfig }:
+  autoreconfHook, pkg-config }:
 
 stdenv.mkDerivation rec {
-  name = "x11vnc-${version}";
-  version = "0.9.15";
+  pname = "x11vnc";
+  version = "0.9.16";
 
   src = fetchFromGitHub {
     owner = "LibVNC";
     repo = "x11vnc";
     rev = version;
-    sha256 = "1a1b65k1hsy4nhg2sx1yrpaz3vx6s7rmrx8nwygpaam8wpdlkh8p";
+    sha256 = "1g652mmi79pfq4p5p7spaswa164rpzjhc5rn2phy5pm71lm0vib1";
   };
 
-  nativeBuildInputs = [ autoreconfHook pkgconfig ];
+  patches = [
+    (fetchpatch {
+      name = "CVE-2020-29074.patch";
+      url = "https://github.com/LibVNC/x11vnc/commit/69eeb9f7baa14ca03b16c9de821f9876def7a36a.patch";
+      sha256 = "0hdhp32g2i5m0ihmaxkxhsn3d5f2qasadvwpgxify4xnzabmyb2d";
+    })
+  ];
+
+  nativeBuildInputs = [ autoreconfHook pkg-config ];
 
   buildInputs =
-    [ xorg.libXfixes xorg.fixesproto openssl xorg.libXdamage
-      xorg.damageproto zlib xorg.libX11 xorg.xproto libjpeg
-      xorg.libXtst xorg.libXinerama xorg.xineramaproto xorg.libXrandr
-      xorg.randrproto xorg.libXext xorg.xextproto xorg.inputproto
-      xorg.recordproto xorg.libXi xorg.libXrender xorg.renderproto
+    [ xorg.libXfixes xorg.xorgproto openssl xorg.libXdamage
+      zlib xorg.libX11 libjpeg
+      xorg.libXtst xorg.libXinerama xorg.libXrandr
+      xorg.libXext
+      xorg.libXi xorg.libXrender
       libvncserver
     ];
 
@@ -39,9 +47,9 @@ stdenv.mkDerivation rec {
     configureFlags="--mandir=$out/share/man"
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A VNC server connected to a real X11 screen";
-    homepage = https://github.com/LibVNC/x11vnc/;
+    homepage = "https://github.com/LibVNC/x11vnc/";
     platforms = platforms.linux;
     license = licenses.gpl2;
     maintainers = with maintainers; [ OPNA2608 ];

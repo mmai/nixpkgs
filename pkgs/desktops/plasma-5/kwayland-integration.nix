@@ -1,11 +1,12 @@
 {
-  mkDerivation,
+  mkDerivation, lib,
   extra-cmake-modules,
-  kidletime, kwayland, kwindowsystem, qtbase,
+  kguiaddons, kidletime, kwayland, kwindowsystem, qtbase,
 }:
 
 mkDerivation {
   name = "kwayland-integration";
   nativeBuildInputs = [ extra-cmake-modules ];
-  buildInputs = [ kidletime kwindowsystem kwayland qtbase ];
+  buildInputs = [ kguiaddons kidletime kwindowsystem kwayland qtbase ];
+  meta.broken = lib.versionOlder qtbase.version "5.15.0";
 }

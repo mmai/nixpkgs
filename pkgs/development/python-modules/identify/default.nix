@@ -1,20 +1,33 @@
-{ lib, buildPythonPackage, fetchPypi }:
+{ lib
+, buildPythonPackage
+, fetchFromGitHub
+, pytestCheckHook
+, editdistance
+}:
 
 buildPythonPackage rec {
   pname = "identify";
-  version = "1.1.7";
+  version = "1.6.1";
 
-  src = fetchPypi {
-    inherit pname version;
-    sha256 = "5e956558a9a1e3b3891d7c6609fc9709657a11878af288ace484d1a46a93922b";
+
+  src = fetchFromGitHub {
+    owner = "pre-commit";
+    repo = pname;
+    rev = "v${version}";
+    sha256 = "1sqhqqjp53dwm8yq4nrgggxbvzs3szbg49z5sj2ss9xzlgmimclm";
   };
 
-  # Tests not included in PyPI tarball
-  doCheck = false;
+  checkInputs = [
+    editdistance
+    pytestCheckHook
+  ];
+
+  pythonImportsCheck = [ "identify" ];
 
   meta = with lib; {
     description = "File identification library for Python";
-    homepage = https://github.com/chriskuehl/identify;
+    homepage = "https://github.com/chriskuehl/identify";
     license = licenses.mit;
+    maintainers = with maintainers; [ fab ];
   };
 }

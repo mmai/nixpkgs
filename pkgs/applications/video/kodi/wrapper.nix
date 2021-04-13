@@ -1,9 +1,14 @@
-{ stdenv, lib, makeWrapper, buildEnv, kodi, plugins }:
+{ lib, makeWrapper, buildEnv, kodi, addons }:
+
+let
+  # linux distros are supposed to provide pillow and pycryptodome
+  requiredPythonPackages = with kodi.pythonPackages; [ pillow pycryptodome] ++ addons;
+in
 
 buildEnv {
-  name = "kodi-with-plugins-${(builtins.parseDrvName kodi.name).version}";
+  name = "${kodi.name}-env";
 
-  paths = [ kodi ] ++ plugins;
+  paths = [ kodi ] ++ addons;
   pathsToLink = [ "/share" ];
 
   buildInputs = [ makeWrapper ];
@@ -13,13 +18,11 @@ buildEnv {
     for exe in kodi{,-standalone}
     do
       makeWrapper ${kodi}/bin/$exe $out/bin/$exe \
-        --prefix PYTHONPATH : ${kodi.pythonPackages.makePythonPath plugins} \
-        --prefix KODI_HOME : $out/share/kodi
+        --prefix PYTHONPATH : ${kodi.pythonPackages.makePythonPath requiredPythonPackages} \
+        --prefix KODI_HOME : $out/share/kodi \
+        --prefix LD_LIBRARY_PATH ":" "${lib.makeLibraryPath
+          (lib.concatMap
+            (plugin: plugin.extraRuntimeDependencies or []) addons)}"
     done
   '';
-
-  meta = kodi.meta // {
-    description = kodi.meta.description
-                + " (with plugins: ${lib.concatMapStringsSep ", " (x: x.name) plugins})";
-  };
 }

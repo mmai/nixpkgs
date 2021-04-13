@@ -1,13 +1,13 @@
-{ stdenv, libffi, openssl, pythonPackages }:
+{ lib, libffi, openssl, python3Packages }:
 let
-  inherit (pythonPackages) fetchPypi buildPythonApplication vcrpy mock hiro;
+  inherit (python3Packages) fetchPypi buildPythonApplication vcrpy mock hiro;
 in
   buildPythonApplication rec {
     pname = "jira-cli";
-    version = "2.2";
+    version = "3.0";
     src = fetchPypi {
       inherit pname version;
-      sha256 = "314118d5d851394ebf910122fd7ce871f63581393968c71456441eb56be3b112";
+      sha256 = "86f7d4ad7292c9a27bbc265d09e7bcd00ef8159f20172998d85f25aad53b0df6";
     };
 
     postPatch = ''
@@ -16,16 +16,16 @@ in
 
     # Tests rely on VCR cassettes being written during tests. R/O nix store prevents this.
     doCheck = false;
-    checkInputs = with pythonPackages; [ vcrpy mock hiro ];
+    checkInputs = with python3Packages; [ vcrpy mock hiro ];
     buildInputs = [ libffi openssl ];
-    propagatedBuildInputs = with pythonPackages; [
-      argparse ordereddict requests six suds-jurko termcolor keyring
+    propagatedBuildInputs = with python3Packages; [
+      ordereddict requests six suds-jurko termcolor keyring
       jira  keyrings-alt
     ];
 
-    meta = with stdenv.lib; {
+    meta = with lib; {
       description = "A command line interface to Jira";
-      homepage = https://github.com/alisaifee/jira-cli;
+      homepage = "https://github.com/alisaifee/jira-cli";
       maintainers = with maintainers; [ nyarly ];
       license = licenses.mit;
     };

@@ -1,16 +1,17 @@
-{ stdenv, fetchFromGitHub
+{ lib, stdenv, mkDerivationWith, fetchFromGitHub, fetchpatch
 , doxygen, python3Packages, libopenshot
-, wrapGAppsHook, gtk3 }:
+, wrapGAppsHook, gtk3
+, qtsvg }:
 
-python3Packages.buildPythonApplication rec {
-  name = "openshot-qt-${version}";
-  version = "2.4.3";
+mkDerivationWith python3Packages.buildPythonApplication rec {
+  pname = "openshot-qt";
+  version = "2.5.1";
 
   src = fetchFromGitHub {
     owner = "OpenShot";
     repo = "openshot-qt";
     rev = "v${version}";
-    sha256 = "1qdw1mli4y9qhrnllnkaf6ydgw5vfvdb90chs4i679k0x0jyb9a2";
+    sha256 = "0qc5i0ay6j2wab1whl41sjb71cj02pg6y79drf7asrprq8b2rmfq";
   };
 
   nativeBuildInputs = [ doxygen wrapGAppsHook ];
@@ -19,16 +20,30 @@ python3Packages.buildPythonApplication rec {
 
   propagatedBuildInputs = with python3Packages; [ libopenshot pyqt5_with_qtwebkit requests sip httplib2 pyzmq ];
 
+  dontWrapGApps = true;
+  dontWrapQtApps = true;
 
   preConfigure = ''
     # tries to create caching directories during install
     export HOME=$(mktemp -d)
   '';
 
+  postFixup = ''
+    wrapProgram $out/bin/openshot-qt \
+  ''
+  # Fix toolbar icons on Darwin
+  + lib.optionalString stdenv.isDarwin ''
+      --suffix QT_PLUGIN_PATH : "${lib.getBin qtsvg}/lib/qt-5.12.7/plugins" \
+  ''
+  + ''
+      "''${gappsWrapperArgs[@]}" \
+      "''${qtWrapperArgs[@]}"
+  '';
+
   doCheck = false;
 
-  meta = with stdenv.lib; {
-    homepage = http://openshot.org/;
+  meta = with lib; {
+    homepage = "http://openshot.org/";
     description = "Free, open-source video editor";
     longDescription = ''
       OpenShot Video Editor is a free, open-source video editor for Linux.
@@ -39,6 +54,6 @@ python3Packages.buildPythonApplication rec {
     '';
     license = with licenses; gpl3Plus;
     maintainers = with maintainers; [ AndersonTorres ];
-    platforms = with platforms; linux;
+    platforms = with platforms; unix;
   };
 }

@@ -12,7 +12,7 @@ in {
   options = {
 
     services.vdr = {
-      enable = mkEnableOption "enable VDR. Please put config into ${libDir}.";
+      enable = mkEnableOption "VDR. Please put config into ${libDir}";
 
       package = mkOption {
         type = types.package;
@@ -33,12 +33,14 @@ in {
         default = [];
         description = "Additional command line arguments to pass to VDR.";
       };
+
+      enableLirc = mkEnableOption "LIRC";
     };
   };
 
   ###### implementation
 
-  config = mkIf cfg.enable {
+  config = mkIf cfg.enable (mkMerge [{
     systemd.tmpfiles.rules = [
       "d ${cfg.videoDir} 0755 vdr vdr -"
       "Z ${cfg.videoDir} - vdr vdr -"
@@ -64,8 +66,17 @@ in {
     users.users.vdr = {
       group = "vdr";
       home = libDir;
+      isSystemUser = true;
     };
 
     users.groups.vdr = {};
-  };
+  }
+
+  (mkIf cfg.enableLirc {
+    services.lirc.enable = true;
+    users.users.vdr.extraGroups = [ "lirc" ];
+    services.vdr.extraArguments = [
+      "--lirc=${config.passthru.lirc.socket}"
+    ];
+  })]);
 }

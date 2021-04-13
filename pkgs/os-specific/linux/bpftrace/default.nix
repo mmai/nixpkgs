@@ -1,57 +1,61 @@
-{ stdenv, fetchFromGitHub
-, cmake, pkgconfig, flex, bison
-, llvmPackages, kernel, linuxHeaders, elfutils, libelf, bcc
+{ lib, stdenv, fetchFromGitHub
+, cmake, pkg-config, flex, bison
+, llvmPackages, kernel, elfutils
+, libelf, libbfd, libbpf, libopcodes, bcc
 }:
 
 stdenv.mkDerivation rec {
-  name = "bpftrace-unstable-${version}";
-  version = "2018-10-27";
+  pname = "bpftrace";
+  version = "0.12.0";
 
   src = fetchFromGitHub {
-    owner = "iovisor";
-    repo = "bpftrace";
-    rev = "c07b54f61fd7b7b49e0a254e746d6f442c5d780d";
-    sha256 = "1mpcjfyay9akmpqxag2ndwpz1qsdx8ii07jh9fky4w40wi9cipyg";
+    owner  = "iovisor";
+    repo   = "bpftrace";
+    rev    = "v${version}";
+    sha256 = "0njbixkrpdl9gjnkzg0ybmqsva0ydfda5vms66v8ij7xida2qy07";
   };
 
-  # bpftrace requires an unreleased version of bcc, added to the cmake
-  # build as an ExternalProject.
-  # https://github.com/iovisor/bpftrace/issues/184
-  bccSrc = fetchFromGitHub {
-    owner = "iovisor";
-    repo = "bcc";
-    rev = "afd00154865f3b2da6781cf92cecebaca4853950";
-    sha256 = "0ad78smrnipr1f377i5rv6ksns7v2vq54g5badbj5ldqs4x0hygd";
-  };
+  buildInputs = with llvmPackages;
+    [ llvm clang-unwrapped
+      kernel elfutils libelf bcc
+      libbpf libbfd libopcodes
+    ];
 
-  buildInputs = [
-    llvmPackages.llvm llvmPackages.clang-unwrapped kernel
-    elfutils libelf bccSrc
-  ];
-
-  nativeBuildInputs = [ cmake pkgconfig flex bison ]
+  nativeBuildInputs = [ cmake pkg-config flex bison ]
     # libelf is incompatible with elfutils-libelf
-    ++ stdenv.lib.filter (x: x != libelf) kernel.moduleBuildDependencies;
+    ++ lib.filter (x: x != libelf) kernel.moduleBuildDependencies;
 
-  patches = [
-    ./bcc-source.patch
-    # https://github.com/iovisor/bpftrace/issues/184
-    ./disable-gtests.patch
-  ];
-
-  configurePhase = ''
-    mkdir build
-    cd build
-    cmake ../                                   \
-      -DKERNEL_HEADERS_DIR=${linuxHeaders}      \
-      -DNIX_BUILDS:BOOL=ON                      \
-      -DCMAKE_INSTALL_PREFIX=$out
+  # patch the source, *then* substitute on @NIX_KERNEL_SRC@ in the result. we could
+  # also in theory make this an environment variable around bpftrace, but this works
+  # nicely without wrappers.
+  patchPhase = ''
+    patch -p1 < ${./fix-kernel-include-dir.patch}
+    substituteInPlace ./src/utils.cpp \
+      --subst-var-by NIX_KERNEL_SRC '${kernel.dev}/lib/modules/${kernel.modDirVersion}'
   '';
 
-  meta = with stdenv.lib; {
+  # tests aren't built, due to gtest shenanigans. see:
+  #
+  #     https://github.com/iovisor/bpftrace/issues/161#issuecomment-453606728
+  #     https://github.com/iovisor/bpftrace/pull/363
+  #
+  cmakeFlags =
+    [ "-DBUILD_TESTING=FALSE"
+      "-DLIBBCC_INCLUDE_DIRS=${bcc}/include"
+    ];
+
+  # nuke the example/reference output .txt files, for the included tools,
+  # stuffed inside $out. we don't need them at all.
+  postInstall = ''
+    rm -rf $out/share/bpftrace/tools/doc
+  '';
+
+  outputs = [ "out" "man" ];
+
+  meta = with lib; {
     description = "High-level tracing language for Linux eBPF";
-    homepage = https://github.com/iovisor/bpftrace;
-    license = licenses.asl20;
-    maintainers = with maintainers; [ rvl ];
+    homepage    = "https://github.com/iovisor/bpftrace";
+    license     = licenses.asl20;
+    maintainers = with maintainers; [ rvl thoughtpolice ];
   };
 }

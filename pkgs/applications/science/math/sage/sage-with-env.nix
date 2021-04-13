@@ -2,18 +2,18 @@
 , lib
 , makeWrapper
 , sage-env
-, openblasCompat
+, blas
+, lapack
 , pkg-config
 , three
 , singular
-, libgap
-, gap-libgap-compatible
+, gap
 , giac
 , maxima-ecl
 , pari
 , gmp
 , gfan
-, python2
+, python3
 , flintqs
 , eclib
 , ntl
@@ -21,6 +21,9 @@
 , pynac
 , pythonEnv
 }:
+
+# lots of segfaults with (64 bit) blas
+assert (!blas.isILP64) && (!lapack.isILP64);
 
 # Wrapper that combined `sagelib` with `sage-env` to produce an actually
 # executable sage. No tests are run yet and no documentation is built.
@@ -30,13 +33,12 @@ let
     pythonEnv # for patchShebangs
     makeWrapper
     pkg-config
-    openblasCompat # lots of segfaults with regular (64 bit) openblas
+    blas lapack
     singular
     three
     pynac
     giac
-    libgap
-    gap-libgap-compatible
+    gap
     pari
     gmp
     gfan
@@ -48,11 +50,11 @@ let
   ];
 
   # remove python prefix, replace "-" in the name by "_", apply patch_names
-  # python2.7-some-pkg-1.0 -> some_pkg-1.0
+  # python3.8-some-pkg-1.0 -> some_pkg-1.0
   pkg_to_spkg_name = pkg: patch_names: let
     parts = lib.splitString "-" pkg.name;
-    # remove python2.7-
-    stripped_parts = if (builtins.head parts) == python2.libPrefix then builtins.tail parts else parts;
+    # remove python3.8-
+    stripped_parts = if (builtins.head parts) == python3.libPrefix then builtins.tail parts else parts;
     version = lib.last stripped_parts;
     orig_pkgname = lib.init stripped_parts;
     pkgname = patch_names (lib.concatStringsSep "_" orig_pkgname);
@@ -61,7 +63,7 @@ let
 
   # return the names of all dependencies in the transitive closure
   transitiveClosure = dep:
-  if isNull dep then
+  if dep == null then
     # propagatedBuildInputs might contain null
     # (although that might be considered a programming error in the derivation)
     []
@@ -89,7 +91,7 @@ let
 in
 stdenv.mkDerivation rec {
   version = src.version;
-  name = "sage-with-env-${version}";
+  pname = "sage-with-env";
   src = sage-env.lib.src;
 
   inherit buildInputs;
@@ -101,6 +103,13 @@ stdenv.mkDerivation rec {
     for pkg in ${lib.concatStringsSep " " input_names}; do
       touch "installed/$pkg"
     done
+
+    # threejs version is in format 0.<version>.minor, but sage currently still
+    # relies on installed_packages for the online version of threejs to work
+    # and expects the format r<version>. This is a hotfix for now.
+    # upstream: https://trac.sagemath.org/ticket/26434
+    rm "installed/threejs"*
+    touch "installed/threejs-r${lib.versions.minor three.version}"
   '';
 
   installPhase = ''

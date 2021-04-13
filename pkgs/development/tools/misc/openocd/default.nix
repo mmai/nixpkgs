@@ -1,37 +1,43 @@
-{ stdenv, fetchurl, libftdi, libusb1, pkgconfig, hidapi }:
+{ stdenv
+, lib
+, fetchurl
+, pkg-config
+, hidapi
+, libftdi1
+, libusb1
+}:
 
 stdenv.mkDerivation rec {
-  name = "openocd-${version}";
-  version = "0.10.0";
-
+  pname = "openocd";
+  version = "0.11.0";
   src = fetchurl {
-    url = "mirror://sourceforge/openocd/openocd-${version}.tar.bz2";
-    sha256 = "1bhn2c85rdz4gf23358kg050xlzh7yxbbwmqp24c0akmh3bff4kk";
+    url = "mirror://sourceforge/project/${pname}/${pname}/${version}/${pname}-${version}.tar.bz2";
+    sha256 = "0z8y7mmv0mhn2l5gs3vz6l7cnwak7agklyc7ml33f7gz99rwx8s3";
   };
 
-  nativeBuildInputs = [ pkgconfig ];
-  buildInputs = [ libftdi libusb1 hidapi ];
+  nativeBuildInputs = [ pkg-config ];
+
+  buildInputs = [ hidapi libftdi1 libusb1 ];
 
   configureFlags = [
     "--enable-jtag_vpi"
     "--enable-usb_blaster_libftdi"
-    "--enable-amtjtagaccel"
-    "--enable-gw16012"
+    (lib.enableFeature (! stdenv.isDarwin) "amtjtagaccel")
+    (lib.enableFeature (! stdenv.isDarwin) "gw16012")
     "--enable-presto_libftdi"
     "--enable-openjtag_ftdi"
-    "--enable-oocd_trace"
+    (lib.enableFeature (! stdenv.isDarwin) "oocd_trace")
     "--enable-buspirate"
-    "--enable-sysfsgpio"
+    (lib.enableFeature stdenv.isLinux "sysfsgpio")
     "--enable-remote-bitbang"
   ];
 
-  NIX_CFLAGS_COMPILE = [
-    "-Wno-implicit-fallthrough"
-    "-Wno-format-truncation"
-    "-Wno-format-overflow"
+  NIX_CFLAGS_COMPILE = lib.optionals stdenv.cc.isGNU [
+    "-Wno-error=cpp"
+    "-Wno-error=strict-prototypes" # fixes build failure with hidapi 0.10.0
   ];
 
-  postInstall = ''
+  postInstall = lib.optionalString stdenv.isLinux ''
     mkdir -p "$out/etc/udev/rules.d"
     rules="$out/share/openocd/contrib/60-openocd.rules"
     if [ ! -f "$rules" ]; then
@@ -41,7 +47,7 @@ stdenv.mkDerivation rec {
     ln -s "$rules" "$out/etc/udev/rules.d/"
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Free and Open On-Chip Debugging, In-System Programming and Boundary-Scan Testing";
     longDescription = ''
       OpenOCD provides on-chip programming and debugging support with a layered
@@ -52,9 +58,9 @@ stdenv.mkDerivation rec {
       "remote target" for source-level debugging of embedded systems using the
       GNU GDB program.
     '';
-    homepage = http://openocd.sourceforge.net/;
+    homepage = "https://openocd.sourceforge.net/";
     license = licenses.gpl2Plus;
-    maintainers = with maintainers; [ bjornfor ];
-    platforms = platforms.linux;
+    maintainers = with maintainers; [ bjornfor prusnak ];
+    platforms = platforms.unix;
   };
 }

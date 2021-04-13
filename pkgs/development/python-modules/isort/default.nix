@@ -1,27 +1,76 @@
-{ lib, buildPythonPackage, fetchPypi, isPy27, futures, mock, pytest }:
+{ lib, buildPythonPackage, fetchFromGitHub
+, colorama
+, hypothesis
+, poetry-core
+, pylama
+, pytestCheckHook
+}:
 
-buildPythonPackage rec {
+let
+in buildPythonPackage rec {
   pname = "isort";
-  version = "4.3.4";
+  version = "5.6.4";
+  format = "pyproject";
 
-  src = fetchPypi {
-    inherit pname version;
-    sha256 = "1y0yfv56cqyh9wyg7kxxv9y5wmfgcq18n7a49mp7xmzka2bhxi5r";
+  src = fetchFromGitHub {
+    owner = "PyCQA";
+    repo = "isort";
+    rev = version;
+    sha256 = "1m7jpqssnbsn1ydrw1dn7nrcrggqcvj9v6mk5ampxmvk94xd2r2q";
   };
 
-  propagatedBuildInputs = lib.optional isPy27 futures;
+  nativeBuildInputs = [
+    poetry-core
+  ];
 
-  checkInputs = [ mock pytest ];
+  checkInputs = [
+    colorama
+    hypothesis
+    pylama
+    pytestCheckHook
+  ];
 
-  checkPhase = ''
-    py.test test_isort.py -k "not test_long_line_comments \
-                          and not test_import_case_produces_inconsistent_results_issue_472 \
-                          and not test_no_extra_lines_issue_557"
+  postCheck = ''
+    # Confirm that the produced executable script is wrapped correctly and runs
+    # OK, by launching it in a subshell without PYTHONPATH
+    (
+      unset PYTHONPATH
+      echo "Testing that `isort --version-number` returns OK..."
+      $out/bin/isort --version-number
+    )
   '';
+
+  preCheck = ''
+    HOME=$TMPDIR
+    export PATH=$PATH:$out/bin
+  '';
+
+  pytestFlagsArray = [
+    "--ignore=tests/integration/" # pulls in 10 other packages
+    "--ignore=tests/unit/profiles/test_black.py" # causes infinite recursion to include black
+  ];
+
+  disabledTests = [
+    "test_run" # doesn't like paths in /build
+    "test_pyi_formatting_issue_942"
+    "test_requirements_finder"
+    "test_pipfile_finder"
+    "test_main" # relies on git
+    "test_command_line" # not thread safe
+    "test_encoding_not_in_comment" # not python 3.9 compatible
+    "test_encoding_not_in_first_two_lines" # not python 3.9 compatible
+    "test_requirements_dir" # requires network
+    # plugin not available
+    "test_isort_literals_issue_1358"
+    "test_isort_supports_formatting_plugins_issue_1353"
+    "test_value_assignment_list"
+    # profiles not available
+    "test_isort_supports_shared_profiles_issue_970"
+  ];
 
   meta = with lib; {
     description = "A Python utility / library to sort Python imports";
-    homepage = https://github.com/timothycrosley/isort;
+    homepage = "https://github.com/PyCQA/isort";
     license = licenses.mit;
     maintainers = with maintainers; [ couchemar nand0p ];
   };

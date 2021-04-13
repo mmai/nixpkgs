@@ -1,17 +1,17 @@
-{ stdenv, fetchFromGitHub, kernel, bc }:
+{ lib, stdenv, fetchFromGitHub, kernel, bc, nukeReferences }:
 
 stdenv.mkDerivation rec {
   name = "rtl8812au-${kernel.version}-${version}";
-  version = "5.2.20.2_28373.20180619";
+  version = "5.6.4.2_35491.20200702";
 
   src = fetchFromGitHub {
-    owner = "zebulon2";
-    repo = "rtl8812au-driver-5.2.20";
-    rev = "2dad788f5d71d50df4f692b67a4428967ba3d42c";
-    sha256 = "17pn73j2xqya0g8f86hn1jyf9x9wp52md05yrg1md58ixsbh1kz3";
+    owner = "gordboy";
+    repo = "rtl8812au-5.6.4.2";
+    rev = "3110ad65d0f03532bd97b1017cae67ca86dd34f6";
+    sha256 = "0p0cv67dfr41npxn0c1frr0k9wiv0pdbvlzlmclgixn39xc6n5qz";
   };
 
-  nativeBuildInputs = [ bc ];
+  nativeBuildInputs = [ bc nukeReferences ];
   buildInputs = kernel.moduleBuildDependencies;
 
   hardeningDisable = [ "pic" "format" ];
@@ -23,15 +23,28 @@ stdenv.mkDerivation rec {
     substituteInPlace ./Makefile --replace '$(MODDESTDIR)' "$out/lib/modules/${kernel.modDirVersion}/kernel/net/wireless/"
   '';
 
+  makeFlags = [
+    "ARCH=${stdenv.hostPlatform.linuxArch}"
+    "KSRC=${kernel.dev}/lib/modules/${kernel.modDirVersion}/build"
+    ("CONFIG_PLATFORM_I386_PC=" + (if (stdenv.hostPlatform.isi686 || stdenv.hostPlatform.isx86_64) then "y" else "n"))
+    ("CONFIG_PLATFORM_ARM_RPI=" + (if (stdenv.hostPlatform.isAarch32 || stdenv.hostPlatform.isAarch64) then "y" else "n"))
+  ] ++ lib.optional (stdenv.hostPlatform != stdenv.buildPlatform) [
+    "CROSS_COMPILE=${stdenv.cc.targetPrefix}"
+  ];
+
   preInstall = ''
     mkdir -p "$out/lib/modules/${kernel.modDirVersion}/kernel/net/wireless/"
   '';
 
-  meta = with stdenv.lib; {
+  postInstall = ''
+    nuke-refs $out/lib/modules/*/kernel/net/wireless/*.ko
+  '';
+
+  meta = with lib; {
     description = "Driver for Realtek 802.11ac, rtl8812au, provides the 8812au mod";
-    homepage = https://github.com/zebulon2/rtl8812au-driver-5.2.20;
+    homepage = "https://github.com/gordboy/rtl8812au-5.6.4.2";
     license = licenses.gpl2;
-    platforms = [ "x86_64-linux" "i686-linux" ];
+    platforms = platforms.linux;
     maintainers = with maintainers; [ danielfullmer ];
   };
 }

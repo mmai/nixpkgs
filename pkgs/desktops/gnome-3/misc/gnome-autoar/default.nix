@@ -1,28 +1,48 @@
-{ stdenv, fetchurl, pkgconfig, gnome3
-, gtk3, glib, gobject-introspection, libarchive
+{ lib, stdenv
+, fetchurl
+, pkg-config
+, gnome3
+, gtk3
+, glib
+, gobject-introspection
+, libarchive
+, vala
 }:
 
 stdenv.mkDerivation rec {
-  name = "gnome-autoar-${version}";
-  version = "0.2.3";
+  pname = "gnome-autoar";
+  version = "0.3.1";
+
+  outputs = [ "out" "dev" ];
 
   src = fetchurl {
-    url = "mirror://gnome/sources/gnome-autoar/${stdenv.lib.versions.majorMinor version}/${name}.tar.xz";
-    sha256 = "02i4zgqqqj56h7bcys6dz7n78m4nj2x4dv1ggjmnrk98n06xpsax";
+    url = "mirror://gnome/sources/gnome-autoar/${lib.versions.majorMinor version}/${pname}-${version}.tar.xz";
+    sha256 = "1y6hh5dldhdq7mpbmd571zl0yadfackvifhnxvykkqqddwz72y0f";
   };
 
   passthru = {
     updateScript = gnome3.updateScript { packageName = "gnome-autoar"; attrPath = "gnome3.gnome-autoar"; };
   };
 
-  nativeBuildInputs = [ pkgconfig ];
-  buildInputs = [ gtk3 glib ];
-  propagatedBuildInputs = [ libarchive gobject-introspection ];
+  nativeBuildInputs = [
+    gobject-introspection
+    pkg-config
+    vala
+  ];
 
-  meta = with stdenv.lib; {
+  buildInputs = [
+    gtk3
+  ];
+
+  propagatedBuildInputs = [
+    libarchive
+    glib
+  ];
+
+  meta = with lib; {
     platforms = platforms.linux;
-    maintainers = gnome3.maintainers;
-    license = licenses.lgpl21;
+    maintainers = teams.gnome.members;
+    license = licenses.lgpl21Plus;
     description = "Library to integrate compressed files management with GNOME";
   };
 }

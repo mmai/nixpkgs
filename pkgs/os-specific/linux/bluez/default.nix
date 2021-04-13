@@ -1,57 +1,93 @@
-{ stdenv, fetchurl, pkgconfig, dbus, glib, alsaLib,
-  python3, readline, udev, libical, systemd,
-  enableWiimote ? false, enableMidi ? false, enableSixaxis ? false }:
-
-stdenv.mkDerivation rec {
-  name = "bluez-5.50";
+{ stdenv
+, lib
+, fetchpatch
+, fetchurl
+, alsaLib
+, dbus
+, glib
+, json_c
+, libical
+, pkg-config
+, python3
+, readline
+, systemd
+, udev
+}: let
+  pythonPath = with python3.pkgs; [
+    dbus-python
+    pygobject3
+    recursivePthLoader
+  ];
+in stdenv.mkDerivation rec {
+  pname = "bluez";
+  version = "5.56";
 
   src = fetchurl {
-    url = "mirror://kernel/linux/bluetooth/${name}.tar.xz";
-    sha256 = "048r91vx9gs5nwwbah2s0xig04nwk14c5s0vb7qmaqdvighsmz2z";
+    url = "mirror://kernel/linux/bluetooth/${pname}-${version}.tar.xz";
+    sha256 = "sha256-WcTbqfyKripqX48S8ZvBsMLcJzVcfKMSPu0/5r19C50=";
   };
 
-  pythonPath = with python3.pkgs; [
-    dbus-python pygobject2 pygobject3 recursivePthLoader
-  ];
-
   buildInputs = [
-    dbus glib alsaLib python3 python3.pkgs.wrapPython
-    readline udev libical
+    alsaLib
+    dbus
+    glib
+    json_c
+    libical
+    python3
+    readline
+    udev
   ];
 
-  nativeBuildInputs = [ pkgconfig ];
+  nativeBuildInputs = [
+    pkg-config
+    python3.pkgs.wrapPython
+  ];
 
-  outputs = [ "out" "dev" "test" ];
+  outputs = [ "out" "dev" ] ++ lib.optional doCheck "test";
 
-  patches = [ ./bluez-5.37-obexd_without_systemd-1.patch ];
+  patches = [
+    # Fixes https://github.com/NixOS/nixpkgs/issues/117663
+    (fetchpatch {
+      name = "disconnect-fix.patch";
+      url = "https://github.com/bluez/bluez/commit/28ddec8d6b829e002fa268c07b71e4c564ba9e16.patch";
+      sha256 = "sha256-vzMf1i44e4JrpL7cXbn9oDr+3B+Glf7dPW3QDstEnEM=";
+    })
+  ];
 
-  postConfigure = ''
+  postPatch = ''
     substituteInPlace tools/hid2hci.rules \
       --replace /sbin/udevadm ${systemd}/bin/udevadm \
       --replace "hid2hci " "$out/lib/udev/hid2hci "
   '';
 
-  configureFlags = (with stdenv.lib; [
+  configureFlags = [
     "--localstatedir=/var"
     "--enable-library"
     "--enable-cups"
     "--enable-pie"
-    "--with-dbusconfdir=$(out)/etc"
-    "--with-dbussystembusdir=$(out)/share/dbus-1/system-services"
-    "--with-dbussessionbusdir=$(out)/share/dbus-1/services"
-    "--with-systemdsystemunitdir=$(out)/etc/systemd/system"
-    "--with-systemduserunitdir=$(out)/etc/systemd/user"
-    "--with-udevdir=$(out)/lib/udev"
-    ] ++ optional enableWiimote [ "--enable-wiimote" ]
-      ++ optional enableMidi    [ "--enable-midi" ]
-      ++ optional enableSixaxis [ "--enable-sixaxis" ]);
+    "--with-dbusconfdir=${placeholder "out"}/share"
+    "--with-dbussystembusdir=${placeholder "out"}/share/dbus-1/system-services"
+    "--with-dbussessionbusdir=${placeholder "out"}/share/dbus-1/services"
+    "--with-systemdsystemunitdir=${placeholder "out"}/etc/systemd/system"
+    "--with-systemduserunitdir=${placeholder "out"}/etc/systemd/user"
+    "--with-udevdir=${placeholder "out"}/lib/udev"
+    "--enable-health"
+    "--enable-mesh"
+    "--enable-midi"
+    "--enable-nfc"
+    "--enable-sap"
+    "--enable-sixaxis"
+    "--enable-wiimote"
+  ];
 
   # Work around `make install' trying to create /var/lib/bluetooth.
-  installFlags = "statedir=$(TMPDIR)/var/lib/bluetooth";
+  installFlags = [ "statedir=$(TMPDIR)/var/lib/bluetooth" ];
 
-  makeFlags = "rulesdir=$(out)/lib/udev/rules.d";
+  makeFlags = [ "rulesdir=${placeholder "out"}/lib/udev/rules.d" ];
 
-  postInstall = ''
+  doCheck = stdenv.hostPlatform.isx86_64;
+
+  postInstall = lib.optionalString doCheck ''
     mkdir -p $test/{bin,test}
     cp -a test $test
     pushd $test/test
@@ -66,8 +102,8 @@ stdenv.mkDerivation rec {
       ln -s ../test/$a $test/bin/bluez-$a
     done
     popd
-    wrapPythonProgramsIn $test/test "$test/test $pythonPath"
-
+    wrapPythonProgramsIn $test/test "$test/test ${toString pythonPath}"
+  '' + ''
     # for bluez4 compatibility for NixOS
     mkdir $out/sbin
     ln -s ../libexec/bluetooth/bluetoothd $out/sbin/bluetoothd
@@ -86,11 +122,11 @@ stdenv.mkDerivation rec {
 
   enableParallelBuilding = true;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Bluetooth support for Linux";
-    homepage = http://www.bluez.org/;
+    homepage = "http://www.bluez.org/";
     license = with licenses; [ gpl2 lgpl21 ];
     platforms = platforms.linux;
-    repositories.git = https://git.kernel.org/pub/scm/bluetooth/bluez.git;
+    repositories.git = "https://git.kernel.org/pub/scm/bluetooth/bluez.git";
   };
 }

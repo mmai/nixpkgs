@@ -1,9 +1,9 @@
-{stdenv, fetchurl, sendmailPath ? "/usr/sbin/sendmail"}:
+{lib, stdenv, fetchurl, vim, sendmailPath ? "/usr/sbin/sendmail"}:
 
 stdenv.mkDerivation {
   name = "cron-4.1";
   src = fetchurl {
-    url = ftp://ftp.isc.org/isc/cron/cron_4.1.shar;
+    url = "ftp://ftp.isc.org/isc/cron/cron_4.1.shar";
     sha256 = "16n3dras4b1jh7g958nz1k54pl9pg5fwb3fvjln8z67varvq6if4";
   };
 
@@ -25,6 +25,9 @@ stdenv.mkDerivation {
     #undef _PATH_SENDMAIL
     #define _PATH_SENDMAIL "${sendmailPath}"
 
+    #undef _PATH_VI
+    #define _PATH_VI "${vim}/bin/vim"
+
     #undef _PATH_DEFPATH
     #define _PATH_DEFPATH "/run/wrappers/bin:/nix/var/nix/profiles/default/bin:/run/current-system/sw/bin:/usr/bin:/bin"
     __EOT__
@@ -36,7 +39,7 @@ stdenv.mkDerivation {
 
   preInstall = "mkdir -p $out/bin $out/sbin $out/share/man/man1 $out/share/man/man5 $out/share/man/man8";
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Daemon for running commands at specific times (Vixie Cron)";
     license = licenses.bsd0;
     platforms = with platforms; linux ++ darwin;

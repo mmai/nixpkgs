@@ -25,29 +25,30 @@ in
         '';
       };
 
+      package = mkOption {
+        type = types.package;
+        default = pkgs.fprintd;
+        defaultText = "pkgs.fprintd";
+        description = ''
+          fprintd package to use.
+        '';
+      };
+
     };
-    
+
   };
-  
-  
+
+
   ###### implementation
-  
+
   config = mkIf cfg.enable {
 
-    services.dbus.packages = [ pkgs.fprintd ];
+    services.dbus.packages = [ cfg.package ];
 
-    environment.systemPackages = [ pkgs.fprintd ];
+    environment.systemPackages = [ cfg.package ];
 
-    systemd.services.fprintd = {
-      description = "Fingerprint Authentication Daemon";
-
-      serviceConfig = {
-        Type = "dbus";
-        BusName = "net.reactivated.Fprint";
-        ExecStart = "${pkgs.fprintd}/libexec/fprintd";
-      };
-    };
+    systemd.packages = [ cfg.package ];
 
   };
-  
+
 }

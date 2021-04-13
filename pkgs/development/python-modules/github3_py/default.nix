@@ -18,11 +18,11 @@
 
 buildPythonPackage rec {
   pname = "github3.py";
-  version = "1.2.0";
+  version = "2.0.0";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "35fea5bf3567a8e88d3660686d83f96ef164e698ce6fb30f9e2b0edded7357af";
+    sha256 = "8dd4ac612fd60cb277eaf6e2ce02f68dda54aba06870ca6fa2b28369bf39aa14";
   };
 
   checkInputs = [ betamax pytest betamax-matchers ]
@@ -38,7 +38,7 @@ buildPythonPackage rec {
   doCheck = false;
 
   meta = with lib; {
-    homepage = http://github3py.readthedocs.org/en/master/;
+    homepage = "https://github3py.readthedocs.org/en/master/";
     description = "A wrapper for the GitHub API written in python";
     license = licenses.bsd3;
     maintainers = with maintainers; [ pSub ];

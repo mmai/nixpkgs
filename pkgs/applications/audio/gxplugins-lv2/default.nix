@@ -1,27 +1,32 @@
-{ stdenv, fetchFromGitHub, xorg, xproto, cairo, lv2, pkgconfig }:
+{ lib, stdenv, fetchFromGitHub, xorg, xorgproto, cairo, lv2, pkg-config }:
 
 stdenv.mkDerivation rec {
-  name = "${pname}-${version}";
   pname = "GxPlugins.lv2";
-  version = "0.5";
+  version = "0.8";
 
   src = fetchFromGitHub {
     owner = "brummer10";
     repo = pname;
     rev = "v${version}";
-    sha256 = "16r5bj7w726d9327flg530fn0bli4crkxjss7i56yhb1bsi39mbv";
+    sha256 = "11iv7bwvvspm74pisqvcpsxpg9xi6b08hq4i8q67mri4mvy9hmal";
     fetchSubmodules = true;
   };
 
-  nativeBuildInputs = [ pkgconfig ];
+  nativeBuildInputs = [ pkg-config ];
   buildInputs = [
-    xorg.libX11 xproto cairo lv2
+    xorg.libX11 xorgproto cairo lv2
   ];
 
   installFlags = [ "INSTALL_DIR=$(out)/lib/lv2" ];
 
-  meta = with stdenv.lib; {
-    homepage = https://github.com/brummer10/GxPlugins.lv2;
+  configurePhase = ''
+    for i in GxBoobTube GxValveCaster; do
+      substituteInPlace $i.lv2/Makefile --replace "\$(shell which echo) -e" "echo -e"
+    done
+  '';
+
+  meta = with lib; {
+    homepage = "https://github.com/brummer10/GxPlugins.lv2";
     description = "A set of extra lv2 plugins from the guitarix project";
     maintainers = [ maintainers.magnetophon ];
     license = licenses.gpl3;

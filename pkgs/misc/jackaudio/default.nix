@@ -1,8 +1,8 @@
-{ stdenv, fetchFromGitHub, pkgconfig, python2Packages, makeWrapper
+{ lib, stdenv, fetchFromGitHub, pkg-config, python3Packages, makeWrapper
 , bash, libsamplerate, libsndfile, readline, eigen, celt
 , wafHook
 # Darwin Dependencies
-, aften, AudioToolbox, CoreAudio, CoreFoundation
+, aften, AudioUnit, CoreAudio, libobjc, Accelerate
 
 # Optional Dependencies
 , dbus ? null, libffado ? null, alsaLib ? null
@@ -12,10 +12,10 @@
 , prefix ? ""
 }:
 
-with stdenv.lib;
+with lib;
 let
-  inherit (python2Packages) python dbus-python;
-  shouldUsePkg = pkg: if pkg != null && stdenv.lib.any (stdenv.lib.meta.platformMatch stdenv.hostPlatform) pkg.meta.platforms then pkg else null;
+  inherit (python3Packages) python dbus-python;
+  shouldUsePkg = pkg: if pkg != null && lib.any (lib.meta.platformMatch stdenv.hostPlatform) pkg.meta.platforms then pkg else null;
 
   libOnly = prefix == "lib";
 
@@ -27,36 +27,31 @@ let
 in
 stdenv.mkDerivation rec {
   name = "${prefix}jack2-${version}";
-  version = "1.9.12";
+  version = "1.9.17";
 
   src = fetchFromGitHub {
     owner = "jackaudio";
     repo = "jack2";
     rev = "v${version}";
-    sha256 = "0ynpyn0l77m94b50g7ysl795nvam3ra65wx5zb46nxspgbf6wnkh";
+    sha256 = "sha256-T6UJpLsXrsIL3HaChfVP52w0v9DCs/sJqty2/kAWNfE=";
   };
 
-  nativeBuildInputs = [ pkgconfig python makeWrapper wafHook ];
+  nativeBuildInputs = [ pkg-config python makeWrapper wafHook ];
   buildInputs = [ libsamplerate libsndfile readline eigen celt
     optDbus optPythonDBus optLibffado optAlsaLib optLibopus
-  ] ++ optionals stdenv.isDarwin [ aften AudioToolbox CoreAudio CoreFoundation ];
-
-  # CoreFoundation 10.10 doesn't include CFNotificationCenter.h yet.
-  patches = optionals stdenv.isDarwin [ ./darwin-cf.patch ];
+  ] ++ optionals stdenv.isDarwin [
+    aften AudioUnit CoreAudio Accelerate libobjc
+  ];
 
   prePatch = ''
     substituteInPlace svnversion_regenerate.sh \
         --replace /bin/bash ${bash}/bin/bash
   '';
 
-  # It looks like one of the frameworks depends on <CoreFoundation/CFAttributedString.h>
-  # since frameworks are impure we also have to use the impure CoreFoundation here.
-  # FIXME: remove when CoreFoundation is updated to 10.11
-  preConfigure = optionalString stdenv.isDarwin ''
-    export NIX_CFLAGS_COMPILE="-F${CoreFoundation}/Library/Frameworks $NIX_CFLAGS_COMPILE"
-  '';
+  PKGCONFIG = "${stdenv.cc.targetPrefix}pkg-config";
 
-  configureFlags = [
+  dontAddWafCrossFlags = "true";
+  wafConfigureFlags = [
     "--classic"
     "--autostart=${if (optDbus != null) then "dbus" else "classic"}"
   ] ++ optional (optDbus != null) "--dbus"
@@ -72,9 +67,9 @@ stdenv.mkDerivation rec {
 
   meta = {
     description = "JACK audio connection kit, version 2 with jackdbus";
-    homepage = http://jackaudio.org;
+    homepage = "https://jackaudio.org";
     license = licenses.gpl2Plus;
     platforms = platforms.unix;
-    maintainers = with maintainers; [ goibhniu wkennington ];
+    maintainers = with maintainers; [ goibhniu ];
   };
 }

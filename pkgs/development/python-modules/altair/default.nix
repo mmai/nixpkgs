@@ -1,38 +1,64 @@
-{ stdenv, buildPythonPackage, fetchPypi, fetchpatch
-, pytest, jinja2, sphinx, vega_datasets, ipython, glibcLocales
-, entrypoints, jsonschema, numpy, pandas, six, toolz, typing
-, pythonOlder, recommonmark }:
+{ lib, buildPythonPackage, fetchPypi, isPy27
+, entrypoints
+, glibcLocales
+, ipython
+, jinja2
+, jsonschema
+, numpy
+, pandas
+, pytest
+, pythonOlder
+, recommonmark
+, six
+, sphinx
+, toolz
+, typing
+, vega_datasets
+}:
 
 buildPythonPackage rec {
   pname = "altair";
-  version = "2.2.2";
+  version = "4.1.0";
+  disabled = isPy27;
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "c158699026eb5a19f95c1ca742e2e82bc20c27013ef5785f10836283e2233f8a";
+    sha256 = "0c99q5dy6f275yg1f137ird08wmwc1z8wmvjickkf2mvyka31p9y";
   };
 
-  checkInputs = [ pytest jinja2 sphinx vega_datasets ipython glibcLocales recommonmark ];
+  propagatedBuildInputs = [
+    entrypoints
+    jsonschema
+    numpy
+    pandas
+    six
+    toolz
+    jinja2
+  ] ++ lib.optionals (pythonOlder "3.5") [ typing ];
 
-  propagatedBuildInputs = [ entrypoints jsonschema numpy pandas six toolz ]
-    ++ stdenv.lib.optionals (pythonOlder "3.5") [ typing ];
+  checkInputs = [
+    glibcLocales
+    ipython
+    pytest
+    recommonmark
+    sphinx
+    vega_datasets
+  ];
 
-  # hack to prevent typing from being required for python > 3.5
-  postPatch = ''
-    substituteInPlace requirements.txt \
-       --replace "typing" ""
-  '';
+  pythonImportsCheck = [ "altair" ];
 
   checkPhase = ''
     export LANG=en_US.UTF-8
-    py.test altair --doctest-modules
+    # histogram_responsive.py attempt network access, and cannot be disabled through pytest flags
+    rm altair/examples/histogram_responsive.py
+    pytest --doctest-modules altair
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A declarative statistical visualization library for Python.";
-    homepage = https://github.com/altair-viz/altair;
+    homepage = "https://github.com/altair-viz/altair";
     license = licenses.bsd3;
     maintainers = with maintainers; [ teh ];
-    platforms = platforms.linux;
+    platforms = platforms.unix;
   };
 }

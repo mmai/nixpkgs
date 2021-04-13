@@ -1,7 +1,7 @@
 # builder for Emacs packages built for packages.el
 # using MELPA package-build.el
 
-{ lib, stdenv, fetchFromGitHub, emacs, texinfo }:
+{ lib, stdenv, fetchFromGitHub, emacs, texinfo, writeText }:
 
 with lib;
 
@@ -23,15 +23,15 @@ with lib;
 let
 
   defaultMeta = {
-    homepage = args.src.meta.homepage or "http://melpa.org/#/${pname}";
+    homepage = args.src.meta.homepage or "https://melpa.org/#/${pname}";
   };
 
 in
 
-import ./generic.nix { inherit lib stdenv emacs texinfo; } ({
+import ./generic.nix { inherit lib stdenv emacs texinfo writeText; } ({
 
   ename =
-    if isNull(ename)
+    if ename == null
     then pname
     else ename;
 

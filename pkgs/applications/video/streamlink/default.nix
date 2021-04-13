@@ -1,22 +1,43 @@
-{ stdenv, pythonPackages, fetchFromGitHub, rtmpdump, ffmpeg }:
+{ lib
+, pythonPackages
+, fetchFromGitHub
+, rtmpdump
+, ffmpeg_3
+}:
 
 pythonPackages.buildPythonApplication rec {
-  version = "0.14.2";
-  name = "streamlink-${version}";
+  pname = "streamlink";
+  version = "2.0.0";
+  disabled = pythonPackages.pythonOlder "3.5.0";
 
   src = fetchFromGitHub {
     owner = "streamlink";
     repo = "streamlink";
-    rev = "${version}";
-    sha256 = "1njwfy1h8a9n5z6crrfnknlw4ys0bap2jam6ga6njgkd10aly9qr";
+    rev = version;
+    sha256 = "+W9Nu5Ze08r7IlUZOkkVOz582E1Bbj0a3qIQHwxSmj8=";
   };
 
-  checkInputs = with pythonPackages; [ pytest mock requests-mock freezegun ];
+  checkInputs = with pythonPackages; [
+    pytest
+    mock
+    requests-mock
+    freezegun
+  ];
 
-  propagatedBuildInputs = (with pythonPackages; [ pycryptodome requests iso-639 iso3166 websocket_client isodate ]) ++ [ rtmpdump ffmpeg ];
+  propagatedBuildInputs = (with pythonPackages; [
+    pycryptodome
+    requests
+    iso-639
+    iso3166
+    websocket_client
+    isodate
+  ]) ++ [
+    rtmpdump
+    ffmpeg_3
+  ];
 
-  meta = with stdenv.lib; {
-    homepage = https://github.com/streamlink/streamlink;
+  meta = with lib; {
+    homepage = "https://github.com/streamlink/streamlink";
     description = "CLI for extracting streams from various websites to video player of your choosing";
     longDescription = ''
       Streamlink is a CLI utility that pipes flash videos from online
@@ -27,6 +48,6 @@ pythonPackages.buildPythonApplication rec {
     '';
     license = licenses.bsd2;
     platforms = platforms.linux ++ platforms.darwin;
-    maintainers = with maintainers; [ dezgeg zraexy enzime ];
+    maintainers = with maintainers; [ dezgeg zraexy ];
   };
 }

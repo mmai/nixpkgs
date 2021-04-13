@@ -1,68 +1,81 @@
-{ stdenv, fetchurl, python3Packages, qtbase, makeWrapper, lib }:
-
-let
-
-  python = python3Packages.python;
-
-in
+{ lib, fetchFromGitHub, python3Packages, qtbase, fetchpatch, wrapQtAppsHook
+, secp256k1 }:
 
 python3Packages.buildPythonApplication rec {
-  version = "3.3.2";
-  name = "electron-cash-${version}";
+  pname = "electron-cash";
+  version = "4.2.4";
 
-  src = fetchurl {
-    url = "https://electroncash.org/downloads/${version}/win-linux/ElectronCash-${version}.tar.gz";
-    # Verified using official SHA-1 and signature from
-    # https://github.com/fyookball/keys-n-hashes
-    sha256 = "4538044cfaa4f87a847635849e0733f32b183ac79abbd2797689c86dc3cb0d53";
+  src = fetchFromGitHub {
+    owner = "Electron-Cash";
+    repo = "Electron-Cash";
+    rev = version;
+    sha256 = "sha256-hiOS0cTaPqllb31p+6nU4GYvw/E1Hdn8yd3sppzGkqg=";
   };
 
   propagatedBuildInputs = with python3Packages; [
-    dnspython
-    ecdsa
-    jsonrpclib-pelix
-    matplotlib
-    pbkdf2
+    # requirements
     pyaes
-    pycrypto
-    pyqt5
-    pysocks
-    qrcode
+    ecdsa
     requests
-    tlslite-ng
+    qrcode
+    protobuf
+    jsonrpclib-pelix
+    pysocks
+    qdarkstyle
+    python-dateutil
+    stem
+    certifi
+    pathvalidate
+    dnspython
 
-    # plugins
-    keepkey
+    # requirements-binaries
+    pyqt5
+    psutil
+    pycryptodomex
+    cryptography
+
+    # requirements-hw
+    cython
     trezor
+    keepkey
     btchip
+    hidapi
+    pyscard
+    pysatochip
   ];
 
-  nativeBuildInputs = [ makeWrapper ];
+  nativeBuildInputs = [ wrapQtAppsHook ];
 
   postPatch = ''
-    # Remove pyqt5 check
-    sed -i '/pyqt5/d' setup.py
+    substituteInPlace contrib/requirements/requirements.txt \
+      --replace "qdarkstyle==2.6.8" "qdarkstyle<3"
+
+    substituteInPlace setup.py \
+      --replace "(share_dir" "(\"share\""
   '';
 
-  preBuild = ''
-    pyrcc5 icons.qrc -o gui/qt/icons_rc.py
-    # Recording the creation timestamps introduces indeterminism to the build
-    sed -i '/Created: .*/d' gui/qt/icons_rc.py
-  '';
+  checkInputs = with python3Packages; [ pytest ];
 
-  doCheck = false;
+  checkPhase = ''
+    unset HOME
+    pytest electroncash/tests
+  '';
 
   postInstall = ''
-    # These files are installed under $out/homeless-shelter ...
-    mv $out/${python.sitePackages}/homeless-shelter/.local/share $out
-    rm -rf $out/${python.sitePackages}/homeless-shelter
-
     substituteInPlace $out/share/applications/electron-cash.desktop \
-      --replace "Exec=electron-cash %u" "Exec=$out/bin/electron-cash %u"
+      --replace "Exec=electron-cash" "Exec=$out/bin/electron-cash"
+  '';
 
-    # Please remove this when #44047 is fixed
-    wrapProgram $out/bin/electron-cash \
-      --prefix QT_PLUGIN_PATH : ${qtbase}/lib/qt-5.${lib.versions.minor qtbase.version}/plugins
+  # If secp256k1 wasn't added to the library path, the following warning is given:
+  #
+  #   Electron Cash was unable to find the secp256k1 library on this system.
+  #   Elliptic curve cryptography operations will be performed in slow
+  #   Python-only mode.
+  preFixup = ''
+    makeWrapperArgs+=("''${qtWrapperArgs[@]}")
+    makeWrapperArgs+=(
+      "--prefix" "LD_LIBRARY_PATH" ":" "${secp256k1}/lib"
+    )
   '';
 
   doInstallCheck = true;
@@ -70,17 +83,17 @@ python3Packages.buildPythonApplication rec {
     $out/bin/electron-cash help >/dev/null
   '';
 
-  meta = with stdenv.lib; {
-    description = "A lightweight Bitcoin wallet";
+  meta = with lib; {
+    description = "A Bitcoin Cash SPV Wallet";
     longDescription = ''
-      An easy-to-use Bitcoin client featuring wallets generated from
+      An easy-to-use Bitcoin Cash client featuring wallets generated from
       mnemonic seeds (in addition to other, more advanced, wallet options)
       and the ability to perform transactions without downloading a copy
       of the blockchain.
     '';
-    homepage = https://www.electroncash.org/;
+    homepage = "https://www.electroncash.org/";
     platforms = platforms.linux;
-    maintainers = with maintainers; [ lassulus ];
+    maintainers = with maintainers; [ lassulus nyanloutre oxalica ];
     license = licenses.mit;
   };
 }

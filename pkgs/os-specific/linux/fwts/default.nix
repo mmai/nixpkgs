@@ -1,17 +1,17 @@
-{ stdenv, fetchzip, autoreconfHook, pkgconfig, glib, libtool, pcre
+{ lib, stdenv, fetchzip, autoreconfHook, pkg-config, glib, libtool, pcre
 , json_c, flex, bison, dtc, pciutils, dmidecode, iasl, libbsd }:
 
 stdenv.mkDerivation rec {
-  name = "fwts-${version}";
-  version = "18.12.00";
+  pname = "fwts";
+  version = "20.11.00";
 
   src = fetchzip {
-    url = "http://fwts.ubuntu.com/release/fwts-V${version}.tar.gz";
-    sha256 = "10kzn5r099i4b8m5l7s68fs885d126l9cingq9gj1g574c18hg2s";
+    url = "http://fwts.ubuntu.com/release/${pname}-V${version}.tar.gz";
+    sha256 = "0s8iz6c9qhyndcsjscs3qail2mzfywpbiys1x232igm5kl089vvr";
     stripRoot = false;
   };
 
-  nativeBuildInputs = [ autoreconfHook pkgconfig libtool ];
+  nativeBuildInputs = [ autoreconfHook pkg-config libtool ];
   buildInputs = [ glib pcre json_c flex bison dtc pciutils dmidecode iasl libbsd ];
 
   postPatch = ''
@@ -22,7 +22,7 @@ stdenv.mkDerivation rec {
 
   enableParallelBuilding = true;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://wiki.ubuntu.com/FirmwareTestSuite";
     description = "Firmware Test Suite";
     platforms = platforms.linux;

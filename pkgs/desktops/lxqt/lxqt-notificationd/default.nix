@@ -1,26 +1,33 @@
-{ stdenv, fetchFromGitHub, cmake, lxqt-build-tools, qtbase, qttools, qtsvg, kwindowsystem, liblxqt, libqtxdg, qtx11extras }:
+{ lib
+, mkDerivation
+, fetchFromGitHub
+, cmake
+, lxqt-build-tools
+, qtbase
+, qttools
+, qtsvg
+, kwindowsystem
+, liblxqt
+, libqtxdg
+, qtx11extras
+, lxqtUpdateScript
+}:
 
-stdenv.mkDerivation rec {
-  name = "${pname}-${version}";
+mkDerivation rec {
   pname = "lxqt-notificationd";
-  version = "0.13.0";
+  version = "0.16.0";
 
   src = fetchFromGitHub {
     owner = "lxqt";
     repo = pname;
     rev = version;
-    sha256 = "0vjpl3ipc0hrz255snkp99h6xrlid490ml8jb588rdpfina66sp1";
+    sha256 = "0ahvjf5102a0pz5bfznjvkg55xix6k9bw381gzv6jqw5553snanc";
   };
 
   nativeBuildInputs = [
     cmake
     lxqt-build-tools
   ];
-
-  postPatch = ''
-    substituteInPlace autostart/CMakeLists.txt \
-      --replace "DESTINATION \"\''${LXQT_ETC_XDG_DIR}" "DESTINATION \"etc/xdg"
-  '';
 
   buildInputs = [
     qtbase
@@ -32,13 +39,13 @@ stdenv.mkDerivation rec {
     qtx11extras
   ];
 
-  cmakeFlags = [ "-DPULL_TRANSLATIONS=NO" ];
+  passthru.updateScript = lxqtUpdateScript { inherit pname version src; };
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
+    homepage = "https://github.com/lxqt/lxqt-notificationd";
     description = "The LXQt notification daemon";
-    homepage = https://github.com/lxqt/lxqt-notificationd;
-    license = licenses.lgpl21;
-    platforms = with platforms; unix;
+    license = licenses.lgpl21Plus;
+    platforms = platforms.linux;
     maintainers = with maintainers; [ romildo ];
   };
 }

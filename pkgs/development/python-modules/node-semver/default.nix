@@ -1,18 +1,18 @@
-{ stdenv, fetchPypi, buildPythonPackage, pytest }:
+{ lib, fetchPypi, buildPythonPackage, pytest }:
 
 buildPythonPackage rec {
-  version = "0.5.1";
+  version = "0.7.0";
   pname = "node-semver";
 
   checkInputs = [ pytest ];
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "b87e335179d874a3dd58041198b2715ae70fd20eba81683acde3553c51b28f8e";
+    sha256 = "1p7ink1wajkc31r05k1yn37gk377033a9vhin8v4j757d4ha1f91";
   };
 
-  meta = with stdenv.lib; {
-    homepage = https://github.com/podhmo/python-semver;
+  meta = with lib; {
+    homepage = "https://github.com/podhmo/python-semver";
     description = "A port of node-semver";
     license = licenses.mit;
     platforms = platforms.all;

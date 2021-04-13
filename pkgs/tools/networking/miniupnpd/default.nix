@@ -1,21 +1,21 @@
-{ stdenv, lib, fetchurl, iptables, libuuid, pkgconfig
-, which, iproute, gnused, coreutils, gawk, makeWrapper
+{ stdenv, lib, fetchurl, iptables, libuuid, pkg-config
+, which, iproute2, gnused, coreutils, gawk, makeWrapper
 }:
 
 let
-  scriptBinEnv = lib.makeBinPath [ which iproute iptables gnused coreutils gawk ];
+  scriptBinEnv = lib.makeBinPath [ which iproute2 iptables gnused coreutils gawk ];
 in
 stdenv.mkDerivation rec {
-  name = "miniupnpd-2.1";
+  name = "miniupnpd-2.1.20190502";
 
   src = fetchurl {
     url = "http://miniupnp.free.fr/files/download.php?file=${name}.tar.gz";
-    sha256 = "1hg0zzvvzfgpnmngmd3ffnsk9x18lwlxlpw5jgh7y6b1jrvr824m";
+    sha256 = "1m8d0g9b0bjwsnqccw1yapp6n0jghmgzwixwjflwmvi2fi6hdp4b";
     name = "${name}.tar.gz";
   };
 
   buildInputs = [ iptables libuuid ];
-  nativeBuildInputs= [ pkgconfig makeWrapper ];
+  nativeBuildInputs= [ pkg-config makeWrapper ];
 
   makefile = "Makefile.linux";
 
@@ -30,8 +30,8 @@ stdenv.mkDerivation rec {
     done
   '';
 
-  meta = with stdenv.lib; {
-    homepage = http://miniupnp.free.fr/;
+  meta = with lib; {
+    homepage = "http://miniupnp.free.fr/";
     description = "A daemon that implements the UPnP Internet Gateway Device (IGD) specification";
     platforms = platforms.linux;
     license = licenses.bsd3;

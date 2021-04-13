@@ -1,32 +1,32 @@
-{ stdenv, fetchurl
-, pkgconfig, wxGTK
-, ffmpeg, libexif
+{ lib, stdenv, fetchurl
+, pkg-config, wxGTK
+, ffmpeg_3, libexif
 , cairo, pango }:
 
 stdenv.mkDerivation rec {
 
-  name = "wxSVG-${version}";
+  pname = "wxSVG";
   srcName = "wxsvg-${version}";
-  version = "1.5.15";
+  version = "1.5.22";
 
   src = fetchurl {
     url = "mirror://sourceforge/project/wxsvg/wxsvg/${version}/${srcName}.tar.bz2";
-    sha256 = "1f6fhkdmcfs8w7x08vhiqygss4qzcsimhd91h0j58zw25ky6rzqn";
+    sha256 = "0agmmwg0zlsw1idygvqjpj1nk41akzlbdha0hsdk1k8ckz6niq8d";
   };
 
-  nativeBuildInputs = [ pkgconfig ];
+  nativeBuildInputs = [ pkg-config ];
 
-  propagatedBuildInputs = [ wxGTK ffmpeg libexif ];
+  propagatedBuildInputs = [ wxGTK ffmpeg_3 libexif ];
 
   buildInputs = [ cairo pango ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A SVG manipulation library built with wxWidgets";
     longDescription = ''
     wxSVG is C++ library to create, manipulate and render
     Scalable Vector Graphics (SVG) files with the wxWidgets toolkit.
     '';
-    homepage = http://wxsvg.sourceforge.net/;
+    homepage = "http://wxsvg.sourceforge.net/";
     license = with licenses; gpl2;
     maintainers = with maintainers; [ AndersonTorres ];
     platforms = with platforms; linux;

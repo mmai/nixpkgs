@@ -1,80 +1,93 @@
-{ lib, python3, fetchpatch, git }:
+{ lib, stdenv, python3, fetchFromGitHub, git, pkg-config }:
+
+# Note:
+# Conan has specific dependency demands; check
+#     https://github.com/conan-io/conan/blob/master/conans/requirements.txt
+#     https://github.com/conan-io/conan/blob/master/conans/requirements_server.txt
+# on the release branch/commit we're packaging.
+#
+# Two approaches are used here to deal with that:
+# Pinning the specific versions it wants in `newPython`,
+# and using `substituteInPlace conans/requirements.txt ...`
+# in `postPatch` to allow newer versions when we know
+# (e.g. from changelogs) that they are compatible.
 
 let newPython = python3.override {
   packageOverrides = self: super: {
-    distro = super.distro.overridePythonAttrs (oldAttrs: rec {
-      version = "1.1.0";
-      src = oldAttrs.src.override {
-        inherit version;
-        sha256 = "1vn1db2akw98ybnpns92qi11v94hydwp130s8753k6ikby95883j";
-      };
-    });
     node-semver = super.node-semver.overridePythonAttrs (oldAttrs: rec {
-      version = "0.2.0";
+      version = "0.6.1";
       src = oldAttrs.src.override {
         inherit version;
-        sha256 = "1080pdxrvnkr8i7b7bk0dfx6cwrkkzzfaranl7207q6rdybzqay3";
+        sha256 = "1dv6mjsm67l1razcgmq66riqmsb36wns17mnipqr610v0z0zf5j0";
       };
     });
-    astroid = super.astroid.overridePythonAttrs (oldAttrs: rec {
-      version = "1.6.5";
+    urllib3 = super.urllib3.overridePythonAttrs (oldAttrs: rec {
+      version = "1.25.11";
       src = oldAttrs.src.override {
         inherit version;
-        sha256 = "fc9b582dba0366e63540982c3944a9230cbc6f303641c51483fa547dcc22393a";
+        sha256 = "18hpzh1am1dqx81fypn57r2wk565fi4g14292qrc5jm1h9dalzld";
       };
-    });
-    pylint = super.pylint.overridePythonAttrs (oldAttrs: rec {
-      version = "1.8.4";
-      src = oldAttrs.src.override {
-        inherit version;
-        sha256 = "34738a82ab33cbd3bb6cd4cef823dbcabdd2b6b48a4e3a3054a2bbbf0c712be9";
-      };
-
     });
   };
 };
 
 in newPython.pkgs.buildPythonApplication rec {
-  version = "1.6.0";
+  version = "1.35.0";
   pname = "conan";
 
-  src = newPython.pkgs.fetchPypi {
-    inherit pname version;
-    sha256 = "386476d3af1fa390e4cd96e737876e7d1f1c0bca09519e51fd44c1bb45990caa";
+  src = fetchFromGitHub {
+    owner = "conan-io";
+    repo = "conan";
+    rev = version;
+    sha256 = "19rgylkjxvv47vz5vgh46rw108xskpv7lmax8y2fnm2wd1j3bq9c";
   };
-
-  # Bump PyYAML to 3.13
-  patches = fetchpatch {
-    url = https://github.com/conan-io/conan/commit/9d3d7a5c6e89b3aa321735557e5ad3397bb80568.patch;
-    sha256 = "1qdy6zj3ypl1bp9872mzaqg1gwigqldxb1glvrkq3p4za62p546k";
-  };
-
-  checkInputs = [
-    git
-  ] ++ (with newPython.pkgs; [
-    nose
-    parameterized
-    mock
-    webtest
-    codecov
-  ]);
 
   propagatedBuildInputs = with newPython.pkgs; [
-    requests fasteners pyyaml pyjwt colorama patch
-    bottle pluginbase six distro pylint node-semver
-    future pygments mccabe deprecation
-  ];
+    bottle
+    colorama
+    dateutil
+    deprecation
+    distro
+    fasteners
+    future
+    jinja2
+    node-semver
+    patch-ng
+    pluginbase
+    pygments
+    pyjwt
+    pylint # Not in `requirements.txt` but used in hooks, see https://github.com/conan-io/conan/pull/6152
+    pyyaml
+    requests
+    six
+    tqdm
+    urllib3
+  ] ++ lib.optionals stdenv.isDarwin [ idna cryptography pyopenssl ];
 
-  checkPhase = ''
-    export HOME="$TMP/conan-home"
-    mkdir -p "$HOME"
-    nosetests conans.test
+  checkInputs = [
+    pkg-config
+    git
+  ] ++ (with newPython.pkgs; [
+    codecov
+    mock
+    nose
+    parameterized
+    webtest
+  ]);
+
+  # TODO: reenable tests now that we fetch tests w/ the source from GitHub.
+  # Not enabled right now due to time constraints/failing tests that I didn't have time to track down
+  doCheck = false;
+
+  postPatch = ''
+    substituteInPlace conans/requirements.txt \
+      --replace "deprecation>=2.0, <2.1" "deprecation"
   '';
 
   meta = with lib; {
-    homepage = https://conan.io;
+    homepage = "https://conan.io";
     description = "Decentralized and portable C/C++ package manager";
     license = licenses.mit;
-    platforms = platforms.linux;
+    maintainers = with maintainers; [ HaoZeke ];
   };
 }

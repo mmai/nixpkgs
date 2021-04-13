@@ -1,29 +1,39 @@
-{ stdenv
+{ lib
 , buildPythonPackage
 , fetchPypi
 , ruamel_base
 , ruamel_ordereddict
+, ruamel_yaml_clib
 , isPy3k
+, isPyPy
 }:
 
 buildPythonPackage rec {
   pname = "ruamel.yaml";
-  version = "0.15.80";
+  version = "0.16.12";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "1rhlshff9csjwn64x11b9a7gbxccs1vd7rdiqwlhifjxax8k682g";
+    sha256 = "076cc0bc34f1966d920a49f18b52b6ad559fbe656a0748e3535cf7b3f29ebf9e";
   };
 
-  # Tests cannot load the module to test
+  # Tests use relative paths
   doCheck = false;
 
   propagatedBuildInputs = [ ruamel_base ]
-    ++ stdenv.lib.optional (!isPy3k) ruamel_ordereddict;
+    ++ lib.optional (!isPy3k) ruamel_ordereddict
+    ++ lib.optional (!isPyPy) ruamel_yaml_clib;
 
-  meta = with stdenv.lib; {
+  # causes namespace clash on py27
+  dontUsePythonImportsCheck = !isPy3k;
+  pythonImportsCheck = [
+    "ruamel.yaml"
+    "ruamel.base"
+  ];
+
+  meta = with lib; {
     description = "YAML parser/emitter that supports roundtrip preservation of comments, seq/map flow style, and map key order";
-    homepage = https://bitbucket.org/ruamel/yaml;
+    homepage = "https://sourceforge.net/projects/ruamel-yaml/";
     license = licenses.mit;
   };
 

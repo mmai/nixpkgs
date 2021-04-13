@@ -1,81 +1,73 @@
-{ stdenv, fetchurl, autoPatchelfHook, makeWrapper
-, alsaLib, xorg
-, fetchFromGitHub, pkgconfig, gnome3
-, gnome2, gdk_pixbuf, cairo, glib, freetype
-, libpulseaudio
+{ config, lib, stdenv
+, fetchurl
+, autoPatchelfHook
+, makeWrapper
+
+, alsaLib
+, gtk3
+, lame
+, ffmpeg
+, vlc
+
+, jackSupport ? true, libjack2
+, pulseaudioSupport ? config.pulseaudio or true, libpulseaudio
 }:
 
-let
-  libSwell = stdenv.mkDerivation {
-    name = "libSwell";
-
-    src = fetchFromGitHub {
-      owner = "justinfrankel";
-      repo = "WDL";
-      rev = "cb89dc81dc5cbc13a8f1b3cda38a204e356d4014";
-      sha256 = "0m19dy4r0i21ckypzfhpfjm6sh00v9i088pva7hhhr4mmrbqd0ms";
-    };
-
-    nativeBuildInputs = [ pkgconfig ];
-    buildInputs = [ gnome3.gtk ];
-
-    buildPhase = ''
-      cd WDL/swell
-      make
-    '';
-
-    installPhase = ''
-      mv libSwell.so $out
-    '';
-  };
-
-in stdenv.mkDerivation rec {
-  name = "reaper-${version}";
-  version = "5.961";
+stdenv.mkDerivation rec {
+  pname = "reaper";
+  version = "6.25";
 
   src = fetchurl {
-    url = "https://www.reaper.fm/files/${stdenv.lib.versions.major version}.x/reaper${builtins.replaceStrings ["."] [""] version}_linux_x86_64.tar.xz";
-    sha256 = "0lnpdnxnwn7zfn8slivkp971ll9qshgq7y9gcfrk5829z94df06i";
+    url = "https://www.reaper.fm/files/${lib.versions.major version}.x/reaper${builtins.replaceStrings ["."] [""] version}_linux_x86_64.tar.xz";
+    sha256 = "0i1idlr4ar28wvwcvwn9hqzb63kki1x1995cr87a9slxfa7zcshb";
   };
 
   nativeBuildInputs = [ autoPatchelfHook makeWrapper ];
 
   buildInputs = [
     alsaLib
-    stdenv.cc.cc.lib
-
-    xorg.libX11
-    xorg.libXi
-
-    gnome3.gtk
-    gdk_pixbuf
-    gnome2.pango
-    cairo
-    glib
-    freetype
+    stdenv.cc.cc.lib # reaper and libSwell need libstdc++.so.6
+    gtk3
   ];
+
+  runtimeDependencies = [
+    gtk3 # libSwell needs libgdk-3.so.0
+  ]
+  ++ lib.optional jackSupport libjack2
+  ++ lib.optional pulseaudioSupport libpulseaudio;
 
   dontBuild = true;
 
   installPhase = ''
-    ./install-reaper.sh --install $out/opt
+    runHook preInstall
+
+    XDG_DATA_HOME="$out/share" ./install-reaper.sh \
+      --install $out/opt \
+      --integrate-user-desktop
     rm $out/opt/REAPER/uninstall-reaper.sh
 
-    cp ${libSwell.out} $out/opt/REAPER/libSwell.so
-
+    # Dynamic loading of plugin dependencies does not adhere to rpath of
+    # reaper executable that gets modified with runtimeDependencies.
+    # Patching each plugin with DT_NEEDED is cumbersome and requires
+    # hardcoding of API versions of each dependency.
+    # Setting the rpath of the plugin shared object files does not
+    # seem to have an effect for some plugins.
+    # We opt for wrapping the executable with LD_LIBRARY_PATH prefix.
     wrapProgram $out/opt/REAPER/reaper \
-      --prefix LD_LIBRARY_PATH : ${libpulseaudio}/lib
+      --prefix LD_LIBRARY_PATH : "${lib.makeLibraryPath [ lame ffmpeg vlc ]}"
 
     mkdir $out/bin
     ln -s $out/opt/REAPER/reaper $out/bin/
     ln -s $out/opt/REAPER/reamote-server $out/bin/
+
+    runHook postInstall
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Digital audio workstation";
-    homepage = https://www.reaper.fm/;
+    homepage = "https://www.reaper.fm/";
     license = licenses.unfree;
     platforms = [ "x86_64-linux" ];
-    maintainers = with maintainers; [ jfrankenau ];
+    maintainers = with maintainers; [ jfrankenau ilian ];
   };
 }

@@ -1,10 +1,10 @@
-{ stdenv
-, fetchpatch, gnu-config, autoreconfHook264, bison, binutils-unwrapped
+{ lib, stdenv
+, fetchpatch, gnu-config, autoreconfHook, bison, binutils-unwrapped
 , libiberty, zlib
 }:
 
-stdenv.mkDerivation rec {
-  name = "libbfd-${version}";
+stdenv.mkDerivation {
+  pname = "libbfd";
   inherit (binutils-unwrapped) version src;
 
   outputs = [ "out" "dev" ];
@@ -30,8 +30,8 @@ stdenv.mkDerivation rec {
   # We update these ourselves
   dontUpdateAutotoolsGnuConfigScripts = true;
 
-  nativeBuildInputs = [ autoreconfHook264 bison ];
-  buildInputs = [ libiberty zlib ];
+  nativeBuildInputs = [ autoreconfHook bison ];
+  buildInputs = [ libiberty zlib.dev ];
 
   configurePlatforms = [ "build" "host" ];
   configureFlags = [
@@ -43,7 +43,7 @@ stdenv.mkDerivation rec {
 
   enableParallelBuilding = true;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A library for manipulating containers of machine code";
     longDescription = ''
       BFD is a library which provides a single interface to read and write
@@ -51,7 +51,7 @@ stdenv.mkDerivation rec {
       It is associated with GNU Binutils, and elsewhere often distributed with
       it.
     '';
-    homepage = https://www.gnu.org/software/binutils/;
+    homepage = "https://www.gnu.org/software/binutils/";
     license = licenses.gpl3Plus;
     maintainers = with maintainers; [ ericson2314 ];
     platforms = platforms.unix;

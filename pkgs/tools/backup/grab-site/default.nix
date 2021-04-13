@@ -1,18 +1,38 @@
-{ stdenv, python3Packages, fetchFromGitHub }:
-
-python3Packages.buildPythonApplication rec {
-  version = "2.1.11";
-  name = "grab-site-${version}";
-
-  src = fetchFromGitHub {
-    rev = "${version}";
-    owner = "ludios";
-    repo = "grab-site";
-    sha256 = "0w24ngr2b7nipqiwkxpql2467b5aq2vbknkb0sry6a457kb5ppsl";
+{ lib, python37, fetchFromGitHub }:
+let
+  python = python37.override {
+    self = python;
+    packageOverrides = self: super: {
+      tornado = super.tornado_4;
+    };
   };
 
-  propagatedBuildInputs = with python3Packages; [
-    click ludios_wpull manhole lmdb autobahn fb-re2 websockets cchardet
+in
+with python.pkgs; buildPythonApplication rec {
+  pname = "grab-site";
+  version = "2.2.0";
+
+  src = fetchFromGitHub {
+    rev = version;
+    owner = "ArchiveTeam";
+    repo = "grab-site";
+    sha256 = "1jxcv9dral6h7vfpfqkp1yif6plj0vspzakymkj8hfl75nh0wpv8";
+  };
+
+  postPatch = ''
+    substituteInPlace setup.py \
+      --replace '"wpull @ https://github.com/ArchiveTeam/ludios_wpull/tarball/master#egg=wpull-3.0.7"' '"wpull"'
+  '';
+
+  propagatedBuildInputs = [
+    click
+    ludios_wpull
+    manhole
+    lmdb
+    autobahn
+    fb-re2
+    websockets
+    cchardet
   ];
 
   checkPhase = ''
@@ -20,9 +40,9 @@ python3Packages.buildPythonApplication rec {
     bash ./tests/offline-tests
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Crawler for web archiving with WARC output";
-    homepage = https://github.com/ludios/grab-site;
+    homepage = "https://github.com/ArchiveTeam/grab-site";
     license = licenses.mit;
     maintainers = with maintainers; [ ivan ];
     platforms = platforms.all;

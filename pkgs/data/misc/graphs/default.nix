@@ -1,11 +1,10 @@
-{ stdenv
+{ lib, stdenv
 , fetchurl
 }:
 
 stdenv.mkDerivation rec {
   pname = "graphs";
   version = "20161026";
-  name = "${pname}-${version}";
 
   src = fetchurl {
     url = "mirror://sageupstream/${pname}/${pname}-${version}.tar.bz2";
@@ -17,10 +16,10 @@ stdenv.mkDerivation rec {
     cp * "$out/share/graphs/"
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A database of graphs";
     license = licenses.gpl2;
     platforms = platforms.all;
-    maintainers = with maintainers; [ timokau ];
+    maintainers = teams.sage.members;
   };
 }

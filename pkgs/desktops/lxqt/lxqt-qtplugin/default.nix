@@ -1,19 +1,27 @@
-{
-  stdenv, fetchFromGitHub,
-  cmake, lxqt-build-tools,
-  qtbase, qtx11extras, qttools, qtsvg, libdbusmenu, libqtxdg, libfm-qt
+{ lib
+, mkDerivation
+, fetchFromGitHub
+, cmake
+, libdbusmenu
+, libfm-qt
+, libqtxdg
+, lxqt-build-tools
+, lxqtUpdateScript
+, qtbase
+, qtsvg
+, qttools
+, qtx11extras
 }:
 
-stdenv.mkDerivation rec {
-  name = "${pname}-${version}";
+mkDerivation rec {
   pname = "lxqt-qtplugin";
-  version = "0.13.0";
+  version = "0.16.0";
 
   src = fetchFromGitHub {
     owner = "lxqt";
     repo = pname;
     rev = version;
-    sha256 = "19y5dvbj7gwyh8glc6vi6hb5snvkd3jwvss6j0sn2sy2gp9g9ryb";
+    sha256 = "14k5icxjkl5znp59y44791brsmwy54jkwr4vn3kg4ggqjdp3vbh9";
   };
 
   nativeBuildInputs = [
@@ -22,13 +30,13 @@ stdenv.mkDerivation rec {
   ];
 
   buildInputs = [
-    qtbase
-    qtx11extras
-    qttools
-    qtsvg
     libdbusmenu
-    libqtxdg
     libfm-qt
+    libqtxdg
+    qtbase
+    qtsvg
+    qttools
+    qtx11extras
   ];
 
   postPatch = ''
@@ -36,11 +44,13 @@ stdenv.mkDerivation rec {
       --replace "DESTINATION \"\''${QT_PLUGINS_DIR}" "DESTINATION \"$qtPluginPrefix"
   '';
 
-  meta = with stdenv.lib; {
+  passthru.updateScript = lxqtUpdateScript { inherit pname version src; };
+
+  meta = with lib; {
+    homepage = "https://github.com/lxqt/lxqt-qtplugin";
     description = "LXQt Qt platform integration plugin";
-    homepage = https://github.com/lxqt/lxqt-qtplugin;
-    license = licenses.lgpl21;
-    platforms = with platforms; unix;
+    license = licenses.lgpl21Plus;
+    platforms = platforms.linux;
     maintainers = with maintainers; [ romildo ];
   };
 }

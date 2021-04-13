@@ -1,30 +1,39 @@
-{ stdenv
+{ lib
 , buildPythonPackage
 , fetchPypi
 , isPyPy
+, substituteAll
+, graphvizPkgs
 , graphviz
 , mock
 }:
 
 buildPythonPackage rec {
   pname = "objgraph";
-  version = "3.4.0";
+  version = "3.5.0";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "4a0c2c6268e10a9e8176ae054ff3faac9a432087801e1f95c3ebbe52550295a0";
+    sha256 = "4752ca5bcc0e0512e41b8cc4d2780ac2fd3b3eabd03b7e950a5594c06203dfc4";
   };
 
   # Tests fail with PyPy.
   disabled = isPyPy;
 
+  patches = [
+    (substituteAll {
+      src = ./hardcode-graphviz-path.patch;
+      graphviz = graphvizPkgs;
+    })
+  ];
+
   propagatedBuildInputs = [ graphviz ];
 
   checkInputs = [ mock ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Draws Python object reference graphs with graphviz";
-    homepage = https://mg.pov.lt/objgraph/;
+    homepage = "https://mg.pov.lt/objgraph/";
     license = licenses.mit;
   };
 

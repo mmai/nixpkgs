@@ -1,5 +1,4 @@
-{ fetchurl, stdenv, texinfo, perl
-, XMLSAX, XMLSAXBase, XMLParser, XMLNamespaceSupport
+{ fetchurl, lib, stdenv, texinfo, perlPackages
 , groff, libxml2, libxslt, gnused, libiconv, opensp
 , docbook_xml_dtd_43
 , makeWrapper }:
@@ -16,9 +15,9 @@ stdenv.mkDerivation rec {
   # writes its output to stdout instead of creating a file.
   patches = [ ./db2x_texixml-to-stdout.patch ];
 
-  buildInputs = [ perl texinfo groff libxml2 libxslt makeWrapper
-                  XMLSAX XMLParser XMLNamespaceSupport opensp libiconv
-                ];
+  nativeBuildInputs = [ makeWrapper ];
+  buildInputs = [ texinfo groff libxml2 libxslt opensp libiconv ]
+    ++ (with perlPackages; [ perl XMLSAX XMLParser XMLNamespaceSupport ]);
 
   postConfigure = ''
     # Broken substitution is used for `perl/config.pl', which leaves literal
@@ -36,10 +35,8 @@ stdenv.mkDerivation rec {
     do
       # XXX: We work around the fact that `wrapProgram' doesn't support
       # spaces below by inserting escaped backslashes.
-      wrapProgram $out/bin/$i --prefix PERL5LIB : \
-        "${XMLSAX}/lib/perl5/site_perl:${XMLSAXBase}/lib/perl5/site_perl:${XMLParser}/lib/perl5/site_perl" \
-        --prefix PERL5LIB : \
-        "${XMLNamespaceSupport}/lib/perl5/site_perl" \
+      wrapProgram $out/bin/$i \
+        --prefix PERL5LIB : ${with perlPackages; makeFullPerlPath [XMLSAX XMLParser XMLNamespaceSupport]} \
         --prefix XML_CATALOG_FILES "\ " \
         "$out/share/docbook2X/dtd/catalog.xml\ $out/share/docbook2X/xslt/catalog.xml\ ${docbook_xml_dtd_43}/xml/dtd/docbook/catalog.xml"
     done
@@ -48,14 +45,14 @@ stdenv.mkDerivation rec {
       "${gnused}/bin"
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     longDescription = ''
       docbook2X is a software package that converts DocBook documents
       into the traditional Unix man page format and the GNU Texinfo
       format.
     '';
     license = licenses.mit;
-    homepage = http://docbook2x.sourceforge.net/;
+    homepage = "http://docbook2x.sourceforge.net/";
     platforms = platforms.all;
   };
 }

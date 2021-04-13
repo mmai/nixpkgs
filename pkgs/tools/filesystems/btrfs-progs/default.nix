@@ -1,37 +1,41 @@
-{ stdenv, fetchurl, fetchpatch, pkgconfig, attr, acl, zlib, libuuid, e2fsprogs, lzo
-, asciidoc, xmlto, docbook_xml_dtd_45, docbook_xsl, libxslt, zstd, python3, python3Packages
+{ lib, stdenv, fetchurl, pkg-config, attr, acl, zlib, libuuid, e2fsprogs, lzo
+, asciidoc, xmlto, docbook_xml_dtd_45, docbook_xsl, libxslt, zstd, python3
 }:
 
 stdenv.mkDerivation rec {
-  name = "btrfs-progs-${version}";
-  version = "4.19.1";
+  pname = "btrfs-progs";
+  version = "5.11";
 
   src = fetchurl {
     url = "mirror://kernel/linux/kernel/people/kdave/btrfs-progs/btrfs-progs-v${version}.tar.xz";
-    sha256 = "1f7gpk9206ph081fr0af8k57i58zjb03xwd8k69177a7rzsjmn04";
+    sha256 = "sha256-1BlhsKkhYMgPiUrZoYgoIoicLh0ITL8+CLjCFKXPATc=";
   };
 
   nativeBuildInputs = [
-    pkgconfig asciidoc xmlto docbook_xml_dtd_45 docbook_xsl libxslt python3 python3Packages.setuptools
+    pkg-config asciidoc xmlto docbook_xml_dtd_45 docbook_xsl libxslt
+    python3 python3.pkgs.setuptools
   ];
 
-  buildInputs = [ attr acl zlib libuuid e2fsprogs lzo zstd ];
+  buildInputs = [ attr acl zlib libuuid e2fsprogs lzo zstd python3 ];
+
+  # for python cross-compiling
+  _PYTHON_HOST_PLATFORM = stdenv.hostPlatform.config;
 
   # gcc bug with -O1 on ARM with gcc 4.8
   # This should be fine on all platforms so apply universally
   postPatch = "sed -i s/-O1/-O2/ configure";
 
   postInstall = ''
-    install -v -m 444 -D btrfs-completion $out/etc/bash_completion.d/btrfs
+    install -v -m 444 -D btrfs-completion $out/share/bash-completion/completions/btrfs
   '';
 
-  configureFlags = stdenv.lib.optional stdenv.hostPlatform.isMusl "--disable-backtrace";
+  configureFlags = lib.optional stdenv.hostPlatform.isMusl "--disable-backtrace";
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Utilities for the btrfs filesystem";
-    homepage = https://btrfs.wiki.kernel.org/;
+    homepage = "https://btrfs.wiki.kernel.org/";
     license = licenses.gpl2;
-    maintainers = with maintainers; [ raskin wkennington ];
+    maintainers = with maintainers; [ raskin ];
     platforms = platforms.linux;
   };
 }

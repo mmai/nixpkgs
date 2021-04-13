@@ -1,4 +1,4 @@
-{ stdenv
+{ lib
 , buildPythonPackage
 , disabledIf
 , isPy3k
@@ -9,15 +9,17 @@
 }:
 
 disabledIf (isPy3k || isPyPy)
-  (buildPythonPackage rec {
+  (buildPythonPackage {
     # TODO: Qt5 support
-    name = "qscintilla-${version}";
+    pname = "qscintilla";
     version = pkgs.qscintilla.version;
     format = "other";
 
     src = pkgs.qscintilla.src;
 
-    buildInputs = [ pkgs.xorg.lndir pyqt4.qt pyqt4 ];
+    nativeBuildInputs = [ pkgs.xorg.lndir ];
+
+    buildInputs = [ pyqt4.qt pyqt4 ];
 
     preConfigure = ''
       mkdir -p $out
@@ -32,7 +34,7 @@ disabledIf (isPy3k || isPyPy)
           --sipdir $out/share/sip
     '';
 
-    meta = with stdenv.lib; {
+    meta = with lib; {
       description = "A Python binding to QScintilla, Qt based text editing control";
       license = licenses.lgpl21Plus;
       maintainers = with maintainers; [ danbst ];

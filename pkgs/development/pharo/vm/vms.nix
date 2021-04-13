@@ -1,4 +1,5 @@
 { cmake
+, lib
 , stdenv
 , fetchurl
 , bash
@@ -7,7 +8,7 @@
 , openssl
 , gcc
 , libgit2
-, libGLU_combined
+, libGLU, libGL
 , freetype
 , xorg
 , alsaLib
@@ -17,6 +18,7 @@
 , gcc48
 , fetchFromGitHub
 , makeWrapper
+, runtimeShell
 } @args:
 
 let
@@ -26,7 +28,7 @@ in
 
 let suffix = if stdenv.is64bit then "64" else "32"; in
 
-rec {
+{
   # Build the latest VM
   spur = pharo-vm-build rec {
     name = "pharo-spur${suffix}";
@@ -54,7 +56,7 @@ rec {
   cog = pharo-vm-build-legacy rec {
     version = "2016.02.18";
     name = "pharo-cog${suffix}";
-    base-url = http://files.pharo.org/vm/src/vm-unix-sources/blessed;
+    base-url = "http://files.pharo.org/vm/src/vm-unix-sources/blessed";
     src = fetchurl {
       url = "${base-url}/pharo-vm-${version}.tar.bz2";
       sha256 = "16n2zg7v2s1ml0vvpbhkw6khmgn637sr0d7n2b28qm5yc8pfhcj4";
@@ -62,4 +64,3 @@ rec {
   };
 
 }
-

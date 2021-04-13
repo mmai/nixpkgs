@@ -1,14 +1,14 @@
-{ stdenv, python3, fetchFromGitHub, fetchpatch }:
+{ lib, python3, fetchFromGitHub }:
 
 with python3.pkgs; buildPythonApplication rec {
-  version = "3.8";
+  version = "4.5";
   pname = "buku";
 
   src = fetchFromGitHub {
     owner = "jarun";
     repo = "buku";
     rev = "v${version}";
-    sha256 = "0gv26c4rr1akcaiff1nrwil03sv7d58mfxr86pgsw6nwld67ns0r";
+    sha256 = "1lcq5fk8d5j2kfhn9m5l2hk46v7nj4vfa22m1psz35c9zpw4px8q";
   };
 
   checkInputs = [
@@ -18,6 +18,7 @@ with python3.pkgs; buildPythonApplication rec {
     pylint
     flake8
     pyyaml
+    mypy-extensions
   ];
 
   propagatedBuildInputs = [
@@ -26,14 +27,26 @@ with python3.pkgs; buildPythonApplication rec {
     requests
     urllib3
     flask
+    flask-admin
     flask-api
     flask-bootstrap
     flask-paginate
+    flask-reverse-proxy-fix
     flask_wtf
     arrow
     werkzeug
     click
+    html5lib
+    vcrpy
+    toml
   ];
+
+  postPatch = ''
+    # Jailbreak problematic dependencies
+    sed -i \
+      -e "s,'PyYAML.*','PyYAML',g" \
+      setup.py
+  '';
 
   preCheck = ''
     # Fixes two tests for wrong encoding
@@ -44,6 +57,8 @@ with python3.pkgs; buildPythonApplication rec {
       --replace "@pytest.mark.slowtest" "@unittest.skip('skipping')" \
       --replace "self.assertEqual(shorturl, 'http://tny.im/yt')" "" \
       --replace "self.assertEqual(url, 'https://www.google.com')" ""
+    substituteInPlace setup.py \
+      --replace mypy-extensions==0.4.1 mypy-extensions>=0.4.1
   '';
 
   postInstall = ''
@@ -55,12 +70,12 @@ with python3.pkgs; buildPythonApplication rec {
     cp auto-completion/fish/* $out/share/fish/vendor_completions.d
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Private cmdline bookmark manager";
-    homepage = https://github.com/jarun/Buku;
+    homepage = "https://github.com/jarun/Buku";
     license = licenses.gpl3;
-    platforms = platforms.linux;
-    maintainers = with maintainers; [ infinisil ];
+    platforms = platforms.unix;
+    maintainers = with maintainers; [ matthiasbeyer infinisil ];
   };
 }
 

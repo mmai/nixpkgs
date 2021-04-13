@@ -1,4 +1,4 @@
-{ stdenv, fetchFromGitHub, pkgconfig, cmake
+{ config, lib, stdenv, fetchFromGitHub, pkg-config, cmake
 
 # dependencies
 , glib, libXinerama
@@ -27,12 +27,13 @@
 
 , wirelessSupport     ? true      , wirelesstools ? null
 , nvidiaSupport       ? false     , libXNVCtrl ? null
-, pulseSupport        ? false     , libpulseaudio ? null
+, pulseSupport        ? config.pulseaudio or false, libpulseaudio ? null
 
 , curlSupport         ? true      , curl ? null
 , rssSupport          ? curlSupport
 , weatherMetarSupport ? curlSupport
 , weatherXoapSupport  ? curlSupport
+, journalSupport      ? true, systemd ? null
 , libxml2 ? null
 }:
 
@@ -51,7 +52,7 @@ assert luaImlib2Support    -> luaSupport && imlib2Support
 assert luaCairoSupport     -> luaSupport && toluapp != null
                                          && cairo   != null;
 assert luaCairoSupport || luaImlib2Support
-                           -> lua.luaversion == "5.1";
+                           -> lua.luaversion == "5.3";
 
 assert wirelessSupport     -> wirelesstools != null;
 assert nvidiaSupport       -> libXNVCtrl != null;
@@ -61,18 +62,19 @@ assert curlSupport         -> curl != null;
 assert rssSupport          -> curlSupport && libxml2 != null;
 assert weatherMetarSupport -> curlSupport;
 assert weatherXoapSupport  -> curlSupport && libxml2 != null;
+assert journalSupport      -> systemd != null;
 
-with stdenv.lib;
+with lib;
 
 stdenv.mkDerivation rec {
-  name = "conky-${version}";
-  version = "1.11.0";
+  pname = "conky";
+  version = "1.12.1";
 
   src = fetchFromGitHub {
     owner = "brndnmtthws";
     repo = "conky";
     rev = "v${version}";
-    sha256 = "164xa6s90zakkvwivl296z6v7w8xchgxap7ib6yx4g1bxa0143mi";
+    sha256 = "sha256-qQx9+Z1OAQlbHupflzHD5JV4NqedoF8A57F1+rPT3/o=";
   };
 
   postPatch = ''
@@ -82,12 +84,12 @@ stdenv.mkDerivation rec {
     # Drop examples, since they contain non-ASCII characters that break docbook2x :(
     sed -i 's/ Example: .*$//' doc/config_settings.xml
 
-    substituteInPlace cmake/Conky.cmake --replace "#set(RELEASE true)" "set(RELEASE true)"
+    substituteInPlace cmake/Conky.cmake --replace "# set(RELEASE true)" "set(RELEASE true)"
   '';
 
   NIX_LDFLAGS = "-lgcc_s";
 
-  nativeBuildInputs = [ cmake pkgconfig ];
+  nativeBuildInputs = [ cmake pkg-config ];
   buildInputs = [ glib libXinerama ]
     ++ optionals docsSupport        [ docbook2x docbook_xsl docbook_xml_dtd_44 libxslt man less ]
     ++ optional  ncursesSupport     ncurses
@@ -103,6 +105,7 @@ stdenv.mkDerivation rec {
     ++ optional  weatherXoapSupport libxml2
     ++ optional  nvidiaSupport      libXNVCtrl
     ++ optional  pulseSupport       libpulseaudio
+    ++ optional  journalSupport     systemd
     ;
 
   cmakeFlags = []
@@ -123,14 +126,15 @@ stdenv.mkDerivation rec {
     ++ optional wirelessSupport     "-DBUILD_WLAN=ON"
     ++ optional nvidiaSupport       "-DBUILD_NVIDIA=ON"
     ++ optional pulseSupport        "-DBUILD_PULSEAUDIO=ON"
+    ++ optional journalSupport      "-DBUILD_JOURNAL=ON"
     ;
 
   # `make -f src/CMakeFiles/conky.dir/build.make src/CMakeFiles/conky.dir/conky.cc.o`:
   # src/conky.cc:137:23: fatal error: defconfig.h: No such file or directory
   enableParallelBuilding = false;
 
-  meta = with stdenv.lib; {
-    homepage = http://conky.sourceforge.net/;
+  meta = with lib; {
+    homepage = "http://conky.sourceforge.net/";
     description = "Advanced, highly configurable system monitor based on torsmo";
     maintainers = [ maintainers.guibert ];
     license = licenses.gpl3Plus;

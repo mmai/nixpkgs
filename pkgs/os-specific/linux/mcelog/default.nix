@@ -1,14 +1,14 @@
-{ stdenv, fetchFromGitHub, utillinux }:
+{ lib, stdenv, fetchFromGitHub, util-linux }:
 
 stdenv.mkDerivation rec {
-  name = "mcelog-${version}";
-  version = "161";
+  pname = "mcelog";
+  version = "175";
 
   src = fetchFromGitHub {
     owner  = "andikleen";
     repo   = "mcelog";
     rev    = "v${version}";
-    sha256 = "1bqz53xgvwab3r487ihri3nvk7nsgjykdv8m993983vxsi2bgjmz";
+    sha256 = "sha256-Xzbck/nRdTR9H5o2XVFlFdNLz2ve65KEcefKAKe0eW8=";
   };
 
   postPatch = ''
@@ -20,7 +20,7 @@ stdenv.mkDerivation rec {
     substituteInPlace Makefile --replace '"unknown"' '"${version}"'
 
     for i in triggers/*; do
-      substituteInPlace $i --replace 'logger' '${utillinux}/bin/logger'
+      substituteInPlace $i --replace 'logger' '${util-linux}/bin/logger'
     done
   '';
 
@@ -34,7 +34,7 @@ stdenv.mkDerivation rec {
       --replace /usr/sbin $out/bin
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Log x86 machine checks: memory, IO, and CPU hardware errors";
     longDescription = ''
       The mcelog daemon accounts memory and some other errors in various ways
@@ -44,7 +44,7 @@ stdenv.mkDerivation rec {
       including bad page offlining and automatic cache error handling. All
       errors are logged to /var/log/mcelog or syslog or the journal.
     '';
-    homepage = http://mcelog.org/;
+    homepage = "http://mcelog.org/";
     license = licenses.gpl2;
     platforms = platforms.linux;
   };

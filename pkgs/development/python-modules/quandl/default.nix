@@ -1,24 +1,22 @@
-{
-  lib, fetchPypi, buildPythonPackage, isPy3k,
-  # runtime dependencies
-  pandas, numpy, requests, inflection, python-dateutil, six, more-itertools,
-  # test suite dependencies
-  nose, unittest2, flake8, httpretty, mock, jsondate, parameterized, faker, factory_boy,
-  # additional runtime dependencies are required on Python 2.x
-  pyOpenSSL ? null, ndg-httpsclient ? null, pyasn1 ? null
+{ lib, fetchPypi, buildPythonPackage, isPy3k, pythonOlder
+# runtime dependencies
+, pandas, numpy, requests, inflection, python-dateutil, six, more-itertools, importlib-metadata
+# test suite dependencies
+, nose, unittest2, flake8, httpretty, mock, jsondate, parameterized, faker, factory_boy
+# additional runtime dependencies are required on Python 2.x
+, pyopenssl, ndg-httpsclient, pyasn1
 }:
 
 buildPythonPackage rec {
   pname = "quandl";
-  version = "3.4.5";
+  version = "3.5.0";
+  disabled = !isPy3k;
 
   src = fetchPypi {
     inherit version;
     pname = "Quandl";
-    sha256 = "1rflyc6q3wa5ghc5v81yw79yg7lkpgd2c22mgbb0cvza724k53ys";
+    sha256 = "0zpw0nwqr4g56l9z4my0fahfgpcmfx74acbmv6nfx1dmq5ggraf3";
   };
-
-  doCheck = true;
 
   checkInputs = [
     nose
@@ -40,16 +38,20 @@ buildPythonPackage rec {
     python-dateutil
     six
     more-itertools
-  ] ++ lib.optional (!isPy3k) [
-    pyOpenSSL
+  ] ++ lib.optionals (!isPy3k) [
+    pyopenssl
     ndg-httpsclient
     pyasn1
+  ] ++ lib.optionals (pythonOlder "3.8") [
+    importlib-metadata
   ];
 
-  meta = {
-    homepage = "https://github.com/quandl/quandl-python";
+  pythonImportsCheck = [ "quandl" ];
+
+  meta = with lib; {
     description = "Quandl Python client library";
-    maintainers = [ lib.maintainers.ilya-kolpakov ];
-    license = lib.licenses.mit;
+    homepage = "https://github.com/quandl/quandl-python";
+    license = licenses.mit;
+    maintainers = with maintainers; [ ilya-kolpakov ];
   };
 }

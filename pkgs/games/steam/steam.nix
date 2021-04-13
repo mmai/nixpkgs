@@ -1,38 +1,47 @@
-{stdenv, fetchurl, traceDeps ? false}:
+{ lib, stdenv, fetchurl, runtimeShell, traceDeps ? false, bash }:
 
 let
   traceLog = "/tmp/steam-trace-dependencies.log";
-  version = "1.0.0.56";
+  version = "1.0.0.69";
 
-in stdenv.mkDerivation rec {
-  name = "steam-original-${version}";
+in stdenv.mkDerivation {
+  pname = "steam-original";
+  inherit version;
 
   src = fetchurl {
-    url = "http://repo.steampowered.com/steam/pool/steam/s/steam/steam_${version}.tar.gz";
-    sha256 = "01jgp909biqf4rr56kb08jkl7g5xql6r2g4ch6lc71njgcsbn5fs";
+    url = "https://repo.steampowered.com/steam/pool/steam/s/steam/steam_${version}.tar.gz";
+    sha256 = "sha256-b5g4AUprE/lTunJs59IDlGu5O/1dB0kBvCFq0Eqyx2c=";
   };
 
   makeFlags = [ "DESTDIR=$(out)" "PREFIX=" ];
 
   postInstall = ''
     rm $out/bin/steamdeps
-    ${stdenv.lib.optionalString traceDeps ''
+    ${lib.optionalString traceDeps ''
       cat > $out/bin/steamdeps <<EOF
-      #!${stdenv.shell}
+      #!${runtimeShell}
       echo \$1 >> ${traceLog}
       cat \$1 >> ${traceLog}
       echo >> ${traceLog}
       EOF
       chmod +x $out/bin/steamdeps
     ''}
-    install -d $out/lib/udev/rules.d
-    install -m644 lib/udev/rules.d/*.rules $out/lib/udev/rules.d
+
+    # install udev rules
+    mkdir -p $out/etc/udev/rules.d/
+    cp ./subprojects/steam-devices/*.rules $out/etc/udev/rules.d/
+    substituteInPlace $out/etc/udev/rules.d/60-steam-input.rules \
+      --replace "/bin/sh" "${bash}/bin/bash"
+
+    # this just installs a link, "steam.desktop -> /lib/steam/steam.desktop"
+    rm $out/share/applications/steam.desktop
+    sed -e 's,/usr/bin/steam,steam,g' steam.desktop > $out/share/applications/steam.desktop
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A digital distribution platform";
-    homepage = http://store.steampowered.com/;
+    homepage = "http://store.steampowered.com/";
     license = licenses.unfreeRedistributable;
-    maintainers = with maintainers; [ jagajaga ];
+    maintainers = with maintainers; [ jagajaga jonringer ];
   };
 }

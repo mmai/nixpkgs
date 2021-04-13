@@ -1,14 +1,14 @@
-{ stdenv, fetchurl, pkgconfig, perl, autoconf, automake
-, libX11, inputproto, libXt, libXpm, libXft, libXtst, xextproto, libXi
+{ lib, stdenv, fetchurl, pkg-config, perl, autoconf, automake
+, libX11, xorgproto, libXt, libXpm, libXft, libXtst, libXi
 , libXrandr, fontconfig, freetype, readline
 }:
 
 stdenv.mkDerivation rec {
-  name = "ratpoison-${version}";
+  pname = "ratpoison";
   version = "1.4.9";
 
   src = fetchurl {
-    url = "mirror://savannah/ratpoison/${name}.tar.xz";
+    url = "mirror://savannah/ratpoison/${pname}-${version}.tar.xz";
     sha256 = "1wfir1gvh5h7izgvx2kd1pr2k7wlncd33zq7qi9s9k2y0aza93yr";
   };
 
@@ -19,11 +19,11 @@ stdenv.mkDerivation rec {
     "--enable-history"
   ];
 
-  nativeBuildInputs = [ pkgconfig autoconf automake ];
+  nativeBuildInputs = [ pkg-config autoconf automake ];
 
   buildInputs =
     [ perl
-      libX11 inputproto libXt libXpm libXft libXtst xextproto libXi libXrandr
+      libX11 xorgproto libXt libXpm libXft libXtst libXi libXrandr
       fontconfig freetype readline ];
 
   postInstall = ''
@@ -32,8 +32,8 @@ stdenv.mkDerivation rec {
     mv $out/share/ratpoison $contrib/share
   '';
 
-  meta = with stdenv.lib; {
-    homepage = https://www.nongnu.org/ratpoison/;
+  meta = with lib; {
+    homepage = "https://www.nongnu.org/ratpoison/";
     description = "Simple mouse-free tiling window manager";
     license = licenses.gpl2Plus;
 

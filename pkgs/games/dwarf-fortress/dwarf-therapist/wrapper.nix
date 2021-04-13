@@ -1,4 +1,4 @@
-{ pkgs, stdenv, symlinkJoin, lib, dwarf-therapist, dwarf-fortress, makeWrapper }:
+{ pkgs, stdenv, dwarf-therapist, dwarf-fortress, makeWrapper }:
 
 let
   platformSlug = if stdenv.targetPlatform.is32bit then
@@ -6,15 +6,15 @@ let
   inifile = "linux/v0.${dwarf-fortress.baseVersion}.${dwarf-fortress.patchVersion}_${platformSlug}.ini";
 
 in
-  
-stdenv.mkDerivation rec {
+
+stdenv.mkDerivation {
   name = "dwarf-therapist-${dwarf-therapist.version}";
-  
+
   wrapper = ./dwarf-therapist.in;
 
   paths = [ dwarf-therapist ];
 
-  buildInputs = [ makeWrapper ];
+  nativeBuildInputs = [ makeWrapper ];
 
   passthru = { inherit dwarf-fortress dwarf-therapist; };
 

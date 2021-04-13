@@ -1,4 +1,4 @@
-{ stdenv
+{ lib
 , buildPythonPackage
 , fetchPypi
 , pytest
@@ -7,11 +7,11 @@
 
 buildPythonPackage rec {
   pname = "virtualenv-clone";
-  version = "0.2.6";
+  version = "0.5.4";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "6b3be5cab59e455f08c9eda573d23006b7d6fb41fae974ddaa2b275c93cc4405";
+    sha256 = "0absh96fsxk9di7ir76f5djyfm2c214wnyk53avrhjy8akflhpk6";
   };
 
   buildInputs = [ pytest ];
@@ -20,8 +20,8 @@ buildPythonPackage rec {
   # needs tox to run the tests
   doCheck = false;
 
-  meta = with stdenv.lib; {
-    homepage = https://github.com/edwardgeorge/virtualenv-clone;
+  meta = with lib; {
+    homepage = "https://github.com/edwardgeorge/virtualenv-clone";
     description = "Script to clone virtualenvs";
     license = licenses.mit;
   };

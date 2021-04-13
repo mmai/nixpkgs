@@ -1,17 +1,43 @@
-{ stdenv, fetchurl, openssl, pkgconfig, libnl
+{ lib, stdenv, fetchurl, fetchpatch, openssl, pkg-config, libnl
 , dbus, readline ? null, pcsclite ? null
 }:
 
-with stdenv.lib;
+with lib;
 stdenv.mkDerivation rec {
-  version = "2.6";
+  version = "2.9";
 
-  name = "wpa_supplicant-${version}";
+  pname = "wpa_supplicant";
 
   src = fetchurl {
-    url = "https://w1.fi/releases/${name}.tar.gz";
-    sha256 = "0l0l5gz3d5j9bqjsbjlfcv4w4jwndllp9fmyai4x9kg6qhs6v4xl";
+    url = "https://w1.fi/releases/${pname}-${version}.tar.gz";
+    sha256 = "05qzak1mssnxcgdrafifxh9w86a4ha69qabkg4bsigk499xyxggw";
   };
+
+  patches = [
+    (fetchurl {
+      name = "CVE-2019-16275.patch";
+      url = "https://w1.fi/security/2019-7/0001-AP-Silently-ignore-management-frame-from-unexpected-.patch";
+      sha256 = "15xjyy7crb557wxpx898b5lnyblxghlij0xby5lmj9hpwwss34dz";
+    })
+    (fetchpatch {
+      # Expose OWE key management capability over DBus, remove >= 2.10
+      name = "dbus-Export-OWE-capability-and-OWE-BSS-key_mgmt.patch";
+      url = "https://w1.fi/cgit/hostap/patch/?id=7800725afb27397f7d6033d4969e2aeb61af4737";
+      sha256 = "0c1la7inf4m5y9gzdjjdnhpkx32pm8vi6m5knih8p77q4mbrdgg8";
+    })
+    # P2P: Fix copying of secondary device types for P2P group client (https://w1.fi/security/2020-2/)
+    (fetchurl {
+      name = "CVE-2021-0326.patch";
+      url = "https://w1.fi/security/2020-2/0001-P2P-Fix-copying-of-secondary-device-types-for-P2P-gr.patch";
+      sha256 = "19f4hx0p547mdx8y8arb3vclwyy4w9c8a6a40ryj7q33730mrmn4";
+    })
+    # P2P: Fix a corner case in peer addition based on PD Request (https://w1.fi/security/2021-1/)
+    (fetchurl {
+      name = "CVE-2021-27803.patch";
+      url = "https://w1.fi/security/2021-1/0001-P2P-Fix-a-corner-case-in-peer-addition-based-on-PD-R.patch";
+      sha256 = "04cnds7hmbqc44jasabjvrdnh66i5hwvk2h2m5z94pmgbzncyh3z";
+    })
+  ];
 
   # TODO: Patch epoll so that the dbus actually responds
   # TODO: Figure out how to get privsep working, currently getting SIGBUS
@@ -24,6 +50,7 @@ stdenv.mkDerivation rec {
     CONFIG_EAP_SAKE=y
     CONFIG_EAP_GPSK=y
     CONFIG_EAP_GPSK_SHA256=y
+    CONFIG_OWE=y
     CONFIG_WPS=y
     CONFIG_WPS_ER=y
     CONFIG_WPS_NFS=y
@@ -48,6 +75,7 @@ stdenv.mkDerivation rec {
     CONFIG_P2P=y
     CONFIG_TDLS=y
     CONFIG_BGSCAN_SIMPLE=y
+    CONFIG_BGSCAN_LEARN=y
   '' + optionalString (pcsclite != null) ''
     CONFIG_EAP_SIM=y
     CONFIG_EAP_AKA=y
@@ -73,76 +101,34 @@ stdenv.mkDerivation rec {
     cat -n .config
     substituteInPlace Makefile --replace /usr/local $out
     export NIX_CFLAGS_COMPILE="$NIX_CFLAGS_COMPILE \
-      -I$(echo "${stdenv.lib.getDev libnl}"/include/libnl*/) \
-      -I${stdenv.lib.getDev pcsclite}/include/PCSC/"
+      -I$(echo "${lib.getDev libnl}"/include/libnl*/) \
+      -I${lib.getDev pcsclite}/include/PCSC/"
   '';
 
   buildInputs = [ openssl libnl dbus readline pcsclite ];
 
-  nativeBuildInputs = [ pkgconfig ];
-
-  patches = [
-    ./build-fix.patch
-
-    # KRACKAttack.com
-    (fetchurl {
-      url = "http://w1.fi/security/2017-1/rebased-v2.6-0001-hostapd-Avoid-key-reinstallation-in-FT-handshake.patch";
-      sha256 = "02zl2x4pxay666yq18g4f3byccrzipfjbky1ydw62v15h76174aj";
-    })
-    (fetchurl {
-      url = "http://w1.fi/security/2017-1/rebased-v2.6-0002-Prevent-reinstallation-of-an-already-in-use-group-ke.patch";
-      sha256 = "1mrmqg00x1bqa43dyhxb14msk74lh3kvr4avni43c3qpfjmlfvfq";
-    })
-    (fetchurl {
-      url = "http://w1.fi/security/2017-1/rebased-v2.6-0003-Extend-protection-of-GTK-IGTK-reinstallation-of-WNM-.patch";
-      sha256 = "10byyi8wfpcc8i788ag7ndycd3xvq2iwnssyb3rwf34sfcv5wlyl";
-    })
-    (fetchurl {
-      url = "http://w1.fi/security/2017-1/rebased-v2.6-0004-Prevent-installation-of-an-all-zero-TK.patch";
-      sha256 = "02z2rsbh4sw81wsc56xjbblbi76ii0clmpnr1m1szdb1h5s58fkr";
-    })
-    (fetchurl {
-      url = "http://w1.fi/security/2017-1/rebased-v2.6-0005-Fix-PTK-rekeying-to-generate-a-new-ANonce.patch";
-      sha256 = "17pbrn5h6l5v14y6gn2yr2knqya9i0n2vyq4ck8hasb00yz8lz0l";
-    })
-    (fetchurl {
-      url = "http://w1.fi/security/2017-1/rebased-v2.6-0006-TDLS-Reject-TPK-TK-reconfiguration.patch";
-      sha256 = "19mgcqbdyzm4myi182jcn1rn26xi3jib74cpxbbrx1gaccxlsvar";
-    })
-    (fetchurl { # wpa-supplicant only
-      url = "http://w1.fi/security/2017-1/rebased-v2.6-0007-WNM-Ignore-WNM-Sleep-Mode-Response-without-pending-r.patch";
-      sha256 = "0di71j8762dkvr0c7h5mrbkqyfdy8mljvnp0dk2qhbgc9bw7m8f5";
-    })
-    (fetchurl {
-      url = "http://w1.fi/security/2017-1/rebased-v2.6-0008-FT-Do-not-allow-multiple-Reassociation-Response-fram.patch";
-      sha256 = "1ca312cixbld70rp12q7h66lnjjxzz0qag0ii2sg6cllgf2hv168";
-    })
-
-    # Unauthenticated EAPOL-Key decryption (CVE-2018-14526)
-    (fetchurl {
-      url = "https://w1.fi/security/2018-1/rebased-v2.6-0001-WPA-Ignore-unauthenticated-encrypted-EAPOL-Key-data.patch";
-      sha256 = "0z0zxc9wrikmvciyqpdhx0l5v7qsd8c6b5ph9h5rniqllpr3q34n";
-    })
-  ];
+  nativeBuildInputs = [ pkg-config ];
 
   postInstall = ''
     mkdir -p $out/share/man/man5 $out/share/man/man8
     cp -v "doc/docbook/"*.5 $out/share/man/man5/
     cp -v "doc/docbook/"*.8 $out/share/man/man8/
-    mkdir -p $out/etc/dbus-1/system.d $out/share/dbus-1/system-services $out/etc/systemd/system
+
+    mkdir -p $out/share/dbus-1/system.d $out/share/dbus-1/system-services $out/etc/systemd/system
     cp -v "dbus/"*service $out/share/dbus-1/system-services
     sed -e "s@/sbin/wpa_supplicant@$out&@" -i "$out/share/dbus-1/system-services/"*
-    cp -v dbus/dbus-wpa_supplicant.conf $out/etc/dbus-1/system.d
+    cp -v dbus/dbus-wpa_supplicant.conf $out/share/dbus-1/system.d
     cp -v "systemd/"*.service $out/etc/systemd/system
+
     rm $out/share/man/man8/wpa_priv.8
     install -Dm444 wpa_supplicant.conf $out/share/doc/wpa_supplicant/wpa_supplicant.conf.example
   '';
 
-  meta = with stdenv.lib; {
-    homepage = http://hostap.epitest.fi/wpa_supplicant/;
+  meta = with lib; {
+    homepage = "https://w1.fi/wpa_supplicant/";
     description = "A tool for connecting to WPA and WPA2-protected wireless networks";
     license = licenses.bsd3;
-    maintainers = with maintainers; [ marcweber wkennington ];
+    maintainers = with maintainers; [ marcweber ];
     platforms = platforms.linux;
   };
 }

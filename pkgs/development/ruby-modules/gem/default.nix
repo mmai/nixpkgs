@@ -18,7 +18,7 @@
 # Normal gem packages can be used outside of bundler; a binstub is created in
 # $out/bin.
 
-{ lib, fetchurl, fetchgit, makeWrapper, git, darwin
+{ lib, fetchurl, fetchgit, makeWrapper, gitMinimal, darwin
 , ruby, bundler
 } @ defs:
 
@@ -39,7 +39,7 @@ lib.makeOverridable (
 , meta ? {}
 , patches ? []
 , gemPath ? []
-, dontStrip ? true
+, dontStrip ? false
 # Assume we don't have to build unless strictly necessary (e.g. the source is a
 # git checkout).
 # If you need to apply patches, make sure to set `dontBuild = false`;
@@ -49,6 +49,11 @@ lib.makeOverridable (
 , propagatedUserEnvPkgs ? []
 , buildFlags ? []
 , passthru ? {}
+# bundler expects gems to be stored in the cache directory for certain actions
+# such as `bundler install --redownload`.
+# At the cost of increasing the store size, you can keep the gems to have closer
+# alignment with what Bundler expects.
+, keepGemCache ? false
 , ...} @ attrs:
 
 let
@@ -63,7 +68,6 @@ let
     else if type == "git" then
       fetchgit {
         inherit (attrs.source) url rev sha256 fetchSubmodules;
-        leaveDotGit = true;
       }
     else if type == "url" then
       fetchurl attrs.source
@@ -85,7 +89,7 @@ stdenv.mkDerivation ((builtins.removeAttrs attrs ["source"]) // {
 
   buildInputs = [
     ruby makeWrapper
-  ] ++ lib.optionals (type == "git") [ git ]
+  ] ++ lib.optionals (type == "git") [ gitMinimal ]
     ++ lib.optionals (type != "gem") [ bundler ]
     ++ lib.optional stdenv.isDarwin darwin.libobjc
     ++ buildInputs;
@@ -95,11 +99,12 @@ stdenv.mkDerivation ((builtins.removeAttrs attrs ["source"]) // {
 
   inherit src;
 
+
   unpackPhase = attrs.unpackPhase or ''
     runHook preUnpack
 
     if [[ -f $src && $src == *.gem ]]; then
-      if [[ -z "$dontBuild" ]]; then
+      if [[ -z "''${dontBuild-}" ]]; then
         # we won't know the name of the directory that RubyGems creates,
         # so we'll just use a glob to find it and move it over.
         gempkg="$src"
@@ -124,6 +129,12 @@ stdenv.mkDerivation ((builtins.removeAttrs attrs ["source"]) // {
     runHook postUnpack
   '';
 
+  # As of ruby 3.0, ruby headers require -fdeclspec when building with clang
+  # Introduced in https://github.com/ruby/ruby/commit/0958e19ffb047781fe1506760c7cbd8d7fe74e57
+  NIX_CFLAGS_COMPILE = lib.optionals (stdenv.cc.isClang && lib.versionAtLeast ruby.version.major "3") [
+    "-fdeclspec"
+  ];
+
   buildPhase = attrs.buildPhase or ''
     runHook preBuild
 
@@ -142,6 +153,12 @@ stdenv.mkDerivation ((builtins.removeAttrs attrs ["source"]) // {
       gempkg=$(echo "$output" | grep -oP 'File: \K(.*)')
 
       echo "gem package built: $gempkg"
+    elif [[ "$type" == "git" ]]; then
+      git init
+      # remove variations to improve the likelihood of a bit-reproducible output
+      rm -rf .git/logs/ .git/hooks/ .git/index .git/FETCH_HEAD .git/ORIG_HEAD .git/refs/remotes/origin/HEAD .git/config
+      # support `git ls-files`
+      git add .
     fi
 
     runHook postBuild
@@ -173,7 +190,7 @@ stdenv.mkDerivation ((builtins.removeAttrs attrs ["source"]) // {
       '${version}' \
       '${lib.escapeShellArgs buildFlags}' \
       '${attrs.source.url}' \
-      '${src}' \
+      '.' \
       '${attrs.source.rev}'
     ''}
 
@@ -199,8 +216,11 @@ stdenv.mkDerivation ((builtins.removeAttrs attrs ["source"]) // {
       $gempkg $gemFlags -- $buildFlags
 
     # looks like useless files which break build repeatability and consume space
-    rm -fv $out/${ruby.gemPath}/doc/*/*/created.rid || true
-    rm -fv $out/${ruby.gemPath}/gems/*/ext/*/mkmf.log || true
+    pushd $out/${ruby.gemPath}
+    rm -fv doc/*/*/created.rid || true
+    rm -fv {gems/*/ext/*,extensions/*/*/*}/{Makefile,mkmf.log,gem_make.out} || true
+    ${if keepGemCache then "" else "rm -fvr cache"}
+    popd
 
     # write out metadata and binstubs
     spec=$(echo $out/${ruby.gemPath}/specifications/*.gemspec)

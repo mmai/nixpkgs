@@ -9,11 +9,11 @@
 
 buildPythonPackage rec {
   pname = "more-itertools";
-  version = "4.3.0";
+  version = "8.7.0";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "c476b5d3a34e12d40130bc2f935028b5f636df8f372dc2c1c01dc19681b2039e";
+    sha256 = "c5d6da9ca3ff65220c3bfd2a8db06d698f05d4d2b9be57e1deb2be5a45019713";
   };
 
   checkInputs = [ nose ];
@@ -24,7 +24,8 @@ buildPythonPackage rec {
   doCheck = !stdenv.hostPlatform.is32bit;
 
   meta = {
-    homepage = https://more-itertools.readthedocs.org;
+    homepage = "https://more-itertools.readthedocs.org";
+    changelog = "https://more-itertools.readthedocs.io/en/stable/versions.html";
     description = "Expansion of the itertools module";
     license = lib.licenses.mit;
   };

@@ -1,4 +1,4 @@
-{ stdenv
+{ lib
 , buildPythonPackage
 , fetchPypi
 , mock
@@ -9,19 +9,19 @@
 }:
 
 buildPythonPackage rec {
-  version = "2.0.0";
+  version = "3.0.1";
   pname = "pamqp";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "701b0c41b68eb86bad6f111658917992780d56a3f094a6cad87ef217afa8296d";
+    sha256 = "0a9b49bde3f554ec49b47ebdb789133979985f24d5f4698935ed589a2d4392a4";
   };
 
   buildInputs = [ mock nose pep8 pylint mccabe ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "RabbitMQ Focused AMQP low-level library";
-    homepage = https://pypi.python.org/pypi/pamqp;
+    homepage = "https://pypi.python.org/pypi/pamqp";
     license = licenses.bsd3;
   };
 

@@ -1,36 +1,33 @@
-{ lib, buildGoPackage, fetchFromGitHub, go-bindata, pkgconfig, makeWrapper
+{ lib, buildGoPackage, fetchFromGitHub, go-bindata, pkg-config, makeWrapper
 , glib, gtk3, libappindicator-gtk3, gpgme, openshift, ostree, libselinux, btrfs-progs
 , lvm2, docker-machine-kvm
 }:
 
 let
-  version = "1.29.0";
+  version = "1.34.3";
 
   # Update these on version bumps according to Makefile
-  centOsIsoVersion = "v1.13.0";
+  centOsIsoVersion = "v1.17.0";
   openshiftVersion = "v3.11.0";
 
 in buildGoPackage rec {
-  name = "minishift-${version}";
+  pname = "minishift";
   inherit version;
 
   src = fetchFromGitHub {
     owner = "minishift";
     repo = "minishift";
     rev = "v${version}";
-    sha256 = "17scvv60hgk7s9fy4s9z26sc8a69ryh33rhr1f7p92kb5wfh2x40";
+    sha256 = "0yhln3kyc0098hbnjyxhbd915g6j7s692c0z8yrhh9gdpc5cr2aa";
   };
 
-  nativeBuildInputs = [ pkgconfig go-bindata makeWrapper ];
+  nativeBuildInputs = [ pkg-config go-bindata makeWrapper ];
   buildInputs = [ glib gtk3 libappindicator-gtk3 gpgme ostree libselinux btrfs-progs lvm2 ];
 
   goPackagePath = "github.com/minishift/minishift";
   subPackages = [ "cmd/minishift" ];
 
   postPatch = ''
-    substituteInPlace vendor/github.com/containers/image/storage/storage_image.go \
-      --replace 'nil, diff' 'diff'
-
     # minishift downloads openshift if not found therefore set the cache to /nix/store/...
     substituteInPlace pkg/minishift/cache/oc_caching.go \
       --replace 'filepath.Join(oc.MinishiftCacheDir, OC_CACHE_DIR, oc.OpenShiftVersion, runtime.GOOS)' '"${openshift}/bin"' \
@@ -51,7 +48,7 @@ in buildGoPackage rec {
   '';
 
   postInstall = ''
-    wrapProgram "$bin/bin/minishift" \
+    wrapProgram "$out/bin/minishift" \
       --prefix PATH ':' '${lib.makeBinPath [ docker-machine-kvm openshift ]}'
   '';
 
@@ -62,7 +59,7 @@ in buildGoPackage rec {
       a single-node OpenShift cluster inside a VM. You can try out OpenShift
       or develop with it, day-to-day, on your local host.
     '';
-    homepage = https://github.com/minishift/minishift;
+    homepage = "https://github.com/minishift/minishift";
     maintainers = with maintainers; [ fpletz vdemeester ];
     platforms = platforms.linux;
     license = licenses.asl20;

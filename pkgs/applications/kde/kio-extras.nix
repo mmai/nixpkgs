@@ -1,13 +1,13 @@
 {
   mkDerivation, lib, extra-cmake-modules, kdoctools, shared-mime-info,
   exiv2, kactivities, karchive, kbookmarks, kconfig, kconfigwidgets,
-  kcoreaddons, kdbusaddons, kguiaddons, kdnssd, kiconthemes, ki18n, kio, khtml,
-  kdelibs4support, kpty, libmtp, libssh, openexr, ilmbase, openslp, phonon,
-  qtsvg, samba, solid
+  kcoreaddons, kdbusaddons, kdsoap, kguiaddons, kdnssd, kiconthemes, ki18n, kio,
+  khtml, kdelibs4support, kpty, syntax-highlighting, libmtp, libssh, openexr,
+  ilmbase, openslp, phonon, qtsvg, samba, solid, gperf
 }:
 
 mkDerivation {
-  name = "kio-extras";
+  pname = "kio-extras";
   meta = {
     license = with lib.licenses; [ gpl2 lgpl21 ];
     maintainers = [ lib.maintainers.ttuegel ];
@@ -15,8 +15,9 @@ mkDerivation {
   nativeBuildInputs = [ extra-cmake-modules kdoctools shared-mime-info ];
   buildInputs = [
     exiv2 kactivities karchive kbookmarks kconfig kconfigwidgets kcoreaddons
-    kdbusaddons kguiaddons kdnssd kiconthemes ki18n kio khtml kdelibs4support
-    kpty libmtp libssh openexr openslp phonon qtsvg samba solid
+    kdbusaddons kdsoap kguiaddons kdnssd kiconthemes ki18n kio khtml
+    kdelibs4support kpty syntax-highlighting libmtp libssh openexr openslp
+    phonon qtsvg samba solid gperf
   ];
   CXXFLAGS = [ "-I${ilmbase.dev}/include/OpenEXR" ];
 }

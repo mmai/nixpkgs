@@ -1,22 +1,22 @@
-{stdenv, lib, fetchFromGitHub, dmd, curl}:
+{stdenv, lib, fetchFromGitHub, ldc, curl}:
 
 stdenv.mkDerivation rec {
-  name = "dtools-${version}";
-  version = "2.081.2";
+  pname = "dtools";
+  version = "2.095.1";
 
   srcs = [
     (fetchFromGitHub {
       owner = "dlang";
       repo = "dmd";
       rev = "v${version}";
-      sha256 = "1wwk4shqldvgyczv1ihmljpfj3yidq7mxcj69i9kjl7jqx54hw62";
+      sha256 = "sha256:0faca1y42a1h16aml4lb7z118mh9k9fjx3xlw3ki5f1h3ln91xhk";
       name = "dmd";
     })
     (fetchFromGitHub {
       owner = "dlang";
       repo = "tools";
       rev = "v${version}";
-      sha256 = "1sbcfj8r1nvy7ynh9dy55q9bvfvxwf1z3llpxckvi8p6yvf35qn2";
+      sha256 = "sha256:0rdfk3mh3fjrb0h8pr8skwlq6ac9hdl1fkrkdl7n1fa2806b740b";
       name = "dtools";
     })
   ];
@@ -26,13 +26,14 @@ stdenv.mkDerivation rec {
   postUnpack = ''
       mv dmd dtools
       cd dtools
+
   '';
 
-  nativeBuildInputs = [ dmd ];
+  nativeBuildInputs = [ ldc ];
   buildInputs = [ curl ];
 
   makeCmd = ''
-    make -f posix.mak DMD_DIR=dmd DMD=${dmd.out}/bin/dmd CC=${stdenv.cc}/bin/cc
+    make -f posix.mak all DMD_DIR=dmd DMD=${ldc.out}/bin/ldmd2 CC=${stdenv.cc}/bin/cc
   '';
 
   buildPhase = ''
@@ -47,13 +48,13 @@ stdenv.mkDerivation rec {
 
   installPhase = ''
       $makeCmd INSTALL_DIR=$out install
-	'';
+  '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Ancillary tools for the D programming language compiler";
-    homepage = https://github.com/dlang/tools;
+    homepage = "https://github.com/dlang/tools";
     license = lib.licenses.boost;
     maintainers = with maintainers; [ ThomasMader ];
-    platforms = stdenv.lib.platforms.unix;
+    platforms = lib.platforms.unix;
   };
 }

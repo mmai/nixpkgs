@@ -1,36 +1,41 @@
 { lib
+, pythonOlder
 , buildPythonPackage
-, fetchFromGitHub
-, sphinx
+, fetchPypi
+, stdenv
 , numpydoc
-, pytest
+, pytestCheckHook
 , python-lz4
+, setuptools
+, sphinx
 }:
 
 
 buildPythonPackage rec {
   pname = "joblib";
-  version = "0.12.4";
+  version = "1.0.0";
+  disabled = pythonOlder "3.7";
 
-  # get full repository inorder to run tests
-  src = fetchFromGitHub {
-    owner = "joblib";
-    repo = pname;
-    rev = version;
-    sha256 = "06zszgp7wpa4jr554wkk6kkigp4k9n5ad5h08i6w9qih963rlimb";
+  src = fetchPypi {
+    inherit pname version;
+    sha256 = "092bnvr724cfvka8267z687bf086fvm7i1hwslkyrzf1g836dn3s";
   };
 
-  checkInputs = [ sphinx numpydoc pytest ];
-  propagatedBuildInputs = [ python-lz4 ];
+  checkInputs = [ sphinx numpydoc pytestCheckHook ];
+  propagatedBuildInputs = [ python-lz4 setuptools ];
 
-  checkPhase = ''
-    py.test joblib
-  '';
+  pytestFlagsArray = [ "joblib/test" ];
+  disabledTests = [
+    "test_disk_used" # test_disk_used is broken: https://github.com/joblib/joblib/issues/57
+    "test_parallel_call_cached_function_defined_in_jupyter" # jupyter not available during tests
+  ] ++ lib.optionals stdenv.isDarwin [
+    "test_dispatch_multiprocessing" # test_dispatch_multiprocessing is broken only on Darwin.
+  ];
 
-  meta = {
+  meta = with lib; {
     description = "Lightweight pipelining: using Python functions as pipeline jobs";
-    homepage = https://pythonhosted.org/joblib/;
-    license = lib.licenses.bsd3;
-    maintainers = with lib.maintainers; [ costrouc ];
+    homepage = "https://joblib.readthedocs.io/";
+    license = licenses.bsd3;
+    maintainers = with maintainers; [ costrouc ];
   };
 }

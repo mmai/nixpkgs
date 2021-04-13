@@ -1,36 +1,37 @@
-{ stdenv, fetchFromGitLab, pkgconfig, autoconf, automake, libiconv
-, drake, ruby, docbook_xsl, file, xdg_utils, gettext, expat, boost
-, libebml, zlib, libmatroska, libogg, libvorbis, flac, libxslt, cmark
+{ lib, stdenv, fetchFromGitLab, pkg-config, autoconf, automake, libiconv, drake
+, ruby, docbook_xsl, file, xdg-utils, gettext, expat, boost, libebml, zlib
+, fmt, libmatroska, libogg, libvorbis, flac, libxslt, cmark, pcre2
 , withGUI ? true
   , qtbase ? null
   , qtmultimedia ? null
+  , wrapQtAppsHook ? null
 }:
 
-assert withGUI -> qtbase != null && qtmultimedia != null;
+assert withGUI -> qtbase != null && qtmultimedia != null && wrapQtAppsHook != null;
 
-with stdenv.lib;
+with lib;
 
 stdenv.mkDerivation rec {
-  name = "mkvtoolnix-${version}";
-  version = "28.2.0";
+  pname = "mkvtoolnix";
+  version = "55.0.0";
 
   src = fetchFromGitLab {
     owner  = "mbunkus";
     repo   = "mkvtoolnix";
     rev    = "release-${version}";
-    sha256 = "162qj5z9wzm63im6jnd0n95ggzdk6fzq5bxgrr0l3y82ahfb7qwa";
+    sha256 = "129azp4cpdd05f6072gkxdjj811aqs29nbw6v6qm8vv47gfvjcf7";
   };
 
   nativeBuildInputs = [
-    pkgconfig autoconf automake gettext
+    pkg-config autoconf automake gettext
     drake ruby docbook_xsl libxslt
   ];
 
   buildInputs = [
-    expat file xdg_utils boost libebml zlib
-    libmatroska libogg libvorbis flac cmark
+    expat file xdg-utils boost libebml zlib fmt
+    libmatroska libogg libvorbis flac cmark pcre2
   ] ++ optional  stdenv.isDarwin libiconv
-    ++ optionals withGUI [ qtbase qtmultimedia ];
+    ++ optionals withGUI [ qtbase qtmultimedia wrapQtAppsHook ];
 
   preConfigure = "./autogen.sh; patchShebangs .";
   buildPhase   = "drake -j $NIX_BUILD_CORES";
@@ -49,11 +50,19 @@ stdenv.mkDerivation rec {
     (enableFeature withGUI "qt")
   ];
 
-  meta = with stdenv.lib; {
+  CXXFLAGS = optional stdenv.cc.isClang "-std=c++17";
+  LDFLAGS = optional stdenv.cc.isClang "-lc++fs";
+
+  dontWrapQtApps = true;
+  postFixup = optionalString withGUI ''
+    wrapQtApp $out/bin/mkvtoolnix-gui
+  '';
+
+  meta = with lib; {
     description = "Cross-platform tools for Matroska";
-    homepage    = http://www.bunkus.org/videotools/mkvtoolnix/;
-    license     = licenses.gpl2;
-    maintainers = with maintainers; [ codyopel fuuzetsu rnhmjoj ];
+    homepage    = "http://www.bunkus.org/videotools/mkvtoolnix/";
+    license     = licenses.gpl2Only;
+    maintainers = with maintainers; [ codyopel rnhmjoj ];
     platforms   = platforms.linux
       ++ optionals (!withGUI) platforms.darwin;
   };

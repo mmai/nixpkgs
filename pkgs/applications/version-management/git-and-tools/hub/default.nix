@@ -1,44 +1,47 @@
-{ stdenv, buildGoPackage, fetchFromGitHub, ronn, ruby, groff, Security, utillinux }:
+{ lib, buildGoPackage, fetchFromGitHub, git, groff, installShellFiles, util-linux, nixosTests }:
 
 buildGoPackage rec {
-  name = "hub-${version}";
-  version = "2.7.0";
+  pname = "hub";
+  version = "2.14.2";
 
   goPackagePath = "github.com/github/hub";
 
+  # Only needed to build the man-pages
+  excludedPackages = [ "github.com/github/hub/md2roff-bin" ];
+
   src = fetchFromGitHub {
     owner = "github";
-    repo = "hub";
+    repo = pname;
     rev = "v${version}";
-    sha256 = "1p90m1xp3jahs5y0lp0qfmfa7wqn7gxyygn7x45a6cbf2zzlb86l";
+    sha256 = "1qjab3dpia1jdlszz3xxix76lqrm4zbmqzd9ymld7h06awzsg2vh";
   };
 
-  nativeBuildInputs = [ groff ronn utillinux ];
-  buildInputs = [ ruby ] ++
-    stdenv.lib.optional stdenv.isDarwin Security;
+  nativeBuildInputs = [ groff installShellFiles util-linux ];
 
   postPatch = ''
-    mkdir bin
-    ln -s ${ronn}/bin/ronn bin/ronn
     patchShebangs .
+    substituteInPlace git/git.go --replace "cmd.New(\"git\")" "cmd.New(\"${git}/bin/git\")"
+    substituteInPlace commands/args.go --replace "Executable:  \"git\"" "Executable:  \"${git}/bin/git\""
   '';
 
   postInstall = ''
     cd go/src/${goPackagePath}
-    install -D etc/hub.zsh_completion "$bin/share/zsh/site-functions/_hub"
-    install -D etc/hub.bash_completion.sh "$bin/share/bash-completion/completions/hub"
-    install -D etc/hub.fish_completion  "$bin/share/fish/vendor_completions.d/hub.fish"
+    installShellCompletion --zsh --name _hub etc/hub.zsh_completion
+    installShellCompletion --bash --name hub etc/hub.bash_completion.sh
+    installShellCompletion --fish --name hub.fish etc/hub.fish_completion
 
+    LC_ALL=C.UTF8 \
     make man-pages
-    cp -vr --parents share/man/man[1-9]/*.[1-9] $bin/
+    installManPage share/man/man[1-9]/*.[1-9]
   '';
 
-  meta = with stdenv.lib; {
-    description = "Command-line wrapper for git that makes you better at GitHub";
+  passthru.tests = { inherit (nixosTests) hub; };
 
+  meta = with lib; {
+    description = "Command-line wrapper for git that makes you better at GitHub";
     license = licenses.mit;
-    homepage = https://hub.github.com/;
-    maintainers = with maintainers; [ the-kenny ];
+    homepage = "https://hub.github.com/";
+    maintainers = with maintainers; [ globin ];
     platforms = with platforms; unix;
   };
 }

@@ -1,4 +1,4 @@
-{ stdenv
+{ lib
 , buildPythonPackage
 , fetchFromGitHub
 , isPy27
@@ -6,7 +6,7 @@
 , requests
 }:
 
-buildPythonPackage rec {
+buildPythonPackage {
   pname = "ipfsapi";
   version = "0.4.2.post1";
   disabled = isPy27;
@@ -20,7 +20,7 @@ buildPythonPackage rec {
 
   propagatedBuildInputs = [ six requests ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A python client library for the IPFS API";
     license = licenses.mit;
     maintainers = with maintainers; [ mguentner ];

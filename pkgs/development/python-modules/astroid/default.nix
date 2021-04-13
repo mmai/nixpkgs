@@ -1,30 +1,39 @@
-{ lib, fetchPypi, buildPythonPackage, pythonOlder, isPyPy
-, lazy-object-proxy, six, wrapt, typing, typed-ast
-, pytestrunner, pytest
+{ lib
+, buildPythonPackage
+, fetchPypi
+, pythonOlder
+, isPyPy
+, lazy-object-proxy
+, wrapt
+, typed-ast
+, pytestCheckHook
 }:
 
 buildPythonPackage rec {
   pname = "astroid";
-  version = "2.1.0";
+  version = "2.5";
 
-  disabled = pythonOlder "3.4";
+  disabled = pythonOlder "3.6";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "08hz675knh4294bancdapql392fmbjyimhbyrmfkz1ka7l035c1m";
+    sha256 = "03dzhjrsc5d2whyjngfrwvxn42058k0cjjr85x2wqzai8psr475k";
   };
 
   # From astroid/__pkginfo__.py
-  propagatedBuildInputs = [ lazy-object-proxy six wrapt ]
-    ++ lib.optional (pythonOlder "3.5") typing
-    ++ lib.optional (pythonOlder "3.7" && !isPyPy) typed-ast;
+  propagatedBuildInputs = [
+    lazy-object-proxy
+    wrapt
+  ] ++ lib.optional (!isPyPy && pythonOlder "3.8") typed-ast;
 
-  checkInputs = [ pytestrunner pytest ];
+  checkInputs = [
+    pytestCheckHook
+  ];
 
   meta = with lib; {
     description = "An abstract syntax tree for Python with inference support";
-    homepage = https://github.com/PyCQA/astroid;
-    license = licenses.lgpl2;
+    homepage = "https://github.com/PyCQA/astroid";
+    license = licenses.lgpl21Plus;
     platforms = platforms.all;
     maintainers = with maintainers; [ nand0p ];
   };

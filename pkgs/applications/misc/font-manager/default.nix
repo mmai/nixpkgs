@@ -1,29 +1,32 @@
-{ stdenv, fetchFromGitHub, automake, autoconf, libtool,
-  pkgconfig, file, intltool, libxml2, json-glib , sqlite, itstool,
-  librsvg, vala, gnome3, wrapGAppsHook, gobject-introspection
+{ lib, stdenv, fetchFromGitHub, meson, ninja, gettext, python3,
+  pkg-config, libxml2, json-glib , sqlite, itstool, yelp-tools,
+  vala, gtk3, gnome3, desktop-file-utils, wrapGAppsHook, gobject-introspection,
+  libsoup, webkitgtk
 }:
 
 stdenv.mkDerivation rec {
-  name = "font-manager-${version}";
-  version = "0.7.3.1";
+  pname = "font-manager";
+  version = "0.8.5-1";
 
   src = fetchFromGitHub {
     owner = "FontManager";
     repo = "master";
     rev = version;
-    sha256 = "0i65br0bk3r6x8wcl8jhc0v0agl0k6fy5g60ss1bnw4md7ldpgyi";
-    };
+    sha256 = "1p0hfnf06892hn25a6zv8fnhbh4ln11nn2fv1vjqs63rr59fprbk";
+  };
 
   nativeBuildInputs = [
-    pkgconfig
-    automake autoconf libtool
-    file
-    intltool
+    pkg-config
+    meson
+    ninja
+    gettext
+    python3
     itstool
+    desktop-file-utils
     vala
-    gnome3.yelp-tools
+    yelp-tools
     wrapGAppsHook
-    # For setup hook
+    # For https://github.com/FontManager/master/blob/master/lib/unicode/meson.build
     gobject-introspection
   ];
 
@@ -31,39 +34,31 @@ stdenv.mkDerivation rec {
     libxml2
     json-glib
     sqlite
-    librsvg
-    gnome3.gtk
-    gnome3.libgee
-    gnome3.defaultIconTheme
+    gtk3
+    gnome3.adwaita-icon-theme
+    libsoup
+    webkitgtk
   ];
 
-  enableParallelBuilding = true;
-
-  preConfigure = ''
-    NOCONFIGURE=true ./autogen.sh
-    substituteInPlace configure --replace "/usr/bin/file" "${file}/bin/file"
+  postPatch = ''
+    chmod +x meson_post_install.py
+    patchShebangs meson_post_install.py
   '';
 
-  configureFlags = [
-    "--with-file-roller"
-    "--disable-pycompile"
-  ];
-
-  meta = {
-    homepage = https://fontmanager.github.io/;
-    description = "Simple font management for GTK+ desktop environments";
+  meta = with lib; {
+    homepage = "https://fontmanager.github.io/";
+    description = "Simple font management for GTK desktop environments";
     longDescription = ''
       Font Manager is intended to provide a way for average users to
       easily manage desktop fonts, without having to resort to command
       line tools or editing configuration files by hand. While designed
       primarily with the Gnome Desktop Environment in mind, it should
-      work well with other Gtk+ desktop environments.
+      work well with other GTK desktop environments.
 
       Font Manager is NOT a professional-grade font management solution.
     '';
-    license = stdenv.lib.licenses.gpl3;
-    repositories.git = https://github.com/FontManager/master;
-    platforms = stdenv.lib.platforms.unix;
-    maintainers = [ stdenv.lib.maintainers.romildo ];
+    license = licenses.gpl3Plus;
+    platforms = platforms.unix;
+    maintainers = [ maintainers.romildo ];
   };
 }

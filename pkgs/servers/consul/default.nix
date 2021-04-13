@@ -1,11 +1,9 @@
-{ stdenv, buildGoPackage, fetchFromGitHub }:
+{ lib, buildGoModule, fetchFromGitHub, nixosTests }:
 
-buildGoPackage rec {
-  name = "consul-${version}";
-  version = "1.3.0";
+buildGoModule rec {
+  pname = "consul";
+  version = "1.9.4";
   rev = "v${version}";
-
-  goPackagePath = "github.com/hashicorp/consul";
 
   # Note: Currently only release tags are supported, because they have the Consul UI
   # vendored. See
@@ -17,18 +15,33 @@ buildGoPackage rec {
   # to apply your changes as patches on top of a release commit.
   src = fetchFromGitHub {
     owner = "hashicorp";
-    repo = "consul";
+    repo = pname;
     inherit rev;
-    sha256 = "1zv84snvrjm74w3v3rr27linsbxj00m73xd047sb78a4766xs2h0";
+    sha256 = "1ck55i8snpm583p21y1hac0w76wiwyjpgfxkzscd4whp2jnzhhif";
   };
 
+  passthru.tests.consul = nixosTests.consul;
+
+  # This corresponds to paths with package main - normally unneeded but consul
+  # has a split module structure in one repo
+  subPackages = ["." "connect/certgen"];
+
+  vendorSha256 = "0y744zpj49zvn5vqqb9wmfs1fs0lir71h2kcmhidmn9j132vg1bq";
+
+  doCheck = false;
+
+  deleteVendor = true;
+
   preBuild = ''
-    buildFlagsArray+=("-ldflags" "-X github.com/hashicorp/consul/version.GitDescribe=v${version} -X github.com/hashicorp/consul/version.Version=${version} -X github.com/hashicorp/consul/version.VersionPrerelease=")
+    buildFlagsArray+=("-ldflags"
+                      "-X github.com/hashicorp/consul/version.GitDescribe=v${version}
+                       -X github.com/hashicorp/consul/version.Version=${version}
+                       -X github.com/hashicorp/consul/version.VersionPrerelease=")
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Tool for service discovery, monitoring and configuration";
-    homepage = https://www.consul.io/;
+    homepage = "https://www.consul.io/";
     platforms = platforms.linux ++ platforms.darwin;
     license = licenses.mpl20;
     maintainers = with maintainers; [ pradeepchhetri vdemeester nh2 ];

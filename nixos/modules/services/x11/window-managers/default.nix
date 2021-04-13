@@ -10,7 +10,10 @@ in
   imports = [
     ./2bwm.nix
     ./afterstep.nix
+    ./berry.nix
     ./bspwm.nix
+    ./cwm.nix
+    ./clfswm.nix
     ./dwm.nix
     ./evilwm.nix
     ./exwm.nix
@@ -19,6 +22,8 @@ in
     ./herbstluftwm.nix
     ./i3.nix
     ./jwm.nix
+    ./leftwm.nix
+    ./lwm.nix
     ./metacity.nix
     ./mwm.nix
     ./openbox.nix
@@ -26,12 +31,16 @@ in
     ./notion.nix
     ./ratpoison.nix
     ./sawfish.nix
+    ./smallwm.nix
     ./stumpwm.nix
     ./spectrwm.nix
+    ./tinywm.nix
     ./twm.nix
     ./windowmaker.nix
+    ./wmderland.nix
     ./wmii.nix
     ./xmonad.nix
+    ./yeahwm.nix
     ./qtile.nix
     ./none.nix ];
 
@@ -57,15 +66,14 @@ in
       };
 
       default = mkOption {
-        type = types.str;
-        default = "none";
+        type = types.nullOr types.str;
+        default = null;
         example = "wmii";
-        description = "Default window manager loaded if none have been chosen.";
-        apply = defaultWM:
-          if any (w: w.name == defaultWM) cfg.session then
-            defaultWM
-          else
-            throw "Default window manager (${defaultWM}) not found.";
+        description = ''
+          <emphasis role="strong">Deprecated</emphasis>, please use <xref linkend="opt-services.xserver.displayManager.defaultSession"/> instead.
+
+          Default window manager loaded if none have been chosen.
+        '';
       };
 
     };

@@ -1,98 +1,148 @@
-{ stdenv, cacert, git, cargo, rustc, cargo-vendor, fetchcargo, python3 }:
+{ stdenv
+, lib
+, buildPackages
+, cacert
+, cargoBuildHook
+, cargoCheckHook
+, cargoInstallHook
+, cargoSetupHook
+, fetchCargoTarball
+, runCommandNoCC
+, rustPlatform
+, callPackage
+, remarshal
+, git
+, rust
+, rustc
+, windows
+}:
 
-{ name, cargoSha256 ? "unset"
+{ name ? "${args.pname}-${args.version}"
+
+  # SRI hash
+, cargoHash ? ""
+
+  # Legacy hash
+, cargoSha256 ? ""
+
+  # Name for the vendored dependencies tarball
+, cargoDepsName ? name
+
 , src ? null
 , srcs ? null
+, unpackPhase ? null
 , cargoPatches ? []
 , patches ? []
 , sourceRoot ? null
 , logLevel ? ""
 , buildInputs ? []
+, nativeBuildInputs ? []
 , cargoUpdateHook ? ""
 , cargoDepsHook ? ""
-, cargoBuildFlags ? []
-
+, buildType ? "release"
+, meta ? {}
 , cargoVendorDir ? null
+, checkType ? buildType
+, depsExtraArgs ? {}
+
+# Toggles whether a custom sysroot is created when the target is a .json file.
+, __internal_dontAddSysroot ? false
+
+# Needed to `pushd`/`popd` into a subdir of a tarball if this subdir
+# contains a Cargo.toml, but isn't part of a workspace (which is e.g. the
+# case for `rustfmt`/etc from the `rust-sources).
+# Otherwise, everything from the tarball would've been built/tested.
+, buildAndTestSubdir ? null
 , ... } @ args:
 
-assert cargoVendorDir == null -> cargoSha256 != "unset";
+assert cargoVendorDir == null -> !(cargoSha256 == "" && cargoHash == "");
+assert buildType == "release" || buildType == "debug";
 
 let
+
   cargoDeps = if cargoVendorDir == null
-    then fetchcargo {
-        inherit name src srcs sourceRoot cargoUpdateHook;
+    then fetchCargoTarball ({
+        inherit src srcs sourceRoot unpackPhase cargoUpdateHook;
+        name = cargoDepsName;
+        hash = cargoHash;
         patches = cargoPatches;
         sha256 = cargoSha256;
-      }
+      } // depsExtraArgs)
     else null;
 
-  setupVendorDir = if cargoVendorDir == null
-    then ''
-      unpackFile "$cargoDeps"
-      cargoDepsCopy=$(stripHash $(basename $cargoDeps))
-      chmod -R +w "$cargoDepsCopy"
-    ''
-    else ''
-      cargoDepsCopy="$sourceRoot/${cargoVendorDir}"
-    '';
+  # If we have a cargoSha256 fixed-output derivation, validate it at build time
+  # against the src fixed-output derivation to check consistency.
+  validateCargoDeps = !(cargoHash == "" && cargoSha256 == "");
 
-in stdenv.mkDerivation (args // {
-  inherit cargoDeps;
+  target = rust.toRustTargetSpec stdenv.hostPlatform;
+  targetIsJSON = lib.hasSuffix ".json" target;
+  useSysroot = targetIsJSON && !__internal_dontAddSysroot;
+
+  # see https://github.com/rust-lang/cargo/blob/964a16a28e234a3d397b2a7031d4ab4a428b1391/src/cargo/core/compiler/compile_kind.rs#L151-L168
+  # the "${}" is needed to transform the path into a /nix/store path before baseNameOf
+  shortTarget = if targetIsJSON then
+      (lib.removeSuffix ".json" (builtins.baseNameOf "${target}"))
+    else target;
+
+  sysroot = (callPackage ./sysroot {}) {
+    inherit target shortTarget;
+    RUSTFLAGS = args.RUSTFLAGS or "";
+    originalCargoToml = src + /Cargo.toml; # profile info is later extracted
+  };
+
+in
+
+# Tests don't currently work for `no_std`, and all custom sysroots are currently built without `std`.
+# See https://os.phil-opp.com/testing/ for more information.
+assert useSysroot -> !(args.doCheck or true);
+
+stdenv.mkDerivation ((removeAttrs args ["depsExtraArgs"]) // lib.optionalAttrs useSysroot {
+  RUSTFLAGS = "--sysroot ${sysroot} " + (args.RUSTFLAGS or "");
+} // {
+  inherit buildAndTestSubdir cargoDeps;
+
+  cargoBuildType = buildType;
+
+  cargoCheckType = checkType;
 
   patchRegistryDeps = ./patch-registry-deps;
 
-  buildInputs = [ cacert git cargo rustc ] ++ buildInputs;
+  nativeBuildInputs = nativeBuildInputs ++ [
+    cacert
+    git
+    cargoBuildHook
+    cargoCheckHook
+    cargoInstallHook
+    cargoSetupHook
+    rustc
+  ];
+
+  buildInputs = buildInputs ++ lib.optional stdenv.hostPlatform.isMinGW windows.pthreads;
 
   patches = cargoPatches ++ patches;
 
-  configurePhase = args.configurePhase or ''
-    runHook preConfigure
-    # noop
-    runHook postConfigure
-  '';
+  PKG_CONFIG_ALLOW_CROSS =
+    if stdenv.buildPlatform != stdenv.hostPlatform then 1 else 0;
 
   postUnpack = ''
     eval "$cargoDepsHook"
 
-    ${setupVendorDir}
-
-    mkdir .cargo
-    config="$(pwd)/$cargoDepsCopy/.cargo/config";
-    if [[ ! -e $config ]]; then
-      config=${./fetchcargo-default-config.toml};
-    fi;
-    substitute $config .cargo/config \
-    --subst-var-by vendor "$(pwd)/$cargoDepsCopy"
-
-    unset cargoDepsCopy
-
     export RUST_LOG=${logLevel}
   '' + (args.postUnpack or "");
 
-  buildPhase = with builtins; args.buildPhase or ''
-    runHook preBuild
-    echo "Running cargo build --release ${concatStringsSep " " cargoBuildFlags}"
-    cargo build --release --frozen ${concatStringsSep " " cargoBuildFlags}
-    runHook postBuild
-  '';
-
-  checkPhase = args.checkPhase or ''
-    runHook preCheck
-    echo "Running cargo test"
-    cargo test
-    runHook postCheck
+  configurePhase = args.configurePhase or ''
+    runHook preConfigure
+    runHook postConfigure
   '';
 
   doCheck = args.doCheck or true;
 
-  installPhase = args.installPhase or ''
-    runHook preInstall
-    mkdir -p $out/bin $out/lib
-    find target/release -maxdepth 1 -type f -executable ! \( -regex ".*\.\(so.[0-9.]+\|so\|a\|dylib\)" \) -print0 | xargs -r -0 cp -t $out/bin
-    find target/release -maxdepth 1 -regex ".*\.\(so.[0-9.]+\|so\|a\|dylib\)" -print0 | xargs -r -0 cp -t $out/lib
-    rmdir --ignore-fail-on-non-empty $out/lib $out/bin
-    runHook postInstall
-  '';
+  strictDeps = true;
 
   passthru = { inherit cargoDeps; } // (args.passthru or {});
+
+  meta = {
+    # default to Rust's platforms
+    platforms = rustc.meta.platforms;
+  } // meta;
 })

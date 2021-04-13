@@ -12,15 +12,14 @@
 
 buildPythonPackage rec {
   pname = "jupyter_console";
-  version = "6.0.0";
+  version = "6.3.0";
   disabled = pythonOlder "3.5";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "308ce876354924fb6c540b41d5d6d08acfc946984bf0c97777c1ddcb42e0b2f5";
+    sha256 = "947f66bbdeee2221b4fb3a6b78225d337b8f10832f14cecf7932183635abe1d9";
   };
 
-  checkInputs = [ nose ];
   propagatedBuildInputs = [
     jupyter_client
     ipython
@@ -28,13 +27,19 @@ buildPythonPackage rec {
     prompt_toolkit
     pygments
   ];
+  checkInputs = [ nose ];
+
+  postPatch = ''
+    substituteInPlace setup.py \
+      --replace "prompt_toolkit>=2.0.0,<2.1.0" "prompt_toolkit"
+  '';
 
   # ValueError: underlying buffer has been detached
   doCheck = false;
 
   meta = {
     description = "Jupyter terminal console";
-    homepage = "http://jupyter.org/";
+    homepage = "https://jupyter.org/";
     license = lib.licenses.bsd3;
   };
 }

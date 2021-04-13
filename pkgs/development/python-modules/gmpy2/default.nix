@@ -1,8 +1,16 @@
-{ stdenv, buildPythonPackage, fetchurl, isPyPy, gmp, mpfr, libmpc } :
+{ lib
+, buildPythonPackage
+, fetchFromGitHub
+, fetchpatch
+, isPyPy
+, gmp
+, mpfr
+, libmpc
+}:
 
 let
   pname = "gmpy2";
-  version = "2.0.8";
+  version = "2.1.0b5";
 in
 
 buildPythonPackage {
@@ -10,16 +18,18 @@ buildPythonPackage {
 
   disabled = isPyPy;
 
-  src = fetchurl {
-    url = "mirror://pypi/g/gmpy2/${pname}-${version}.zip";
-    sha256 = "0grx6zmi99iaslm07w6c2aqpnmbkgrxcqjrqpfq223xri0r3w8yx";
+  src = fetchFromGitHub {
+    owner = "aleaxit";
+    repo = "gmpy";
+    rev = "gmpy2-${version}";
+    sha256 = "1mqzyp7qwqqyk6jbicgx22svdy2106xwhmhfvdf0vpnmwswcxclb";
   };
 
   buildInputs = [ gmp mpfr libmpc ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "GMP/MPIR, MPFR, and MPC interface to Python 2.6+ and 3.x";
-    homepage = https://github.com/aleaxit/gmpy/;
+    homepage = "https://github.com/aleaxit/gmpy/";
     license = licenses.gpl3Plus;
   };
 }

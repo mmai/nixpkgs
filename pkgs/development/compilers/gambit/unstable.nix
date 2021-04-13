@@ -1,13 +1,13 @@
-{ stdenv, callPackage, fetchFromGitHub }:
+{ callPackage, fetchFromGitHub, gambit-support }:
 
 callPackage ./build.nix {
-  version = "unstable-2018-11-19";
-# git-version = "4.9.1-8-g61c6cb50";
+  version = "unstable-2020-09-20";
+  git-version = "4.9.3-1234-g6acd87df";
   src = fetchFromGitHub {
     owner = "feeley";
     repo = "gambit";
-    rev = "61c6cb500f4756be1e52095d5ab4501752525a70";
-    sha256 = "1knpb40y1g09c6yqd2fsxm3bk56bl5xrrwfsd7nqa497x6ngm5pn";
+    rev = "6acd87dfa95bfca33082a431e72f023345dc07ee";
+    sha256 = "0a3dy4ij8hzlp3sjam4b6dp6yvyz5d7g2x784qm3gp89fi2ck56r";
   };
-  inherit stdenv;
+  gambit-params = gambit-support.unstable-params;
 }

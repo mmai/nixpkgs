@@ -5,15 +5,19 @@
 
 buildPythonPackage rec {
   pname = "certifi";
-  version = "2018.10.15";
+  version = "2020.12.5";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "6d58c986d22b038c8c0df30d639f23a3e6d172a05c3583e766f4c0b785c0986a";
+    sha256 = "177mdbw0livdjvp17sz6wsfrc32838m9y59v871gpgv2888raj8s";
   };
 
+  pythonImportsCheck = [ "certifi" ];
+
+  dontUseSetuptoolsCheck = true;
+
   meta = {
-    homepage = http://certifi.io/;
+    homepage = "https://certifi.io/";
     description = "Python package for providing Mozilla's CA Bundle";
     license = lib.licenses.isc;
     maintainers = with lib.maintainers; [ koral ];

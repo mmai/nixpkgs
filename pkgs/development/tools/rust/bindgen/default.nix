@@ -1,19 +1,26 @@
-{ stdenv, fetchFromGitHub, rustPlatform, clang, llvmPackages, rustfmt, writeScriptBin }:
+{ lib, fetchFromGitHub, rustPlatform, clang, llvmPackages, rustfmt, writeScriptBin
+, runtimeShell
+, bash
+}:
 
 rustPlatform.buildRustPackage rec {
-  name = "rust-bindgen-${version}";
-  version = "0.42.2";
+  pname = "rust-bindgen";
+  version = "0.57.0";
+
+  RUSTFLAGS = "--cap-lints warn"; # probably OK to remove after update
 
   src = fetchFromGitHub {
-    owner = "rust-lang-nursery";
-    repo = "rust-bindgen";
+    owner = "rust-lang";
+    repo = pname;
     rev = "v${version}";
-    sha256 = "10h0h7x8yf4dsyw2p2nas2jg5p3i29np0y3rfzrdq898d70gvq4j";
+    sha256 = "sha256-0d8+Rkb4h1DoFUQ7u2/kPR/fUUz0YvI+hNT4iXL3mxY=";
   };
 
-  cargoSha256 = "01jvi86xgz0r7ia9agnfpms6b6x68lzwj6f085m0w659i94acgpi";
+  cargoSha256 = "sha256-cUDOi3QwjEJaBXGSQZQ76gZ702QLNok8fr6U2q+tVao=";
 
-  libclang = llvmPackages.libclang.lib; #for substituteAll
+  #for substituteAll
+  libclang = llvmPackages.libclang.lib;
+  inherit bash;
 
   buildInputs = [ libclang ];
 
@@ -29,10 +36,10 @@ rustPlatform.buildRustPackage rec {
     chmod +x $out/bin/bindgen
   '';
 
-  doCheck = false; # half the tests fail because our rustfmt is not nightly enough
+  doCheck = true;
   checkInputs =
     let fakeRustup = writeScriptBin "rustup" ''
-      #!${stdenv.shell}
+      #!${runtimeShell}
       shift
       shift
       exec "$@"
@@ -42,17 +49,22 @@ rustPlatform.buildRustPackage rec {
     fakeRustup # the test suite insists in calling `rustup run nightly rustfmt`
     clang
   ];
+  preCheck = ''
+    # for the ci folder, notably
+    patchShebangs .
+  '';
 
-  meta = with stdenv.lib; {
-    description = "C and C++ binding generator";
+  meta = with lib; {
+    description = "Automatically generates Rust FFI bindings to C (and some C++) libraries";
     longDescription = ''
       Bindgen takes a c or c++ header file and turns them into
       rust ffi declarations.
       As with most compiler related software, this will only work
       inside a nix-shell with the required libraries as buildInputs.
     '';
-    homepage = https://github.com/rust-lang-nursery/rust-bindgen;
+    homepage = "https://github.com/rust-lang/rust-bindgen";
     license = with licenses; [ bsd3 ];
-    maintainers = [ maintainers.ralith ];
+    platforms = platforms.unix;
+    maintainers = with maintainers; [ johntitor ralith ];
   };
 }

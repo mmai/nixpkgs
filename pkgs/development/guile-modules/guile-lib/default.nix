@@ -1,35 +1,30 @@
-{ stdenv, fetchurl, guile, texinfo, pkgconfig }:
+{ lib, stdenv, fetchurl, guile, texinfo, pkg-config }:
 
 assert stdenv ? cc && stdenv.cc.isGNU;
 
 let
   name = "guile-lib-${version}";
-  version = "0.2.2";
+  version = "0.2.6.1";
 in stdenv.mkDerivation {
   inherit name;
 
   src = fetchurl {
     url = "mirror://savannah/guile-lib/${name}.tar.gz";
-    sha256 = "1f9n2b5b5r75lzjinyk6zp6g20g60msa0jpfrk5hhg4j8cy0ih4b";
+    sha256 = "0aizxdif5dpch9cvs8zz5g8ds5s4xhfnwza2il5ji7fv2h7ks7bd";
   };
 
-  nativeBuildInputs = [ pkgconfig ];
+  nativeBuildInputs = [ pkg-config ];
   buildInputs = [ guile texinfo ];
-
-  # One test doesn't seem to be compatible with guile_2_2.
-  patchPhase = ''
-    sed -i -e '/sxml.ssax.scm/d' unit-tests/Makefile*
-  '';
 
   doCheck = true;
 
   preCheck = ''
     # Make `libgcc_s.so' visible for `pthread_cancel'.
     export LD_LIBRARY_PATH=\
-    "$(dirname $(echo ${stdenv.cc.cc.lib}/lib*/libgcc_s.so)):$LD_LIBRARY_PATH"
+    "$(dirname $(echo ${stdenv.cc.cc.lib}/lib*/libgcc_s.so))''${LD_LIBRARY_PATH:+:}$LD_LIBRARY_PATH"
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A collection of useful Guile Scheme modules";
     longDescription = ''
       guile-lib is intended as an accumulation place for pure-scheme Guile

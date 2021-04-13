@@ -1,19 +1,20 @@
-{ stdenv, fetchurl, fetchpatch, makeWrapper
-, perl, perlPackages, flac, faad2, sox, lame, monkeysAudio, wavpack }:
+{ lib, fetchurl, makeWrapper
+, perlPackages, flac, faad2, sox, lame, monkeysAudio, wavpack }:
 
 perlPackages.buildPerlPackage rec {
-  name = "slimserver-${version}";
-  version = "7.9.1";
+  pname = "slimserver";
+  version = "7.9.2";
 
   src = fetchurl {
     url = "https://github.com/Logitech/slimserver/archive/${version}.tar.gz";
-    sha256 = "0szp5zkmx2b5lncsijf97asjnl73fyijkbgbwkl1i7p8qnqrb4mp";
+    sha256 = "1rn9y7xvg5aqmgcbfpi7lcqy8d7hgwqx8b2llzpzrv7854zm1wcw";
   };
 
   buildInputs = [
     makeWrapper
-    perl
+    perlPackages.perl
     perlPackages.AnyEvent
+    perlPackages.ArchiveZip
     perlPackages.AudioScan
     perlPackages.CarpClan
     perlPackages.CGI
@@ -43,6 +44,7 @@ perlPackages.buildPerlPackage rec {
     perlPackages.LogLog4perl
     perlPackages.LWP
     perlPackages.NetHTTP
+    perlPackages.NetHTTPSNB
     perlPackages.ProcBackground
     perlPackages.SubName
     perlPackages.TemplateToolkit
@@ -77,9 +79,9 @@ perlPackages.buildPerlPackage rec {
 
   buildPhase = ''
     mv lib tmp
-    mkdir -p lib/perl5/site_perl
-    mv CPAN_used/* lib/perl5/site_perl
-    cp -rf tmp/* lib/perl5/site_perl
+    mkdir -p ${perlPackages.perl.libPrefix}
+    mv CPAN_used/* ${perlPackages.perl.libPrefix}
+    cp -rf tmp/* ${perlPackages.perl.libPrefix}
   '';
 
   doCheck = false;
@@ -87,18 +89,18 @@ perlPackages.buildPerlPackage rec {
   installPhase = ''
     cp -r . $out
     wrapProgram $out/slimserver.pl \
-      --prefix PATH : "${stdenv.lib.makeBinPath [ lame flac faad2 sox monkeysAudio wavpack ]}"
+      --prefix PATH : "${lib.makeBinPath [ lame flac faad2 sox monkeysAudio wavpack ]}"
   '';
 
   outputs = [ "out" ];
 
-  meta = with stdenv.lib; {
-    homepage = https://github.com/Logitech/slimserver;
+  meta = with lib; {
+    homepage = "https://github.com/Logitech/slimserver";
     description = "Server for Logitech Squeezebox players. This server is also called Logitech Media Server";
     # the firmware is not under a free license!
     # https://github.com/Logitech/slimserver/blob/public/7.9/License.txt
     license = licenses.unfree;
     maintainers = [ maintainers.phile314 ];
-    platforms = platforms.linux;
+    platforms = platforms.unix;
   };
 }

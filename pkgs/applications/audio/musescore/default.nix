@@ -1,37 +1,54 @@
-{ stdenv, lib, fetchFromGitHub, cmake, pkgconfig
+{ mkDerivation, lib, fetchFromGitHub, cmake, pkg-config
 , alsaLib, freetype, libjack2, lame, libogg, libpulseaudio, libsndfile, libvorbis
-, portaudio, portmidi, qtbase, qtdeclarative, qtscript, qtsvg, qttools
-, qtwebkit, qtxmlpatterns
+, portaudio, portmidi, qtbase, qtdeclarative, qtgraphicaleffects
+, qtquickcontrols2, qtscript, qtsvg, qttools
+, qtwebengine, qtxmlpatterns
+, nixosTests
 }:
 
-stdenv.mkDerivation rec {
-  name = "musescore-${version}";
-  version = "2.3.2";
+mkDerivation rec {
+  pname = "musescore";
+  version = "3.6.2";
 
   src = fetchFromGitHub {
-    owner  = "musescore";
-    repo   = "MuseScore";
-    rev    = "v${version}";
-    sha256 = "0ncv0xfmq87plqa43cm0fpidlwzz1nq5s7h7139llrbc36yp3pr1";
+    owner = "musescore";
+    repo = "MuseScore";
+    rev = "v${version}";
+    sha256 = "sha256-GBGAD/qdOhoNfDzI+O0EiKgeb86GFJxpci35T6tZ+2s=";
   };
 
-  cmakeFlags = [
-  ] ++ lib.optional (lib.versionAtLeast freetype.version "2.5.2") "-DUSE_SYSTEM_FREETYPE=ON";
+  patches = [
+    ./remove_qtwebengine_install_hack.patch
+  ];
 
-  nativeBuildInputs = [ cmake pkgconfig ];
+  cmakeFlags = [
+    "-DMUSESCORE_BUILD_CONFIG=release"
+    "-DUSE_SYSTEM_FREETYPE=ON"
+  ];
+
+  qtWrapperArgs = [
+    # Work around crash on update from 3.4.2 to 3.5.0
+    # https://bugreports.qt.io/browse/QTBUG-85967
+    "--set QML_DISABLE_DISK_CACHE 1"
+  ];
+
+  nativeBuildInputs = [ cmake pkg-config ];
 
   buildInputs = [
     alsaLib libjack2 freetype lame libogg libpulseaudio libsndfile libvorbis
     portaudio portmidi # tesseract
-    qtbase qtdeclarative qtscript qtsvg qttools qtwebkit qtxmlpatterns
+    qtbase qtdeclarative qtgraphicaleffects qtquickcontrols2
+    qtscript qtsvg qttools qtwebengine qtxmlpatterns
   ];
 
-  meta = with stdenv.lib; {
+  passthru.tests = nixosTests.musescore;
+
+  meta = with lib; {
     description = "Music notation and composition software";
-    homepage = https://musescore.org/;
+    homepage = "https://musescore.org/";
     license = licenses.gpl2;
-    maintainers = with maintainers; [ vandenoever ];
+    maintainers = with maintainers; [ vandenoever turion ];
     platforms = platforms.linux;
-    repositories.git = https://github.com/musescore/MuseScore;
+    repositories.git = "https://github.com/musescore/MuseScore";
   };
 }

@@ -1,42 +1,61 @@
-{ stdenv, fetchFromGitHub, perlPackages, makeWrapper}:
+{ lib
+, buildPythonApplication
+, fetchFromGitHub
+, fetchurl
+, terminaltables
+, colorclass
+, requests
+, pyyaml
+, setuptools
+}:
 
-perlPackages.buildPerlPackage rec {
-  name = "linode-cli-${version}";
-  version = "1.4.7";
+let
+
+  spec = fetchurl {
+    url = "https://raw.githubusercontent.com/linode/linode-api-docs/v4.89.0/openapi.yaml";
+    sha256 = "sha256-R7Dmq8ifGEjh47ftuoGrbymYBsPCj/ULz0j1OqJDcwY=";
+  };
+
+in
+
+buildPythonApplication rec {
+  pname = "linode-cli";
+  version = "5.0.1";
 
   src = fetchFromGitHub {
     owner = "linode";
-    repo = "cli";
-    rev = "v${version}";
-    sha256 = "1wiz067wgxi4z4rz4n9p7dlvx5z4hkl2nxpfvhikl6dri4m2nkkp";
+    repo = pname;
+    rev = version;
+    sha256 = "sha256-zelopRaHaDCnbYA/y7dNMBh70g0+wuc6t9LH/VLaUIk=";
   };
 
-  buildInputs = [ makeWrapper ];
-  propagatedBuildInputs = with perlPackages; [
-    JSON
-    LWP
-    MozillaCA
-    TryTiny
-    WebServiceLinode
-  ];
-
-  # Wrap perl scripts so they can find libraries
-  postInstall = ''
-    for n in "$out/bin"/*; do
-      wrapProgram "$n" --prefix PERL5LIB : "$PERL5LIB"
-    done
+  # remove need for git history
+  prePatch = ''
+    substituteInPlace setup.py \
+      --replace "version=get_version()," "version='${version}',"
   '';
 
-  # Has no tests
+  propagatedBuildInputs = [
+    terminaltables
+    colorclass
+    requests
+    pyyaml
+    setuptools
+  ];
+
+  postConfigure = ''
+    python3 -m linodecli bake ${spec} --skip-config
+    cp data-3 linodecli/
+  '';
+
+  # requires linode access token for unit tests, and running executable
   doCheck = false;
 
-  # Has no "doc" or "devdoc" outputs
-  outputs = [ "out" ];
-
-  meta = with stdenv.lib; {
-    description = "Command-line interface to the Linode platform";
-    homepage = https://github.com/linode/cli;
-    license = with licenses; [ artistic2 gpl2 ];
-    maintainers = with maintainers; [ nixy ];
+  meta = with lib; {
+    homepage = "https://github.com/linode/linode-cli";
+    description = "The Linode Command Line Interface";
+    license = licenses.bsd3;
+    maintainers = with maintainers; [ ryantm ];
   };
+
 }

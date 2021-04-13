@@ -1,15 +1,14 @@
-{ stdenv, fetchurl, pkgconfig, atk, cairo, glib, gtk3, pango, vala_0_40
-, libxml2, perl, gettext, gnome3, gobject-introspection, dbus, xvfb_run, shared-mime-info }:
+{ lib, stdenv, fetchurl, fetchpatch, pkg-config, atk, cairo, glib, gtk3, pango, fribidi, vala
+, libxml2, perl, gettext, gnome3, gobject-introspection, dbus, xvfb_run, shared-mime-info
+, meson, ninja }:
 
-let
-  checkInputs = [ xvfb_run dbus ];
-in stdenv.mkDerivation rec {
-  name = "gtksourceview-${version}";
-  version = "4.0.3";
+stdenv.mkDerivation rec {
+  pname = "gtksourceview";
+  version = "4.8.1";
 
   src = fetchurl {
-    url = "mirror://gnome/sources/gtksourceview/${stdenv.lib.versions.majorMinor version}/${name}.tar.xz";
-    sha256 = "0wwxgw43dmmaz07lzdzpladir26l2bly3lnf2ks6pna152wafm9x";
+    url = "mirror://gnome/sources/${pname}/${lib.versions.majorMinor version}/${pname}-${version}.tar.xz";
+    sha256 = "0WPXG1/K+8Wx7sbdhB7b283dOnURzV/c/9hri7/mmsE=";
   };
 
   propagatedBuildInputs = [
@@ -21,21 +20,31 @@ in stdenv.mkDerivation rec {
 
   outputs = [ "out" "dev" ];
 
-  nativeBuildInputs = [ pkgconfig gettext perl gobject-introspection vala_0_40 ]
-    ++ stdenv.lib.optionals doCheck checkInputs;
+  nativeBuildInputs = [ meson ninja pkg-config gettext perl gobject-introspection vala ];
 
-  buildInputs = [ atk cairo glib pango libxml2 ];
+  checkInputs = [ xvfb_run dbus ];
 
-  patches = [ ./4.x-nix_share_path.patch ];
+  buildInputs = [ atk cairo glib pango fribidi libxml2 ];
+
+  patches = [
+    ./4.x-nix_share_path.patch
+
+    # fixes intermittent "gtksourceview-gresources.h: no such file" errors
+    (fetchpatch {
+      name = "ensure-access-to-resources-in-corelib-build.patch";
+      url = "https://gitlab.gnome.org/GNOME/gtksourceview/-/commit/9bea9d1c4a56310701717bb106c52a5324ee392a.patch";
+      sha256 = "sha256-rSB6lOFEyz58HfOSj7ZM48/tHxhqbtWWbh60JuySAZ0=";
+    })
+  ];
 
   enableParallelBuilding = true;
 
   doCheck = stdenv.isLinux;
   checkPhase = ''
-    export NO_AT_BRIDGE=1
+    XDG_DATA_DIRS="$XDG_DATA_DIRS:${shared-mime-info}/share" \
     xvfb-run -s '-screen 0 800x600x24' dbus-run-session \
       --config-file=${dbus.daemon}/share/dbus-1/session.conf \
-      make check
+      meson test --no-rebuild --print-errorlogs
   '';
 
   passthru = {
@@ -45,10 +54,10 @@ in stdenv.mkDerivation rec {
     };
   };
 
-  meta = with stdenv.lib; {
-    homepage = https://wiki.gnome.org/Projects/GtkSourceView;
+  meta = with lib; {
+    homepage = "https://wiki.gnome.org/Projects/GtkSourceView";
     platforms = with platforms; linux ++ darwin;
     license = licenses.lgpl21;
-    maintainers = gnome3.maintainers;
+    maintainers = teams.gnome.members;
   };
 }

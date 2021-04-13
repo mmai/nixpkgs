@@ -1,4 +1,11 @@
-{stdenvNoCC, mercurial}: {name ? null, url, rev ? null, md5 ? null, sha256 ? null, fetchSubrepos ? false}:
+{ lib, stdenvNoCC, mercurial }:
+{ name ? null
+, url
+, rev ? null
+, md5 ? null
+, sha256 ? null
+, fetchSubrepos ? false
+, preferLocalBuild ? true }:
 
 if md5 != null then
   throw "fetchhg does not support md5 anymore, please use sha256"
@@ -9,7 +16,7 @@ stdenvNoCC.mkDerivation {
   builder = ./builder.sh;
   nativeBuildInputs = [mercurial];
 
-  impureEnvVars = stdenvNoCC.lib.fetchers.proxyImpureEnvVars;
+  impureEnvVars = lib.fetchers.proxyImpureEnvVars;
 
   subrepoClause = if fetchSubrepos then "S" else "";
 
@@ -18,5 +25,5 @@ stdenvNoCC.mkDerivation {
   outputHash = sha256;
 
   inherit url rev;
-  preferLocalBuild = true;
+  inherit preferLocalBuild;
 }

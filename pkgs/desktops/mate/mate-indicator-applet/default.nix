@@ -1,17 +1,17 @@
-{ stdenv, fetchurl, pkgconfig, intltool, gtk3, libindicator-gtk3, mate, hicolor-icon-theme, wrapGAppsHook }:
+{ lib, stdenv, fetchurl, pkg-config, gettext, gtk3, libindicator-gtk3, mate, hicolor-icon-theme, wrapGAppsHook }:
 
 stdenv.mkDerivation rec {
-  name = "mate-indicator-applet-${version}";
-  version = "1.20.1";
+  pname = "mate-indicator-applet";
+  version = "1.24.0";
 
   src = fetchurl {
-    url = "http://pub.mate-desktop.org/releases/${mate.getRelease version}/${name}.tar.xz";
-    sha256 = "0gxis834w8h33xmrx335jjad2xaqpkamirl0x4j7wsk4zs25jkyd";
+    url = "https://pub.mate-desktop.org/releases/${lib.versions.majorMinor version}/${pname}-${version}.tar.xz";
+    sha256 = "0m7pvbs5hhy5f400wqb8wp0dw3pyjpjnjax9qzc73j97l1k3zawf";
   };
 
   nativeBuildInputs = [
-    pkgconfig
-    intltool
+    pkg-config
+    gettext
     wrapGAppsHook
   ];
 
@@ -22,13 +22,15 @@ stdenv.mkDerivation rec {
     hicolor-icon-theme
   ];
 
-  meta = with stdenv.lib; {
-    homepage = https://github.com/mate-desktop/mate-indicator-applet;
+  enableParallelBuilding = true;
+
+  meta = with lib; {
+    homepage = "https://github.com/mate-desktop/mate-indicator-applet";
     description = "MATE panel indicator applet";
     longDescription = ''
       A small applet to display information from various applications
       consistently in the panel.
-       
+
       The indicator applet exposes Ayatana Indicators in the MATE Panel.
       Ayatana Indicators are an initiative by Canonical to provide crisp and
       clean system and application status indication. They take the form of

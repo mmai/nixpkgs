@@ -1,53 +1,50 @@
-{ buildGoPackage, fetchpatch, stdenv, lib, procps, fetchFromGitHub }:
+{ buildGoModule, stdenv, lib, procps, fetchFromGitHub, nixosTests }:
 
 let
   common = { stname, target, postInstall ? "" }:
-    buildGoPackage rec {
-      version = "0.14.54";
-      name = "${stname}-${version}";
+    buildGoModule rec {
+      pname = stname;
+      version = "1.15.1";
 
       src = fetchFromGitHub {
         owner  = "syncthing";
         repo   = "syncthing";
         rev    = "v${version}";
-        sha256 = "0l73ka71l6gxv46wmlyzj8zhfpfj3vf6nv6x3x0z25ymr3wa2fza";
+        sha256 = "sha256-d7b1hqW0ZWg74DyW1ZYMT7sIR7H89Ph38XE2Mhh7ySg=";
       };
 
-      goPackagePath = "github.com/syncthing/syncthing";
+      vendorSha256 = "sha256-00DdGJNCZ94Wj6yvVXJYNJZEiGxYbqTkX6wwon0O1tc=";
 
-      patches = [
-        ./add-stcli-target.patch
-        (fetchpatch {
-          url = "https://github.com/syncthing/syncthing/commit/e7072feeb7669948c3e43f55d21aec15481c33ba.patch";
-          sha256 = "1pcybww2vdx45zhd1sd53v7fp40vfgkwqgy8flv7hxw2paq8hxd4";
-        })
-      ];
+      doCheck = false;
+
       BUILD_USER="nix";
       BUILD_HOST="nix";
 
       buildPhase = ''
         runHook preBuild
-        pushd go/src/${goPackagePath}
         go run build.go -no-upgrade -version v${version} build ${target}
-        popd
         runHook postBuild
       '';
 
       installPhase = ''
-        pushd go/src/${goPackagePath}
         runHook preInstall
-        install -Dm755 ${target} $bin/bin/${target}
+        install -Dm755 ${target} $out/bin/${target}
         runHook postInstall
-        popd
       '';
 
       inherit postInstall;
 
+      passthru.tests = with nixosTests; {
+        init = syncthing-init;
+        relay = syncthing-relay;
+      };
+
       meta = with lib; {
-        homepage = https://www.syncthing.net/;
+        homepage = "https://syncthing.net/";
         description = "Open Source Continuous File Synchronization";
+        changelog = "https://github.com/syncthing/syncthing/releases/tag/v${version}";
         license = licenses.mpl20;
-        maintainers = with maintainers; [ pshendry joko peterhoeg andrew-d ];
+        maintainers = with maintainers; [ joko peterhoeg andrew-d ];
         platforms = platforms.unix;
       };
     };
@@ -81,12 +78,6 @@ in {
                  $out/lib/systemd/user/syncthing.service \
                  --replace /usr/bin/syncthing $out/bin/syncthing
     '';
-  };
-
-  syncthing-cli = common {
-    stname = "syncthing-cli";
-
-    target = "stcli";
   };
 
   syncthing-discovery = common {

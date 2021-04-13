@@ -1,6 +1,7 @@
 { lib
 , buildPythonPackage
 , fetchPypi
+, pythonOlder
 , boto
 , boto3
 , bz2file
@@ -12,17 +13,13 @@
 
 buildPythonPackage rec {
   pname = "smart_open";
-  version = "1.7.1";
+  version = "4.1.2";
+  disabled = pythonOlder "3.5";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "0lwlvvz7qndq89i8bhjv4zfkhg0lbd5yjhccb7svszf30k8niiap";
+    sha256 = "4bbb6233364fc1173cc0af6b7a56ed76fce32509514f1978a995a5835f3177f1";
   };
-
-  # nixpkgs version of moto is >=1.2.0, remove version pin to fix build
-  postPatch = ''
-    substituteInPlace ./setup.py --replace "moto==0.4.31" "moto"
-  '';
 
   # moto>=1.0.0 is backwards-incompatible and some tests fail with it,
   # so disable tests for now

@@ -1,26 +1,29 @@
-{ stdenv
+{ lib
 , buildPythonPackage
 , fetchPypi
 , pytz
+, pythonOlder
 , six
 }:
 
 buildPythonPackage rec {
   pname = "django-modelcluster";
-  version = "4.2";
+  version = "5.1";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "42bd7fa91af9996d7dfd34e6b027445acbece188d371d63abd19dde4c7ac8fc8";
+    sha256 = "783d177f7bf5c8f30fe365c347b9a032920de371fe1c63d955d7b283684d4c08";
   };
+
+  disabled = pythonOlder "3.5";
 
   doCheck = false;
 
   propagatedBuildInputs = [ pytz six ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Django extension to allow working with 'clusters' of models as a single unit, independently of the database";
-    homepage = https://github.com/torchbox/django-modelcluster/;
+    homepage = "https://github.com/torchbox/django-modelcluster/";
     license = licenses.bsd2;
     maintainers = with maintainers; [ desiderius ];
   };

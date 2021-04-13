@@ -1,115 +1,125 @@
-{ stdenv, fetchurl,
-  fetchHex, erlang, hermeticRebar3 ? true,
-  tree, hexRegistrySnapshot }:
+{ lib, stdenv, fetchFromGitHub,
+  fetchHex, erlang,
+  tree }:
 
 let
-  version = "3.6.1";
+  version = "3.14.4";
 
-  bootstrapper = ./rebar3-nix-bootstrap;
+  # Dependencies should match the ones in:
+  # https://github.com/erlang/rebar3/blob/${version}/rebar.lock
+  # `sha256` could also be taken from https://hex.pm - Checksum
 
-  erlware_commons = fetchHex {
-    pkg = "erlware_commons";
-    version = "1.2.0";
-    sha256 = "149kkn9gc9cjgvlmakygq475r63q2rry31s29ax0s425dh37sfl7";
-  };
-  ssl_verify_fun = fetchHex {
-    pkg = "ssl_verify_fun";
-    version = "1.1.3";
-    sha256 = "1zljxashfhqmiscmf298vhr880ppwbgi2rl3nbnyvsfn0mjhw4if";
+  bbmustache = fetchHex {
+    pkg = "bbmustache";
+    version = "1.10.0";
+    sha256 = "1vp27jqnq65a8iqp7j4z8nw9ad29dhky5agmg8aj75dvshzzmvs3";
   };
   certifi = fetchHex {
     pkg = "certifi";
-    version = "2.0.0";
-    sha256 = "075v7cvny52jbhnskchd3fp68fxgp7qfvdls0haamcycxrn0dipx";
-  };
-  providers = fetchHex {
-    pkg = "providers";
-    version = "1.7.0";
-    sha256 = "19p4rbsdx9lm2ihgvlhxyld1q76kxpd7qwyqxxsgmhl5r8ln3rlb";
-  };
-  getopt = fetchHex {
-    pkg = "getopt";
-    version = "1.0.1";
-    sha256 = "174mb46c2qd1f4a7507fng4vvscjh1ds7rykfab5rdnfp61spqak";
-  };
-  bbmustache = fetchHex {
-    pkg = "bbmustache";
-    version = "1.5.0";
-    sha256 = "0xg3r4lxhqifrv32nm55b4zmkflacc1s964g15p6y6jfx6v4y1zd";
-  };
-  relx = fetchHex {
-    pkg = "relx";
-    version = "3.26.0";
-    sha256 = "1f810rb01kdidpa985s321ycg3y4hvqpzbk263n6i1bfnqykkvv9";
+    version = "2.5.3";
+    sha256 = "040w1scglvqhcvc1ifdnlcyrbwr0smi00w4xi8h03c99775nllgd";
   };
   cf = fetchHex {
     pkg = "cf";
-    version = "0.2.2";
-    sha256 = "08cvy7skn5d2k4manlx5k3anqgjdvajjhc5jwxbaszxw34q3na28";
+    version = "0.3.1";
+    sha256 = "0wknz4xkqkhgvlx4vx5619p8m65v7g87lfgsvfy04jrsgm28spii";
   };
   cth_readable = fetchHex {
     pkg = "cth_readable";
-    version = "1.4.2";
-    sha256 = "1pjid4f60pp81ds01rqa6ybksrnzqriw3aibilld1asn9iabxkav";
+    version = "1.5.0";
+    sha256 = "0z58b6frqdnhyzrmbdf6x78l3izbbh5z5i3am8hqc253r7xwv0dx";
+  };
+  erlware_commons = fetchHex {
+    pkg = "erlware_commons";
+    version = "1.4.0";
+    sha256 = "1rp2vkgzqm6sax7fc13rh9x6qzxsgg718dnv7l0kmarvyifcyphq";
   };
   eunit_formatters = fetchHex {
     pkg = "eunit_formatters";
     version = "0.5.0";
     sha256 = "1jb3hzb216r29x2h4pcjwfmx1k81431rgh5v0mp4x5146hhvmj6n";
   };
-  rebar3_hex = fetchHex {
-    pkg = "rebar3_hex";
-    version = "4.0.0";
-    sha256 = "0k0ykx1lz62r03dpbi2zxsvrxgnr5hj67yky0hjrls09ynk4682v";
+  getopt = fetchHex {
+    pkg = "getopt";
+    version = "1.0.1";
+    sha256 = "53e1ab83b9ceb65c9672d3e7a35b8092e9bdc9b3ee80721471a161c10c59959c";
+  };
+  parse_trans = fetchHex {
+    pkg = "parse_trans";
+    version = "3.3.1";
+    sha256 = "12w8ai6b5s6b4hnvkav7hwxd846zdd74r32f84nkcmjzi1vrbk87";
   };
 
+  providers = fetchHex {
+    pkg = "providers";
+    version = "1.8.1";
+    sha256 = "183b9128l4af60rs40agqh6kc6db33j4027ad6jajxn4x6nlamz4";
+  };
+
+  relx = fetchHex {
+    pkg = "relx";
+    version = "4.3.0";
+    sha256 = "0h044arh41sr92r1nlg176shavlv7pvw17alwklhszgwlr4hk3kk";
+  };
+
+  ssl_verify_fun = fetchHex {
+    pkg = "ssl_verify_fun";
+    version = "1.1.6";
+    sha256 = "1026l1z1jh25z8bfrhaw0ryk5gprhrpnirq877zqhg253x3x5c5x";
+  };
 in
-stdenv.mkDerivation {
-  name = "rebar3-${version}";
-  inherit version;
+stdenv.mkDerivation rec {
+  pname = "rebar3";
+  inherit version erlang;
 
-  src = fetchurl {
-    url = "https://github.com/rebar/rebar3/archive/${version}.tar.gz";
-    sha256 = "0cqhqymzh10pfyxqiy4hcg3d2myz3chx0y4m2ixmq8zk81acics0";
+  # How to obtain `sha256`:
+  # nix-prefetch-url --unpack https://github.com/erlang/rebar3/archive/${version}.tar.gz
+  src = fetchFromGitHub {
+    owner = "erlang";
+    repo = pname;
+    rev = version;
+    sha256 = "09bnqwli93sq1pcz4h88ks7qg7k8yrjy9fd46yyp8xdl7i4irwy2";
   };
 
-  inherit bootstrapper;
+  bootstrapper = ./rebar3-nix-bootstrap;
 
-  patches = if hermeticRebar3 == true
-  then  [ ./hermetic-rebar3.patch ]
-  else [];
-
-  buildInputs = [ erlang tree  ];
-  propagatedBuildInputs = [ hexRegistrySnapshot ];
+  buildInputs = [ erlang tree ];
 
   postPatch = ''
-    ${erlang}/bin/escript ${bootstrapper} registry-only
+    mkdir -p _checkouts
     mkdir -p _build/default/lib/
-    mkdir -p _build/default/plugins
-    cp --no-preserve=mode -R ${erlware_commons} _build/default/lib/erlware_commons
-    cp --no-preserve=mode -R ${providers} _build/default/lib/providers
-    cp --no-preserve=mode -R ${getopt} _build/default/lib/getopt
-    cp --no-preserve=mode -R ${bbmustache} _build/default/lib/bbmustache
-    cp --no-preserve=mode -R ${certifi} _build/default/lib/certifi
-    cp --no-preserve=mode -R ${cf} _build/default/lib/cf
-    cp --no-preserve=mode -R ${cth_readable} _build/default/lib/cth_readable
-    cp --no-preserve=mode -R ${eunit_formatters} _build/default/lib/eunit_formatters
-    cp --no-preserve=mode -R ${relx} _build/default/lib/relx
-    cp --no-preserve=mode -R ${ssl_verify_fun} _build/default/lib/ssl_verify_fun
-    cp --no-preserve=mode -R ${rebar3_hex} _build/default/plugins/rebar3_hex
+
+    cp --no-preserve=mode -R ${bbmustache} _checkouts/bbmustache
+    cp --no-preserve=mode -R ${certifi} _checkouts/certifi
+    cp --no-preserve=mode -R ${cf} _checkouts/cf
+    cp --no-preserve=mode -R ${cth_readable} _checkouts/cth_readable
+    cp --no-preserve=mode -R ${erlware_commons} _checkouts/erlware_commons
+    cp --no-preserve=mode -R ${eunit_formatters} _checkouts/eunit_formatters
+    cp --no-preserve=mode -R ${getopt} _checkouts/getopt
+    cp --no-preserve=mode -R ${parse_trans} _checkouts/parse_trans
+    cp --no-preserve=mode -R ${providers} _checkouts/providers
+    cp --no-preserve=mode -R ${relx} _checkouts/relx
+    cp --no-preserve=mode -R ${ssl_verify_fun} _checkouts/ssl_verify_fun
+
+    # Bootstrap script expects the dependencies in _build/default/lib
+    # TODO: Make it accept checkouts?
+    for i in _checkouts/* ; do
+        ln -s $(pwd)/$i $(pwd)/_build/default/lib/
+    done
   '';
 
   buildPhase = ''
     HOME=. escript bootstrap
   '';
+
   installPhase = ''
     mkdir -p $out/bin
     cp rebar3 $out/bin/rebar3
   '';
 
   meta = {
-    homepage = https://github.com/rebar/rebar3;
-    description = "rebar 3.0 is an Erlang build tool that makes it easy to compile and test Erlang applications, port drivers and releases";
+    homepage = "https://github.com/rebar/rebar3";
+    description = "Erlang build tool that makes it easy to compile and test Erlang applications, port drivers and releases";
 
     longDescription = ''
       rebar is a self-contained Erlang script, so it's easy to distribute or
@@ -120,8 +130,8 @@ stdenv.mkDerivation {
       variety of locations (hex.pm, git, hg, and so on).
       '';
 
-    platforms = stdenv.lib.platforms.unix;
-    maintainers = with stdenv.lib.maintainers; [ gleber tazjin ];
-    license = stdenv.lib.licenses.asl20;
+    platforms = lib.platforms.unix;
+    maintainers = lib.teams.beam.members;
+    license = lib.licenses.asl20;
   };
 }

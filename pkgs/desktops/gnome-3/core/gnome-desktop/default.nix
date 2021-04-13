@@ -1,40 +1,40 @@
-{ stdenv, fetchurl, substituteAll, pkgconfig, libxslt, which, libX11, gnome3, gtk3, glib
-, gettext, libxml2, xkeyboard_config, isocodes, itstool, wayland
-, libseccomp, bubblewrap, gobject-introspection, gtk-doc, docbook_xsl }:
+{ lib, stdenv, fetchurl, substituteAll, pkg-config, libxslt, ninja, gnome3, gtk3, glib
+, gettext, libxml2, xkeyboard_config, isocodes, meson, wayland
+, libseccomp, systemd, bubblewrap, gobject-introspection, gtk-doc, docbook_xsl, gsettings-desktop-schemas }:
 
 stdenv.mkDerivation rec {
-  name = "gnome-desktop-${version}";
-  version = "3.30.2";
+  pname = "gnome-desktop";
+  version = "3.38.4";
 
   outputs = [ "out" "dev" "devdoc" ];
 
   src = fetchurl {
-    url = "mirror://gnome/sources/gnome-desktop/${stdenv.lib.versions.majorMinor version}/${name}.tar.xz";
-    sha256 = "0k6iccfj9naw42dl2mgljfvk12dmvg06plg86qd81nksrf9ycxal";
+    url = "mirror://gnome/sources/gnome-desktop/${lib.versions.majorMinor version}/${pname}-${version}.tar.xz";
+    sha256 = "sha256-P2A+pb/UdyLJLPybiFRGtGJg6gnIz7Y/a92f7+NC5Iw=";
   };
 
-  enableParallelBuilding = true;
-
   nativeBuildInputs = [
-    pkgconfig which itstool gettext libxslt libxml2 gobject-introspection
-    gtk-doc docbook_xsl
+    pkg-config meson ninja gettext libxslt libxml2 gobject-introspection
+    gtk-doc docbook_xsl glib
   ];
   buildInputs = [
-    libX11 bubblewrap xkeyboard_config isocodes wayland
-    gtk3 glib libseccomp
+    bubblewrap xkeyboard_config isocodes wayland
+    gtk3 glib libseccomp systemd
   ];
 
-  propagatedBuildInputs = [ gnome3.gsettings-desktop-schemas ];
+  propagatedBuildInputs = [ gsettings-desktop-schemas ];
 
   patches = [
     (substituteAll {
       src = ./bubblewrap-paths.patch;
       bubblewrap_bin = "${bubblewrap}/bin/bwrap";
+      inherit (builtins) storeDir;
     })
   ];
 
-  configureFlags = [
-    "--enable-gtk-doc"
+  mesonFlags = [
+    "-Dgtk_doc=true"
+    "-Ddesktop_docs=false"
   ];
 
   passthru = {
@@ -44,10 +44,10 @@ stdenv.mkDerivation rec {
     };
   };
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Library with common API for various GNOME modules";
     license = with licenses; [ gpl2 lgpl2 ];
     platforms = platforms.linux;
-    maintainers = gnome3.maintainers;
+    maintainers = teams.gnome.members;
   };
 }

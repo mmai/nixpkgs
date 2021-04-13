@@ -1,4 +1,6 @@
-{ stdenv, lib, buildPythonPackage, fetchFromGitHub
+{ lib
+, buildPythonPackage
+, fetchFromGitHub
 , sqlite
 , cython
 , apsw
@@ -10,14 +12,14 @@
 buildPythonPackage rec {
 
   pname = "peewee";
-  version = "3.8.0";
+  version = "3.13.3";
 
   # pypi release does not provide tests
   src = fetchFromGitHub {
     owner = "coleifer";
     repo = pname;
     rev = version;
-    sha256 = "0kqhpalw1587zaz3fcj13mpzs5950l6fm3qlcfqsfp16h8w0s89f";
+    sha256 = "1r67hxb9m6v0xbnbqfnsw6dahmdr94pf81b4x51jfw6x9sa4izi4";
   };
 
 
@@ -38,9 +40,11 @@ buildPythonPackage rec {
   ] ++ (lib.optional withPostgres psycopg2)
     ++ (lib.optional withMysql mysql-connector);
 
-  meta = with stdenv.lib;{
+  doCheck = withPostgres;
+
+  meta = with lib; {
     description = "a small, expressive orm";
-    homepage    = http://peewee-orm.com;
+    homepage    = "http://peewee-orm.com";
     license     = licenses.mit;
   };
 }

@@ -1,40 +1,34 @@
-{ stdenv, fetchFromGitHub, qmake
-, coreutils, xdg_utils, bash
-, perl, makeWrapper, perlPackages }:
+{ lib, fetchFromGitHub, qmake
+, coreutils, xdg-utils, bash
+, makeWrapper, perlPackages, mkDerivation }:
 
 let
-  version = "1.4";
-in stdenv.mkDerivation rec {
-  name = "qdirstat-${version}";
+  pname = "qdirstat";
+  version = "1.7";
 
   src = fetchFromGitHub {
     owner = "shundhammer";
-    repo = "qdirstat";
-    rev = "${version}";
-    sha256 = "1ppasbr0mq301q6n3rm0bsmprs7vgkcjmmc0gbgqpgw84nmp9fqh";
+    repo = pname;
+    rev = version;
+    sha256 = "163x3fxra0l3vvrzm25mh7jvcwjbmwsqlpppkxx76mkz9a1769fy";
   };
+in
+
+mkDerivation {
+  inherit pname version src;
 
   nativeBuildInputs = [ qmake makeWrapper ];
 
-  buildInputs = [ perl ];
+  buildInputs = [ perlPackages.perl ];
 
-  preBuild = ''
+  postPatch = ''
     substituteInPlace scripts/scripts.pro \
-      --replace /bin/true ${coreutils}/bin/true \
-      --replace /usr/bin $out/bin
-    substituteInPlace src/src.pro \
-      --replace /usr/bin $out/bin \
-      --replace /usr/share $out/share
-    for i in doc/doc.pro doc/stats/stats.pro
-    do
-      substituteInPlace $i \
-        --replace /usr/share $out/share
-    done
+      --replace /bin/true ${coreutils}/bin/true
 
-    for i in src/MainWindow.cpp src/FileSizeStatsWindow.cpp
+    for i in src/SysUtil.cpp src/FileSizeStatsWindow.cpp
     do
       substituteInPlace $i \
-        --replace /usr/bin/xdg-open ${xdg_utils}/bin/xdg-open
+        --replace /usr/bin/xdg-open ${xdg-utils}/bin/xdg-open
     done
     for i in src/Cleanup.cpp src/cleanup-config-page.ui
     do
@@ -46,12 +40,14 @@ in stdenv.mkDerivation rec {
       --replace /bin/bash ${bash}/bin/bash
   '';
 
+  qmakeFlags = [ "INSTALL_PREFIX=${placeholder "out"}" ];
+
   postInstall = ''
     wrapProgram $out/bin/qdirstat-cache-writer \
-      --set PERL5LIB "${stdenv.lib.makePerlPath [ perlPackages.URI ]}"
+      --set PERL5LIB "${perlPackages.makePerlPath [ perlPackages.URI ]}"
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Graphical disk usage analyzer";
     homepage = src.meta.homepage;
     license = licenses.gpl2;

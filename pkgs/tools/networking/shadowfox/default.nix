@@ -1,29 +1,31 @@
-{ stdenv, fetchFromGitHub, buildGoPackage }:
+{ lib, fetchFromGitHub, buildGoModule }:
 
-buildGoPackage rec {
-  name = "shadowfox-${version}";
-  version = "1.5.2";
+buildGoModule rec {
+  pname = "shadowfox";
+  version = "2.2.0";
 
   src = fetchFromGitHub {
     owner = "SrKomodo";
     repo = "shadowfox-updater";
     rev = "v${version}";
-    sha256 = "07695hba72q722d18q75pwa45azg9jibj6vqnhwb7mnwz2i7hkkc";
+    sha256 = "125mw70jidbp436arhv77201jdp6mpgqa2dzmrpmk55f9bf29sg6";
   };
 
-  goPackagePath = "github.com/SrKomodo/shadowfox-updater";
-  goDeps = ./deps.nix;
+  vendorSha256 = "06ar9ivry9b01609izjbl6hqgg0cy7aqd8n2cqpyq0g7my0l0lbj";
 
-  buildFlags = "--tags release";
+  doCheck = false;
 
-  meta = with stdenv.lib; {
+  buildFlagsArray = [
+    "-ldflags=-X main.tag=v${version}"
+  ];
+
+  meta = with lib; {
     description = ''
       This project aims at creating a universal dark theme for Firefox while
       adhering to the modern design principles set by Mozilla.
     '';
     homepage = "https://overdodactyl.github.io/ShadowFox/";
     license = licenses.mit;
-    platforms = platforms.all;
     maintainers = with maintainers; [ infinisil ];
   };
 }

@@ -1,47 +1,71 @@
-{ stdenv, lib, buildPythonPackage, fetchPypi, python, pythonOlder, astroid,
-  isort, mccabe, pytest, pytestrunner, pyenchant }:
+{ stdenv
+, lib
+, buildPythonPackage
+, fetchPypi
+, pythonOlder
+, installShellFiles
+, astroid
+, isort
+, mccabe
+, toml
+, pytest-benchmark
+, pytest-xdist
+, pytestCheckHook
+}:
 
 buildPythonPackage rec {
   pname = "pylint";
-  version = "2.2.2";
+  version = "2.7.1";
 
-  disabled = pythonOlder "3.4";
+  disabled = pythonOlder "3.6";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "689de29ae747642ab230c6d37be2b969bf75663176658851f456619aacf27492";
+    sha256 = "10nrvzk1naf5ryawmi59wp99k31053sz37q3x9li2hj2cf7i1kl1";
   };
 
-  checkInputs = [ pytest pytestrunner pyenchant ];
+  nativeBuildInputs = [
+    installShellFiles
+  ];
 
-  propagatedBuildInputs = [ astroid isort mccabe ];
-
-  postPatch = lib.optionalString stdenv.isDarwin ''
-    # Remove broken darwin test
-    rm -vf pylint/test/test_functional.py
-  '';
-
-  checkPhase = ''
-    pytest pylint/test -k "not ${lib.concatStringsSep " and not " (
-      # Broken tests
-      [ "member_checks_py37" "iterable_context_py36" ] ++
-      # Disable broken darwin tests
-      lib.optionals stdenv.isDarwin [
-        "test_parallel_execution"
-        "test_py3k_jobs_option"
-      ]
-    )}"
-  '';
+  propagatedBuildInputs = [
+    astroid
+    isort
+    mccabe
+    toml
+  ];
 
   postInstall = ''
     mkdir -p $out/share/emacs/site-lisp
-    cp "elisp/"*.el $out/share/emacs/site-lisp/
+    cp -v "elisp/"*.el $out/share/emacs/site-lisp/
+    installManPage man/*.1
   '';
 
+  checkInputs = [
+    pytest-benchmark
+    pytest-xdist
+    pytestCheckHook
+  ];
+
+  dontUseSetuptoolsCheck = true;
+
+  # calls executable in one of the tests
+  preCheck = ''
+    export PATH=$PATH:$out/bin
+  '';
+
+  pytestFlagsArray = [
+    "-n auto"
+  ];
+
+  disabledTests = lib.optionals stdenv.isDarwin [
+    "test_parallel_execution"
+    "test_py3k_jobs_option"
+  ];
+
   meta = with lib; {
-    homepage = https://github.com/PyCQA/pylint;
+    homepage = "https://pylint.pycqa.org/";
     description = "A bug and style checker for Python";
-    platforms = platforms.all;
     license = licenses.gpl1Plus;
     maintainers = with maintainers; [ nand0p ];
   };

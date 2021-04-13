@@ -156,7 +156,7 @@ in
       wantedBy = [ "multi-user.target" ];
 
       requires = lib.optional cfg.useRpcbind "rpcbind.service";
-      after = [ "network.target" "local-fs.target" ] ++ lib.optional cfg.useRpcbind "rpcbind.service";
+      after = [ "network.target" ] ++ lib.optional cfg.useRpcbind "rpcbind.service";
 
       preStart = ''
         install -m 0755 -d /var/log/glusterfs
@@ -201,7 +201,6 @@ in
 
       serviceConfig = {
         Type="simple";
-        Environment="PYTHONPATH=${glusterfs}/usr/lib/python2.7/site-packages";
         PIDFile="/run/glustereventsd.pid";
         ExecStart="${glusterfs}/sbin/glustereventsd --pid-file /run/glustereventsd.pid";
         ExecReload="/bin/kill -SIGUSR2 $MAINPID";

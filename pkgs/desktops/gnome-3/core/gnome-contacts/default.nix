@@ -1,42 +1,78 @@
-{ stdenv, gettext, fetchurl, evolution-data-server
-, pkgconfig, libxslt, docbook_xsl, docbook_xml_dtd_42, python3, gtk3, glib, cheese
-, libchamplain, clutter-gtk, geocode-glib, gnome-desktop, gnome-online-accounts
-, wrapGAppsHook, folks, libxml2, gnome3, telepathy-glib
-, vala, meson, ninja }:
+{ lib, stdenv
+, gettext
+, fetchurl
+, evolution-data-server
+, pkg-config
+, libxslt
+, docbook_xsl
+, docbook_xml_dtd_42
+, python3
+, gtk3
+, glib
+, cheese
+, libchamplain
+, clutter-gtk
+, geocode-glib
+, gnome-desktop
+, gnome-online-accounts
+, wrapGAppsHook
+, folks
+, libxml2
+, gnome3
+, vala
+, meson
+, ninja
+, libhandy
+, gsettings-desktop-schemas
+}:
 
-let
-  version = "3.30.2";
-in stdenv.mkDerivation rec {
-  name = "gnome-contacts-${version}";
+stdenv.mkDerivation rec {
+  pname = "gnome-contacts";
+  version = "3.38.1";
 
   src = fetchurl {
-    url = "mirror://gnome/sources/gnome-contacts/${stdenv.lib.versions.majorMinor version}/${name}.tar.xz";
-    sha256 = "1b0pkdwz9yqcv82zzdf76rs2w3wa5zli8pka09wnahikx1ykk43h";
+    url = "mirror://gnome/sources/gnome-contacts/${lib.versions.majorMinor version}/${pname}-${version}.tar.xz";
+    sha256 = "0hsq0dwxjahcaxnm1m4r1lync9k2fkwzybfmkchrmn95vqcwwvf9";
   };
 
-  propagatedUserEnvPkgs = [ evolution-data-server ];
+  propagatedUserEnvPkgs = [
+    evolution-data-server
+  ];
 
   nativeBuildInputs = [
-    meson ninja pkgconfig vala gettext libxslt docbook_xsl docbook_xml_dtd_42 python3 wrapGAppsHook
+    meson
+    ninja
+    pkg-config
+    vala
+    gettext
+    libxslt
+    docbook_xsl
+    docbook_xml_dtd_42
+    python3
+    wrapGAppsHook
   ];
 
   buildInputs = [
-    gtk3 glib evolution-data-server gnome3.gsettings-desktop-schemas
-    folks gnome-desktop telepathy-glib
-    libxml2 gnome-online-accounts cheese
-    gnome3.defaultIconTheme libchamplain clutter-gtk geocode-glib
+    gtk3
+    glib
+    evolution-data-server
+    gsettings-desktop-schemas
+    folks
+    gnome-desktop
+    libhandy
+    libxml2
+    gnome-online-accounts
+    cheese
+    gnome3.adwaita-icon-theme
+    libchamplain
+    clutter-gtk
+    geocode-glib
   ];
 
   postPatch = ''
-    chmod +x meson_post_install.py
-    patchShebangs meson_post_install.py
+    chmod +x build-aux/meson_post_install.py
+    patchShebangs build-aux/meson_post_install.py
   '';
-
-  # In file included from src/gnome-contacts@exe/contacts-avatar-selector.c:30:0:
-  # /nix/store/*-cheese-3.28.0/include/cheese/cheese-widget.h:26:10: fatal error: clutter-gtk/clutter-gtk.h: No such file or directory
-  #  #include <clutter-gtk/clutter-gtk.h>
-  #           ^~~~~~~~~~~~~~~~~~~~~~~~~~~
-  NIX_CFLAGS_COMPILE = "-I${stdenv.lib.getDev clutter-gtk}/include/clutter-gtk-1.0";
 
   doCheck = true;
 
@@ -47,11 +83,11 @@ in stdenv.mkDerivation rec {
     };
   };
 
-  meta = with stdenv.lib; {
-    homepage = https://wiki.gnome.org/Apps/Contacts;
+  meta = with lib; {
+    homepage = "https://wiki.gnome.org/Apps/Contacts";
     description = "GNOME’s integrated address book";
-    maintainers = gnome3.maintainers;
-    license = licenses.gpl2;
+    maintainers = teams.gnome.members;
+    license = licenses.gpl2Plus;
     platforms = platforms.linux;
   };
 }

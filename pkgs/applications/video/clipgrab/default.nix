@@ -1,22 +1,25 @@
-{ stdenv, fetchurl, makeDesktopItem, ffmpeg, qt4, qmake4Hook }:
+{ lib, fetchurl, makeDesktopItem, ffmpeg_3
+, qmake, qttools, mkDerivation
+, qtbase, qtdeclarative, qtlocation, qtquickcontrols2, qtwebchannel, qtwebengine
+}:
 
-stdenv.mkDerivation rec {
-  name = "clipgrab-${version}";
-  version = "3.7.2";
+mkDerivation rec {
+  pname = "clipgrab";
+  version = "3.9.6";
 
   src = fetchurl {
-    sha256 = "1xkap4zgx8k0h0qfcqfwi3lj7s3mqsj0dp1cddiqmxbibbmg3rcc";
+    sha256 = "sha256-1rQu2Gh9PKSbC0tuQxLwFhzy280z4obpa+eXvDBzDW0=";
     # The .tar.bz2 "Download" link is a binary blob, the source is the .tar.gz!
-    url = "https://download.clipgrab.org/${name}.tar.gz";
+    url = "https://download.clipgrab.org/${pname}-${version}.tar.gz";
   };
 
-  buildInputs = [ ffmpeg qt4 ];
-  nativeBuildInputs = [ qmake4Hook ];
+  buildInputs = [ ffmpeg_3 qtbase qtdeclarative qtlocation qtquickcontrols2 qtwebchannel qtwebengine ];
+  nativeBuildInputs = [ qmake qttools ];
 
-  postPatch = stdenv.lib.optionalString (ffmpeg != null) ''
+  postPatch = lib.optionalString (ffmpeg_3 != null) ''
   substituteInPlace converter_ffmpeg.cpp \
-    --replace '"ffmpeg"' '"${ffmpeg.bin}/bin/ffmpeg"' \
-    --replace '"ffmpeg ' '"${ffmpeg.bin}/bin/ffmpeg '
+    --replace '"ffmpeg"' '"${ffmpeg_3.bin}/bin/ffmpeg"' \
+    --replace '"ffmpeg ' '"${ffmpeg_3.bin}/bin/ffmpeg '
   '';
 
   qmakeFlags = [ "clipgrab.pro" ];
@@ -39,14 +42,14 @@ stdenv.mkDerivation rec {
     cp -r ${desktopItem}/share/applications $out/share
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Video downloader for YouTube and other sites";
     longDescription = ''
       ClipGrab is a free downloader and converter for YouTube, Vimeo, Metacafe,
       Dailymotion and many other online video sites. It converts downloaded
       videos to MPEG4, MP3 or other formats in just one easy step.
     '';
-    homepage = https://clipgrab.org/;
+    homepage = "https://clipgrab.org/";
     license = licenses.gpl3Plus;
     platforms = platforms.linux;
   };
