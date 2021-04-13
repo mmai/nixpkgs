@@ -3,8 +3,8 @@
 buildPecl {
   pname = "xdebug";
 
-  version = "2.8.1";
-  sha256 = "080mwr7m72rf0jsig5074dgq2n86hhs7rdbfg6yvnm959sby72w3";
+  version = "3.0.3";
+  sha256 = "sha256-5yZagVGOOX+XLcki50bRpIRTcXf/SJVDUWfRCeKTJDI=";
 
   doCheck = true;
   checkTarget = "test";

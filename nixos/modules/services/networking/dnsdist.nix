@@ -26,8 +26,7 @@ in {
 
       extraConfig = mkOption {
         type = types.lines;
-        default = ''
-        '';
+        default = "";
         description = ''
           Extra lines to be added verbatim to dnsdist.conf.
         '';
@@ -41,6 +40,7 @@ in {
     systemd.services.dnsdist = {
       wantedBy = [ "multi-user.target" ];
 
+      startLimitIntervalSec = 0;
       serviceConfig = {
         DynamicUser = true;
 

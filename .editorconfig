@@ -47,26 +47,16 @@ indent_style = space
 insert_final_newline = unset
 trim_trailing_whitespace = unset
 
-[*.{key,ovpn}]
+[*.{asc,key,ovpn}]
 insert_final_newline = unset
 end_of_line = unset
+trim_trailing_whitespace = unset
 
 [*.lock]
 indent_size = unset
 
-[deps.nix]
-insert_final_newline = unset
-[pkgs/tools/networking/dd-agent/*-deps.nix]
-insert_final_newline = unset
-
 [eggs.nix]
 trim_trailing_whitespace = unset
-
-[gemset.nix]
-insert_final_newline = unset
-
-[node-{composition,packages,packages-generated}.nix]
-insert_final_newline = unset
 
 [nixos/modules/services/networking/ircd-hybrid/*.{conf,in}]
 trim_trailing_whitespace = unset
@@ -76,10 +66,12 @@ trim_trailing_whitespace = unset
 
 [pkgs/build-support/dotnetenv/Wrapper/**]
 end_of_line = unset
+indent_style = unset
 insert_final_newline = unset
 trim_trailing_whitespace = unset
 
 [pkgs/build-support/upstream-updater/**]
+indent_style = unset
 trim_trailing_whitespace = unset
 
 [pkgs/development/compilers/elm/registry.dat]
@@ -89,12 +81,6 @@ insert_final_newline = unset
 [pkgs/development/haskell-modules/hackage-packages.nix]
 indent_style = unset
 trim_trailing_whitespace = unset
-
-[pkgs/development/mobile/androidenv/generated/{addons,packages}.nix]
-trim_trailing_whitespace = unset
-
-[pkgs/development/node-packages/composition.nix]
-insert_final_newline = unset
 
 [pkgs/servers/dict/wordnet_structures.py]
 trim_trailing_whitespace = unset

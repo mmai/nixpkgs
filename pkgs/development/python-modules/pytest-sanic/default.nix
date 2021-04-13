@@ -1,28 +1,45 @@
 { lib
-, buildPythonPackage
-, fetchPypi
-, pytest
 , aiohttp
 , async_generator
+, buildPythonPackage
+, doCheck ? true
+, fetchFromGitHub
+, httpx
+, pytest
+, pytestCheckHook
+, sanic
+, websockets
 }:
 
 buildPythonPackage rec {
   pname = "pytest-sanic";
-  version = "1.6.1";
+  version = "1.7.0";
 
-  src = fetchPypi {
-    inherit pname version;
-    sha256 = "99e02c28cfa18a0a9af0cd151dddf0eca373279b9bac808733746f7ed7030ecc";
+  src = fetchFromGitHub {
+    owner = "yunstanford";
+    repo = pname;
+    rev = "v${version}";
+    sha256 = "1zpgnw1lqbll59chv4hgcn31mdql1nv4gw9crbihky3ly3d3ncqi";
   };
 
+  buildInputs = [ pytest ];
+
   propagatedBuildInputs = [
-    pytest
     aiohttp
     async_generator
+    httpx
+    pytest
+    websockets
   ];
 
-  # circular dependency on sanic
-  doCheck = false;
+  checkInputs = [
+    sanic
+    pytestCheckHook
+  ];
+
+  inherit doCheck;
+
+  pythonImportsCheck = [ "pytest_sanic" ];
 
   meta = with lib; {
     description = "A pytest plugin for Sanic";

@@ -1,4 +1,4 @@
-{ lib, stdenv, fetchFromGitHub, pkgconfig, libtool
+{ lib, stdenv, fetchFromGitHub, pkg-config, libtool
 , bzip2, zlib, libX11, libXext, libXt, fontconfig, freetype, ghostscript, libjpeg, djvulibre
 , lcms2, openexr, libpng, librsvg, libtiff, libxml2, openjpeg, libwebp, libheif
 , ApplicationServices
@@ -12,26 +12,18 @@ let
     else if stdenv.hostPlatform.system == "aarch64-linux" then "aarch64"
     else if stdenv.hostPlatform.system == "powerpc64le-linux" then "ppc64le"
     else throw "ImageMagick is not supported on this platform.";
-
-  cfg = {
-    version = "7.0.10-27";
-    sha256 = "1fqwbg2ws6ix3bymx7ncb4k4f6bg8q44n9xnlvngjapflnrmhcph";
-    patches = [];
-  };
 in
 
-stdenv.mkDerivation {
+stdenv.mkDerivation rec {
   pname = "imagemagick";
-  inherit (cfg) version;
+  version = "7.0.11-6";
 
   src = fetchFromGitHub {
     owner = "ImageMagick";
     repo = "ImageMagick";
-    rev = cfg.version;
-    inherit (cfg) sha256;
+    rev = version;
+    sha256 = "sha256-QClOS58l17KHeQXya+IKNx6nIkd6jCKp8uupRH7Fwnk=";
   };
-
-  patches = cfg.patches;
 
   outputs = [ "out" "dev" "doc" ]; # bin/ isn't really big
   outputMan = "out"; # it's tiny
@@ -50,7 +42,7 @@ stdenv.mkDerivation {
       [ "--enable-static" "--disable-shared" ] # due to libxml2 being without DLLs ATM
     ;
 
-  nativeBuildInputs = [ pkgconfig libtool ];
+  nativeBuildInputs = [ pkg-config libtool ];
 
   buildInputs =
     [ zlib fontconfig freetype ghostscript
@@ -72,7 +64,7 @@ stdenv.mkDerivation {
     moveToOutput "lib/ImageMagick-*/config-Q16HDRI" "$dev" # includes configure params
     for file in "$dev"/bin/*-config; do
       substituteInPlace "$file" --replace pkg-config \
-        "PKG_CONFIG_PATH='$dev/lib/pkgconfig' '${pkgconfig}/bin/${pkgconfig.targetPrefix}pkg-config'"
+        "PKG_CONFIG_PATH='$dev/lib/pkgconfig' '${pkg-config}/bin/${pkg-config.targetPrefix}pkg-config'"
     done
   '' + lib.optionalString (ghostscript != null) ''
     for la in $out/lib/*.la; do
@@ -80,10 +72,11 @@ stdenv.mkDerivation {
     done
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "http://www.imagemagick.org/";
     description = "A software suite to create, edit, compose, or convert bitmap images";
     platforms = platforms.linux ++ platforms.darwin;
+    maintainers = with maintainers; [ erictapen ];
     license = licenses.asl20;
   };
 }

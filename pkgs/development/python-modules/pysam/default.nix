@@ -7,7 +7,7 @@
 , cython
 , htslib
 , libdeflate
-, lzma
+, xz
 , pytest
 , samtools
 , zlib
@@ -33,7 +33,7 @@ buildPythonPackage rec {
     curl
     cython
     libdeflate
-    lzma
+    xz
     zlib
   ];
 
@@ -80,13 +80,19 @@ buildPythonPackage rec {
       --deselect tests/AlignmentFileHeader_test.py::TestHeaderBAM::test_header_content_is_as_expected \
       --deselect tests/AlignmentFileHeader_test.py::TestHeaderCRAM::test_dictionary_access_works \
       --deselect tests/AlignmentFileHeader_test.py::TestHeaderCRAM::test_header_content_is_as_expected \
-      --deselect tests/AlignmentFile_test.py::TestIO::testBAM2SAM \
-      --deselect tests/AlignmentFile_test.py::TestIO::testSAM2BAM \
-      --deselect tests/AlignmentFile_test.py::TestIO::testWriteUncompressedBAMFile \
       --deselect tests/AlignmentFile_test.py::TestDeNovoConstruction::testBAMWholeFile \
       --deselect tests/AlignmentFile_test.py::TestEmptyHeader::testEmptyHeader \
       --deselect tests/AlignmentFile_test.py::TestHeaderWithProgramOptions::testHeader \
+      --deselect tests/AlignmentFile_test.py::TestIO::testBAM2BAM \
+      --deselect tests/AlignmentFile_test.py::TestIO::testBAM2CRAM \
+      --deselect tests/AlignmentFile_test.py::TestIO::testBAM2SAM \
+      --deselect tests/AlignmentFile_test.py::TestIO::testFetchFromClosedFileObject \
+      --deselect tests/AlignmentFile_test.py::TestIO::testOpenFromFilename \
+      --deselect tests/AlignmentFile_test.py::TestIO::testSAM2BAM \
+      --deselect tests/AlignmentFile_test.py::TestIO::testWriteUncompressedBAMFile \
+      --deselect tests/AlignmentFile_test.py::TestIteratorRowAllBAM::testIterate \
       --deselect tests/StreamFiledescriptors_test.py::StreamTest::test_text_processing \
+      --deselect tests/compile_test.py::BAMTest::testCount \
       tests/
   '';
 

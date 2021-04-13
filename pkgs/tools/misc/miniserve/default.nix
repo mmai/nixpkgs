@@ -1,35 +1,40 @@
-{ stdenv
+{ lib
+, stdenv
 , rustPlatform
 , fetchFromGitHub
+, installShellFiles
 , pkg-config
 , zlib
+, libiconv
 , Security
 }:
 
 rustPlatform.buildRustPackage rec {
   pname = "miniserve";
-  version = "0.10.0";
+  version = "0.13.0";
 
   src = fetchFromGitHub {
     owner = "svenstaro";
     repo = "miniserve";
     rev = "v${version}";
-    sha256 = "01nsviw5nc5lb6z3j2yiymiwhiq719nwqpvqbyb5p65s98sph7yh";
+    sha256 = "sha256-1nXhAYvvvUQb0RcWidsRMQOhU8eXt7ngzodsMkYvqvg=";
   };
 
-  cargoSha256 = "098p4645air5402shqignc57zdm6755shahhby17nqv1s27gfinc";
+  cargoSha256 = "sha256-P5ukE7eXBRJMrc7+T9/TMq2uGs0AuZliHTtoqiZXNZw=";
 
-  RUSTC_BOOTSTRAP = 1;
+  nativeBuildInputs = [ installShellFiles pkg-config zlib ];
+  buildInputs = lib.optionals stdenv.isDarwin [ libiconv Security ];
 
-  nativeBuildInputs = [ pkg-config zlib ];
-  buildInputs = stdenv.lib.optionals stdenv.isDarwin [ Security ];
+  checkFlags = [ "--skip=cant_navigate_up_the_root" ];
 
-  # Remove after https://github.com/NixOS/nixpkgs/pull/97000 lands into master
-  preConfigure = stdenv.lib.optionalString stdenv.isDarwin ''
-    unset SDKROOT
+  postInstall = ''
+    installShellCompletion --cmd miniserve \
+      --bash <($out/bin/miniserve --print-completions bash) \
+      --fish <($out/bin/miniserve --print-completions fish) \
+      --zsh <($out/bin/miniserve --print-completions zsh)
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "For when you really just want to serve some files over HTTP right now!";
     homepage = "https://github.com/svenstaro/miniserve";
     license = with licenses; [ mit ];

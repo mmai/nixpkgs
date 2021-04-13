@@ -1,12 +1,12 @@
-{ stdenv, fetchurl, boost, fastjet, hepmc, lhapdf, rsync, zlib }:
+{ lib, stdenv, fetchurl, boost, fastjet, hepmc, lhapdf, rsync, zlib }:
 
 stdenv.mkDerivation rec {
   pname = "pythia";
-  version = "8.303";
+  version = "8.304";
 
   src = fetchurl {
     url = "http://home.thep.lu.se/~torbjorn/pythia8/pythia${builtins.replaceStrings ["."] [""] version}.tgz";
-    sha256 = "0gli6zf8931i7kyminppisc9d0q69xxnalvhld5fgnkh4q82nz6d";
+    sha256 = "18frx7xyvxnz57fxjncjyjzsk169h0jz6hxzjfpmwm3dzcc712fk";
   };
 
   buildInputs = [ boost fastjet hepmc zlib rsync lhapdf ];
@@ -18,7 +18,7 @@ stdenv.mkDerivation rec {
   configureFlags = [
     "--enable-shared"
     "--with-lhapdf6=${lhapdf}"
-  ] ++ (if stdenv.lib.versions.major hepmc.version == "3" then [
+  ] ++ (if lib.versions.major hepmc.version == "3" then [
     "--with-hepmc3=${hepmc}"
   ] else [
     "--with-hepmc2=${hepmc}"
@@ -28,9 +28,9 @@ stdenv.mkDerivation rec {
 
   meta = {
     description = "A program for the generation of high-energy physics events";
-    license     = stdenv.lib.licenses.gpl2;
+    license     = lib.licenses.gpl2;
     homepage    = "http://home.thep.lu.se/~torbjorn/Pythia.html";
-    platforms   = stdenv.lib.platforms.unix;
-    maintainers = with stdenv.lib.maintainers; [ veprbl ];
+    platforms   = lib.platforms.unix;
+    maintainers = with lib.maintainers; [ veprbl ];
   };
 }

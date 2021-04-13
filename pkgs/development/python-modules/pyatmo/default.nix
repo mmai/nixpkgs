@@ -12,17 +12,27 @@
 
 buildPythonPackage rec {
   pname = "pyatmo";
-  version = "4.1.0";
-  disabled = pythonOlder "3.5"; # uses type hints
+  version = "4.2.2";
+  disabled = pythonOlder "3.7";
 
   src = fetchFromGitHub {
     owner = "jabesq";
-    repo = "netatmo-api-python";
+    repo = "pyatmo";
     rev = "v${version}";
-    sha256 = "0x3xq6ni9rl5k3vi0ydqafdzvza785ycnlgyikgqbkppbh3j33ig";
+    sha256 = "sha256-3IxDDLa8KMHVkHAeTmdNVRPc5aKzF3VwL2kKnG8Fp7I=";
   };
 
-  propagatedBuildInputs = [ oauthlib requests requests_oauthlib ];
+  postPatch = ''
+    substituteInPlace setup.cfg \
+      --replace "oauthlib~=3.1" "oauthlib" \
+      --replace "requests~=2.24" "requests"
+  '';
+
+  propagatedBuildInputs = [
+    oauthlib
+    requests
+    requests_oauthlib
+  ];
 
   checkInputs = [
     freezegun

@@ -1,25 +1,25 @@
-{ stdenv, buildGoModule, fetchFromGitHub, installShellFiles }:
+{ lib, buildGoModule, fetchFromGitHub, installShellFiles }:
 
 buildGoModule rec {
   pname = "velero";
-  version = "1.5.1";
+  version = "1.5.4";
 
   src = fetchFromGitHub {
     rev = "v${version}";
     owner = "vmware-tanzu";
     repo = "velero";
-    sha256 = "1rmymwmglcia5j0c692g34hlffba1yqs2s0iyjpafma2zabrcnai";
+    sha256 = "sha256-YHBqIM3NV2L13w9WCzldUWmdBMec7ZndzYgGHblS8Dg=";
   };
 
   buildFlagsArray = ''
     -ldflags=
       -s -w
       -X github.com/vmware-tanzu/velero/pkg/buildinfo.Version=${version}
-      -X github.com/vmware-tanzu/velero/pkg/buildinfo.GitSHA=87d86a45a6ca66c6c942c7c7f08352e26809426c
+      -X github.com/vmware-tanzu/velero/pkg/buildinfo.GitSHA=456eb19668f8da603756353d9179b59b5a7bfa04
       -X github.com/vmware-tanzu/velero/pkg/buildinfo.GitTreeState=clean
   '';
 
-  vendorSha256 = "1izl7z689jf3i3wax7rfpk0jjly7nsi7vzasy1j9v5cwjy2d5z4v";
+  vendorSha256 = "sha256-m/zShJeclZ1k8Fr9faK2x1Mpwbwun674iMPJhMw/9Mc=";
 
   excludedPackages = [ "issue-template-gen" ];
 
@@ -27,12 +27,12 @@ buildGoModule rec {
 
   nativeBuildInputs = [ installShellFiles ];
   postInstall = ''
-    $out/bin/velero completion bash > helm.bash
-    $out/bin/velero completion zsh > helm.zsh
-    installShellCompletion helm.{bash,zsh}
+    $out/bin/velero completion bash > velero.bash
+    $out/bin/velero completion zsh > velero.zsh
+    installShellCompletion velero.{bash,zsh}
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description =
       "A utility for managing disaster recovery, specifically for your Kubernetes cluster resources and persistent volumes";
     homepage = "https://velero.io/";
@@ -40,6 +40,6 @@ buildGoModule rec {
       "https://github.com/vmware-tanzu/velero/releases/tag/v${version}";
     license = licenses.asl20;
     maintainers = [ maintainers.mbode maintainers.bryanasdev000 ];
-    platforms = platforms.linux;
+    platforms = platforms.linux ++ platforms.darwin;
   };
 }

@@ -30,27 +30,24 @@ let
 
 in stdenv.mkDerivation rec {
   pname = "obsidian";
-  version = "0.9.1";
+  version = "0.11.13";
 
   src = fetchurl {
     url =
-      "https://github.com/obsidianmd/obsidian-releases/releases/download/v${version}/obsidian-${version}.asar.gz";
-    sha256 = "1skilcqfawvvyj9dnacsmlls55cqq6a4hzz9is165cwkyab185c5";
+      "https://github.com/obsidianmd/obsidian-releases/releases/download/v${version}/obsidian-${version}.tar.gz";
+    sha256 = "0QL1rP37pmdIdGM9eHa7PfW1GVrvn2fX4bQPqQ8FOpI=";
   };
 
   nativeBuildInputs = [ makeWrapper graphicsmagick ];
-
-  unpackPhase = ''
-    gzip -dc $src > obsidian.asar
-  '';
 
   installPhase = ''
     mkdir -p $out/bin
 
     makeWrapper ${electron}/bin/electron $out/bin/obsidian \
-      --add-flags $out/share/electron/obsidian.asar
+      --add-flags $out/share/obsidian/app.asar
 
-    install -m 444 -D obsidian.asar $out/share/electron/obsidian.asar
+    install -m 444 -D resources/app.asar $out/share/obsidian/app.asar
+    install -m 444 -D resources/obsidian.asar $out/share/obsidian/obsidian.asar
 
     install -m 444 -D "${desktopItem}/share/applications/"* \
       -t $out/share/applications/
@@ -65,7 +62,7 @@ in stdenv.mkDerivation rec {
 
   meta = with lib; {
     description =
-      "Obsidian is a powerful knowledge base that works on top of a local folder of plain text Markdown files";
+      "A powerful knowledge base that works on top of a local folder of plain text Markdown files";
     homepage = "https://obsidian.md";
     license = licenses.obsidian;
     maintainers = with maintainers; [ conradmearns zaninime ];

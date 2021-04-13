@@ -1,4 +1,4 @@
-{ stdenv, fetchFromGitHub, meson, ninja, pkg-config, glib, systemd, boost, darwin
+{ lib, stdenv, fetchFromGitHub, meson, ninja, pkg-config, glib, systemd, boost, darwin
 # Inputs
 , curl, libmms, libnfs, liburing, samba
 # Archive support
@@ -15,7 +15,7 @@
 # Services
 , yajl
 # Client support
-, mpd_clientlib
+, libmpdclient
 # Tag support
 , libid3tag
 , nixosTests
@@ -24,12 +24,10 @@
 , python3Packages # for sphinx-build
 # For tests
 , gtest
-, fetchpatch # used to fetch an upstream patch fixing a failing test
 , zip
 }:
 
 let
-  lib = stdenv.lib;
   concatAttrVals = nameList: set: lib.concatMap (x: set.${x} or []) nameList;
 
   featureDependencies = {
@@ -72,7 +70,7 @@ let
     soundcloud    = [ curl yajl ];
     tidal         = [ curl yajl ];
     # Client support
-    libmpdclient  = [ mpd_clientlib ];
+    libmpdclient  = [ libmpdclient ];
     # Tag support
     id3tag        = [ libid3tag ];
     # Misc
@@ -116,13 +114,13 @@ let
 
     in stdenv.mkDerivation rec {
       pname = "mpd";
-      version = "0.22.1";
+      version = "0.22.6";
 
       src = fetchFromGitHub {
         owner  = "MusicPlayerDaemon";
         repo   = "MPD";
         rev    = "v${version}";
-        sha256 = "16cdmr5w1ikz4ih1nwxnynfdf8qiz4k8bak1sazkkhyavzl3jrl4";
+        sha256 = "sha256-Xu+MxMxR5u++R3lZHe6UQ+mEmRnWbN6173ZX39KS1A8=";
       };
 
       buildInputs = [
@@ -151,11 +149,10 @@ let
 
       doCheck = true;
 
-      enableParallelBuilding = true;
-
       mesonAutoFeatures = "disabled";
 
-      outputs = [ "out" "doc" "man" ];
+      outputs = [ "out" "doc" ]
+        ++ lib.optional (builtins.elem "documentation" features_) "man";
 
       mesonFlags = [
         "-Dtest=true"
@@ -171,10 +168,10 @@ let
 
       passthru.tests.nixos = nixosTests.mpd;
 
-      meta = with stdenv.lib; {
+      meta = with lib; {
         description = "A flexible, powerful daemon for playing music";
         homepage    = "https://www.musicpd.org/";
-        license     = licenses.gpl2;
+        license     = licenses.gpl2Only;
         maintainers = with maintainers; [ astsmtl ehmry fpletz tobim ];
         platforms   = platforms.unix;
 
@@ -190,7 +187,7 @@ in
   mpd = run { };
   mpd-small = run { features = [
     "webdav" "curl" "mms" "bzip2" "zzip"
-    "audiofile" "faad" "flac" "gme" "mad"
+    "audiofile" "faad" "flac" "gme"
     "mpg123" "opus" "vorbis" "vorbisenc"
     "lame" "libsamplerate" "shout"
     "libmpdclient" "id3tag" "expat" "pcre"

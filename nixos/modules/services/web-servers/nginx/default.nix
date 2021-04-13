@@ -27,6 +27,33 @@ let
   ) cfg.virtualHosts;
   enableIPv6 = config.networking.enableIPv6;
 
+  defaultFastcgiParams = {
+    SCRIPT_FILENAME   = "$document_root$fastcgi_script_name";
+    QUERY_STRING      = "$query_string";
+    REQUEST_METHOD    = "$request_method";
+    CONTENT_TYPE      = "$content_type";
+    CONTENT_LENGTH    = "$content_length";
+
+    SCRIPT_NAME       = "$fastcgi_script_name";
+    REQUEST_URI       = "$request_uri";
+    DOCUMENT_URI      = "$document_uri";
+    DOCUMENT_ROOT     = "$document_root";
+    SERVER_PROTOCOL   = "$server_protocol";
+    REQUEST_SCHEME    = "$scheme";
+    HTTPS             = "$https if_not_empty";
+
+    GATEWAY_INTERFACE = "CGI/1.1";
+    SERVER_SOFTWARE   = "nginx/$nginx_version";
+
+    REMOTE_ADDR       = "$remote_addr";
+    REMOTE_PORT       = "$remote_port";
+    SERVER_ADDR       = "$server_addr";
+    SERVER_PORT       = "$server_port";
+    SERVER_NAME       = "$server_name";
+
+    REDIRECT_STATUS   = "200";
+  };
+
   recommendedProxyConfig = pkgs.writeText "nginx-recommended-proxy-headers.conf" ''
     proxy_set_header        Host $host;
     proxy_set_header        X-Real-IP $remote_addr;
@@ -52,6 +79,8 @@ let
       include ${pkgs.mailcap}/etc/nginx/mime.types;
       include ${cfg.package}/conf/fastcgi.conf;
       include ${cfg.package}/conf/uwsgi_params;
+
+      default_type application/octet-stream;
   '';
 
   configFile = pkgs.writers.writeNginxConfig "nginx.conf" ''
@@ -86,7 +115,7 @@ let
       ''}
 
       ssl_protocols ${cfg.sslProtocols};
-      ssl_ciphers ${cfg.sslCiphers};
+      ${optionalString (cfg.sslCiphers != null) "ssl_ciphers ${cfg.sslCiphers};"}
       ${optionalString (cfg.sslDhparam != null) "ssl_dhparam ${cfg.sslDhparam};"}
 
       ${optionalString (cfg.recommendedTlsSettings) ''
@@ -125,10 +154,10 @@ let
 
       ${optionalString (cfg.recommendedProxySettings) ''
         proxy_redirect          off;
-        proxy_connect_timeout   90;
-        proxy_send_timeout      90;
-        proxy_read_timeout      90;
-        proxy_http_version      1.0;
+        proxy_connect_timeout   60;
+        proxy_send_timeout      60;
+        proxy_read_timeout      60;
+        proxy_http_version      1.1;
         include ${recommendedProxyConfig};
       ''}
 
@@ -178,6 +207,12 @@ let
       ${commonHttpConfig}
       ${cfg.httpConfig}
     }''}
+
+    ${optionalString (cfg.streamConfig != "") ''
+    stream {
+      ${cfg.streamConfig}
+    }
+    ''}
 
     ${cfg.appendConfig}
   '';
@@ -261,10 +296,7 @@ let
             ssl_trusted_certificate ${vhost.sslTrustedCertificate};
           ''}
 
-          ${optionalString (vhost.basicAuthFile != null || vhost.basicAuth != {}) ''
-            auth_basic secured;
-            auth_basic_user_file ${if vhost.basicAuthFile != null then vhost.basicAuthFile else mkHtpasswd vhostName vhost.basicAuth};
-          ''}
+          ${mkBasicAuth vhostName vhost}
 
           ${mkLocations vhost.locations}
 
@@ -286,6 +318,10 @@ let
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $connection_upgrade;
       ''}
+      ${concatStringsSep "\n"
+        (mapAttrsToList (n: v: ''fastcgi_param ${n} "${v}";'')
+          (optionalAttrs (config.fastcgiParams != {})
+            (defaultFastcgiParams // config.fastcgiParams)))}
       ${optionalString (config.index != null) "index ${config.index};"}
       ${optionalString (config.tryFiles != null) "try_files ${config.tryFiles};"}
       ${optionalString (config.root != null) "root ${config.root};"}
@@ -293,9 +329,19 @@ let
       ${optionalString (config.return != null) "return ${config.return};"}
       ${config.extraConfig}
       ${optionalString (config.proxyPass != null && cfg.recommendedProxySettings) "include ${recommendedProxyConfig};"}
+      ${mkBasicAuth "sublocation" config}
     }
   '') (sortProperties (mapAttrsToList (k: v: v // { location = k; }) locations)));
-  mkHtpasswd = vhostName: authDef: pkgs.writeText "${vhostName}.htpasswd" (
+
+  mkBasicAuth = name: zone: optionalString (zone.basicAuthFile != null || zone.basicAuth != {}) (let
+    auth_file = if zone.basicAuthFile != null
+      then zone.basicAuthFile
+      else mkHtpasswd name zone.basicAuth;
+  in ''
+    auth_basic secured;
+    auth_basic_user_file ${auth_file};
+  '');
+  mkHtpasswd = name: authDef: pkgs.writeText "${name}.htpasswd" (
     concatStringsSep "\n" (mapAttrsToList (user: password: ''
       ${user}:{PLAIN}${password}
     '') authDef)
@@ -351,6 +397,9 @@ in
         default = pkgs.nginxStable;
         defaultText = "pkgs.nginxStable";
         type = types.package;
+        apply = p: p.override {
+          modules = p.modules ++ cfg.additionalModules;
+        };
         description = "
           Nginx package to use. This defaults to the stable version. Note
           that the nginx team recommends to use the mainline version which
@@ -358,8 +407,20 @@ in
         ";
       };
 
+      additionalModules = mkOption {
+        default = [];
+        type = types.listOf (types.attrsOf types.anything);
+        example = literalExample "[ pkgs.nginxModules.brotli ]";
+        description = ''
+          Additional <link xlink:href="https://www.nginx.com/resources/wiki/modules/">third-party nginx modules</link>
+          to install. Packaged modules are available in
+          <literal>pkgs.nginxModules</literal>.
+        '';
+      };
+
       logError = mkOption {
         default = "stderr";
+        type = types.str;
         description = "
           Configures logging.
           The first parameter defines a file that will store the log. The
@@ -383,13 +444,24 @@ in
       };
 
       config = mkOption {
+        type = types.str;
         default = "";
-        description = "
-          Verbatim nginx.conf configuration.
-          This is mutually exclusive with the structured configuration
-          via virtualHosts and the recommendedXyzSettings configuration
-          options. See appendConfig for appending to the generated http block.
-        ";
+        description = ''
+          Verbatim <filename>nginx.conf</filename> configuration.
+          This is mutually exclusive to any other config option for
+          <filename>nginx.conf</filename> except for
+          <itemizedlist>
+          <listitem><para><xref linkend="opt-services.nginx.appendConfig" />
+          </para></listitem>
+          <listitem><para><xref linkend="opt-services.nginx.httpConfig" />
+          </para></listitem>
+          <listitem><para><xref linkend="opt-services.nginx.logError" />
+          </para></listitem>
+          </itemizedlist>
+
+          If additional verbatim config in addition to other options is needed,
+          <xref linkend="opt-services.nginx.appendConfig" /> should be used instead.
+        '';
       };
 
       appendConfig = mkOption {
@@ -431,6 +503,21 @@ in
           This is mutually exclusive with the structured configuration
           via virtualHosts and the recommendedXyzSettings configuration
           options. See appendHttpConfig for appending to the generated http block.
+        ";
+      };
+
+      streamConfig = mkOption {
+        type = types.lines;
+        default = "";
+        example = ''
+          server {
+            listen 127.0.0.1:53 udp reuseport;
+            proxy_timeout 20s;
+            proxy_pass 192.168.0.1:53535;
+          }
+        '';
+        description = "
+          Configuration lines to be set inside the stream block.
         ";
       };
 
@@ -487,7 +574,7 @@ in
       };
 
       sslCiphers = mkOption {
-        type = types.str;
+        type = types.nullOr types.str;
         # Keep in sync with https://ssl-config.mozilla.org/#server=nginx&config=intermediate
         default = "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384";
         description = "Ciphers to choose from when negotiating TLS handshakes.";
@@ -693,6 +780,8 @@ in
         ${cfg.preStart}
         ${execCommand} -t
       '';
+
+      startLimitIntervalSec = 60;
       serviceConfig = {
         ExecStart = execCommand;
         ExecReload = [
@@ -701,7 +790,6 @@ in
         ];
         Restart = "always";
         RestartSec = "10s";
-        StartLimitInterval = "1min";
         # User and group
         User = cfg.user;
         Group = cfg.group;
@@ -730,7 +818,7 @@ in
         ProtectControlGroups = true;
         RestrictAddressFamilies = [ "AF_UNIX" "AF_INET" "AF_INET6" ];
         LockPersonality = true;
-        MemoryDenyWriteExecute = !(builtins.any (mod: (mod.allowMemoryWriteExecute or false)) pkgs.nginx.modules);
+        MemoryDenyWriteExecute = !(builtins.any (mod: (mod.allowMemoryWriteExecute or false)) (optionals (cfg.package ? modules) cfg.package.modules));
         RestrictRealtime = true;
         RestrictSUIDSGID = true;
         PrivateMounts = true;

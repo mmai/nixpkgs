@@ -1,4 +1,4 @@
-{ stdenv
+{ lib, stdenv
 , fetchpatch
 , substituteAll
 , fetchurl
@@ -9,6 +9,7 @@
 , gperf
 , dejavu_fonts
 , autoreconfHook
+, CoreFoundation
 }:
 
 stdenv.mkDerivation rec {
@@ -73,7 +74,7 @@ stdenv.mkDerivation rec {
 
   buildInputs = [
     expat
-  ];
+  ] ++ lib.optional stdenv.isDarwin CoreFoundation;
 
   propagatedBuildInputs = [
     freetype
@@ -83,10 +84,9 @@ stdenv.mkDerivation rec {
     "--sysconfdir=/etc"
     "--with-arch=${stdenv.hostPlatform.parsed.cpu.name}"
     "--with-cache-dir=/var/cache/fontconfig" # otherwise the fallback is in $out/
-    "--disable-docs"
     # just <1MB; this is what you get when loading config fails for some reason
     "--with-default-fonts=${dejavu_fonts.minimal}"
-  ] ++ stdenv.lib.optionals (stdenv.hostPlatform != stdenv.buildPlatform) [
+  ] ++ lib.optionals (stdenv.hostPlatform != stdenv.buildPlatform) [
     "--with-arch=${stdenv.hostPlatform.parsed.cpu.name}"
   ];
 
@@ -108,9 +108,12 @@ stdenv.mkDerivation rec {
       ${./make-fonts-conf.xsl} $out/etc/fonts/fonts.conf \
       > fonts.conf.tmp
     mv fonts.conf.tmp $out/etc/fonts/fonts.conf
+    # We don't keep section 3 of the manpages, as they are quite large and
+    # probably not so useful.
+    rm -r $bin/share/man/man3
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A library for font customization and configuration";
     homepage = "http://fontconfig.org/";
     license = licenses.bsd2; # custom but very bsd-like

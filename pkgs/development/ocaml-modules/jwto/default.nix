@@ -1,9 +1,12 @@
 { lib, buildDunePackage, fetchFromGitHub, alcotest, cryptokit, fmt, yojson
+, ppxlib
 , base64, re, ppx_deriving }:
 
 buildDunePackage rec {
   pname = "jwto";
   version = "0.3.0";
+
+  useDune2 = true;
 
   minimumOCamlVersion = "4.05";
 
@@ -13,6 +16,8 @@ buildDunePackage rec {
     rev = version;
     sha256 = "1p799zk8j9c0002xzi2x7ndj1bzqf14744ampcqndrjnsi7mq71s";
   };
+
+  buildInputs = [ ppxlib ];
 
   propagatedBuildInputs =
     [ cryptokit fmt yojson base64 re ppx_deriving ];

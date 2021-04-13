@@ -18,7 +18,12 @@ let
     else toString value;
 
   # The main PostgreSQL configuration file.
-  configFile = pkgs.writeText "postgresql.conf" (concatStringsSep "\n" (mapAttrsToList (n: v: "${n} = ${toStr v}") cfg.settings));
+  configFile = pkgs.writeTextDir "postgresql.conf" (concatStringsSep "\n" (mapAttrsToList (n: v: "${n} = ${toStr v}") cfg.settings));
+
+  configFileCheck = pkgs.runCommand "postgresql-configfile-check" {} ''
+    ${cfg.package}/bin/postgres -D${configFile} -C config_file >/dev/null
+    touch $out
+  '';
 
   groupAccessAvailable = versionAtLeast postgresql.version "11.0";
 
@@ -53,6 +58,12 @@ in
         '';
       };
 
+      checkConfig = mkOption {
+        type = types.bool;
+        default = true;
+        description = "Check the syntax of the configuration file at compile time";
+      };
+
       dataDir = mkOption {
         type = types.path;
         defaultText = "/var/lib/postgresql/\${config.services.postgresql.package.psqlSchema}";
@@ -69,11 +80,16 @@ in
         type = types.lines;
         default = "";
         description = ''
-          Defines how users authenticate themselves to the server. By
-          default, "trust" access to local users will always be granted
-          along with any other custom options. If you do not want this,
-          set this option using "lib.mkForce" to override this
-          behaviour.
+          Defines how users authenticate themselves to the server. See the
+          <link xlink:href="https://www.postgresql.org/docs/current/auth-pg-hba-conf.html">
+          PostgreSQL documentation for pg_hba.conf</link>
+          for details on the expected format of this option. By default,
+          peer based authentication will be used for users connecting
+          via the Unix socket, and md5 password authentication will be
+          used for users connecting via TCP. Any added rules will be
+          inserted above the default rules. If you'd like to replace the
+          default rules entirely, you can use <function>lib.mkForce</function> in your
+          module.
         '';
       };
 
@@ -147,7 +163,7 @@ in
               '';
               example = literalExample ''
                 {
-                  "DATABASE nextcloud" = "ALL PRIVILEGES";
+                  "DATABASE \"nextcloud\"" = "ALL PRIVILEGES";
                   "ALL TABLES IN SCHEMA public" = "ALL PRIVILEGES";
                 }
               '';
@@ -309,6 +325,8 @@ in
      "/share/postgresql"
     ];
 
+    system.extraDependencies = lib.optional (cfg.checkConfig && pkgs.stdenv.hostPlatform == pkgs.stdenv.buildPlatform) configFileCheck;
+
     systemd.services.postgresql =
       { description = "PostgreSQL Server";
 
@@ -332,7 +350,7 @@ in
               touch "${cfg.dataDir}/.first_startup"
             fi
 
-            ln -sfn "${configFile}" "${cfg.dataDir}/postgresql.conf"
+            ln -sfn "${configFile}/postgresql.conf" "${cfg.dataDir}/postgresql.conf"
             ${optionalString (cfg.recoveryConfig != null) ''
               ln -sfn "${pkgs.writeText "recovery.conf" cfg.recoveryConfig}" \
                 "${cfg.dataDir}/recovery.conf"

@@ -1,30 +1,26 @@
-{ stdenv, fetchurl, unzip }:
+{ lib, stdenv, fetchurl, unzip }:
 
 let
-  version = "1.5.4";
+  version = "1.7.0";
 
   sources = let
     base = "https://releases.hashicorp.com/vault/${version}";
   in {
     x86_64-linux = fetchurl {
       url = "${base}/vault_${version}_linux_amd64.zip";
-      sha256 = "1cyk9v70w0px2sxg8dichqgk38br9hc4kdl37jk57ci5gdl6w5ah";
+      sha256 = "0d8wqxqilv1jdf4dl7w2jp3lfh0w0rawidmhjlj3ykpg6l3gblma";
     };
     i686-linux = fetchurl {
       url = "${base}/vault_${version}_linux_386.zip";
-      sha256 = "1n6hmhd4g2c6zzbimslxpghma5dyqwb96w60srbf9gn2vrimg4l4";
+      sha256 = "128r0phm5i1cpayz0ia8qsmnk1ia3qylidy9f8iwk3l8r834s4yd";
     };
     x86_64-darwin = fetchurl {
       url = "${base}/vault_${version}_darwin_amd64.zip";
-      sha256 = "05d5m8kdwl6mcx3swkasm5zcmddlyl6m9lwj26vbg9pllx9zxvqm";
-    };
-    i686-darwin = fetchurl {
-      url = "${base}/vault_${version}_darwin_386.zip";
-      sha256 = "109hisdwd58za541qhw61bscfrh3szzfn8vdmr4c7nh5praiqznb";
+      sha256 = "01vxjv95his8jqin2cwcw691wdwn6p876rp021bmvr6diw6clkrp";
     };
     aarch64-linux = fetchurl {
       url = "${base}/vault_${version}_linux_arm64.zip";
-      sha256 = "0q8icl5ncvixrdmsd2ilzvpa6c1pswa6zgh3vccsj7sg8mxprjmr";
+      sha256 = "0ahdv14fz7ybl11b61z7j13nbjd6hp6fcpc5bk6y8lh4qj8x0pzg";
     };
   };
 
@@ -39,16 +35,20 @@ in stdenv.mkDerivation {
   sourceRoot = ".";
 
   installPhase = ''
+    runHook preInstall
+
     mkdir -p $out/bin $out/share/bash-completion/completions
     mv vault $out/bin
     echo "complete -C $out/bin/vault vault" > $out/share/bash-completion/completions/vault
+
+    runHook postInstall
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://www.vaultproject.io";
     description = "A tool for managing secrets, this binary includes the UI";
-    platforms = [ "x86_64-linux" "i686-linux" "x86_64-darwin" "aarch64-linux" "i686-darwin" ];
+    platforms = [ "x86_64-linux" "i686-linux" "x86_64-darwin" "aarch64-linux" ];
     license = licenses.mpl20;
-    maintainers = with maintainers; [ offline psyanticy mkaito ];
+    maintainers = with maintainers; [ offline psyanticy mkaito Chili-Man ];
   };
 }

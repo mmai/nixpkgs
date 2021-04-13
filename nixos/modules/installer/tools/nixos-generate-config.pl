@@ -183,6 +183,11 @@ sub pciCheck {
         push @imports, "(modulesPath + \"/hardware/network/broadcom-43xx.nix\")";
     }
 
+    # In case this is a virtio scsi device, we need to explicitly make this available.
+    if ($vendor eq "0x1af4" && $device eq "0x1004") {
+        push @initrdAvailableKernelModules, "virtio_scsi";
+    }
+
     # Can't rely on $module here, since the module may not be loaded
     # due to missing firmware.  Ideally we would check modules.pcimap
     # here.
@@ -580,6 +585,22 @@ EOF
     return $config;
 }
 
+sub generateXserverConfig {
+    my $xserverEnabled = "@xserverEnabled@";
+
+    my $config = "";
+    if ($xserverEnabled eq "1") {
+        $config = <<EOF;
+  # Enable the X11 windowing system.
+  services.xserver.enable = true;
+EOF
+    } else {
+        $config = <<EOF;
+  # Enable the X11 windowing system.
+  # services.xserver.enable = true;
+EOF
+    }
+}
 
 if ($showHardwareConfig) {
     print STDOUT $hwConfig;
@@ -624,6 +645,12 @@ EOF
         }
 
         my $networkingDhcpConfig = generateNetworkingDhcpConfig();
+
+        my $xserverConfig = generateXserverConfig();
+
+        (my $desktopConfiguration = <<EOF)=~s/^/  /gm;
+@desktopConfiguration@
+EOF
 
         write_file($fn, <<EOF);
 @configuration@

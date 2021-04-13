@@ -1,5 +1,6 @@
 { lib, stdenv, fetch, cmake, python3, libcxxabi, fixDarwinDylibNames, version
-, enableShared ? ! stdenv.hostPlatform.isMusl }:
+, enableShared ? !stdenv.hostPlatform.isStatic
+}:
 
 stdenv.mkDerivation {
   pname = "libc++";
@@ -12,7 +13,7 @@ stdenv.mkDerivation {
     export LIBCXXABI_INCLUDE_DIR="$PWD/$(ls -d libcxxabi-${version}*)/include"
   '';
 
-  patches = stdenv.lib.optional stdenv.hostPlatform.isMusl ../../libcxx-0001-musl-hacks.patch;
+  patches = lib.optional stdenv.hostPlatform.isMusl ../../libcxx-0001-musl-hacks.patch;
 
   prePatch = ''
     substituteInPlace lib/CMakeLists.txt --replace "/usr/lib/libc++" "\''${LIBCXX_LIBCXXABI_LIB_PATH}/libc++"
@@ -24,18 +25,19 @@ stdenv.mkDerivation {
   '' + lib.optionalString stdenv.hostPlatform.isMusl ''
     patchShebangs utils/cat_files.py
   '';
-  nativeBuildInputs = [ cmake ] ++ stdenv.lib.optional stdenv.hostPlatform.isMusl python3;
 
-  buildInputs = [ libcxxabi ] ++ lib.optional stdenv.isDarwin fixDarwinDylibNames;
+  nativeBuildInputs = [ cmake ]
+    ++ lib.optional stdenv.hostPlatform.isMusl python3
+    ++ lib.optional stdenv.hostPlatform.isDarwin fixDarwinDylibNames;
+
+  buildInputs = [ libcxxabi ] ;
 
   cmakeFlags = [
     "-DLIBCXX_LIBCXXABI_LIB_PATH=${libcxxabi}/lib"
     "-DLIBCXX_LIBCPPABI_VERSION=2"
     "-DLIBCXX_CXX_ABI=libcxxabi"
-  ] ++ stdenv.lib.optional stdenv.hostPlatform.isMusl "-DLIBCXX_HAS_MUSL_LIBC=1"
-  ++ stdenv.lib.optional (!enableShared) "-DLIBCXX_ENABLE_SHARED=OFF" ;
-
-  enableParallelBuilding = true;
+  ] ++ lib.optional stdenv.hostPlatform.isMusl "-DLIBCXX_HAS_MUSL_LIBC=1"
+  ++ lib.optional (!enableShared) "-DLIBCXX_ENABLE_SHARED=OFF" ;
 
   passthru = {
     isLLVM = true;
@@ -44,7 +46,7 @@ stdenv.mkDerivation {
   meta = {
     homepage = "https://libcxx.llvm.org/";
     description = "A new implementation of the C++ standard library, targeting C++11";
-    license = with stdenv.lib.licenses; [ ncsa mit ];
-    platforms = stdenv.lib.platforms.unix;
+    license = with lib.licenses; [ ncsa mit ];
+    platforms = lib.platforms.unix;
   };
 }

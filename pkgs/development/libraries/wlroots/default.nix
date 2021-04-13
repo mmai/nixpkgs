@@ -1,18 +1,18 @@
-{ stdenv, fetchFromGitHub, meson, ninja, pkg-config, wayland
+{ lib, stdenv, fetchFromGitHub, meson, ninja, pkg-config, wayland
 , libGL, wayland-protocols, libinput, libxkbcommon, pixman
 , xcbutilwm, libX11, libcap, xcbutilimage, xcbutilerrors, mesa
-, libpng, ffmpeg
+, libpng, ffmpeg, libuuid, xcbutilrenderutil, xwayland
 }:
 
 stdenv.mkDerivation rec {
   pname = "wlroots";
-  version = "0.11.0";
+  version = "0.13.0";
 
   src = fetchFromGitHub {
     owner = "swaywm";
     repo = "wlroots";
     rev = version;
-    sha256 = "08d5d52m8wy3imfc6mdxpx8swhh2k4s1gmfaykg02j59z84awc6p";
+    sha256 = "01plhbnsp5yg18arz0v8fr0pr9l4w4pdzwkg9px486qdvb3s1vgy";
   };
 
   # $out for the library and $examples for the example programs (in examples):
@@ -23,10 +23,10 @@ stdenv.mkDerivation rec {
   buildInputs = [
     libGL wayland wayland-protocols libinput libxkbcommon pixman
     xcbutilwm libX11 libcap xcbutilimage xcbutilerrors mesa
-    libpng ffmpeg
+    libpng ffmpeg libuuid xcbutilrenderutil xwayland
   ];
 
-  mesonFlags = [ "-Dlogind-provider=systemd" ];
+  mesonFlags = [ "-Dlogind-provider=systemd" "-Dlibseat=disabled" ];
 
   postFixup = ''
     # Install ALL example programs to $examples:
@@ -40,7 +40,7 @@ stdenv.mkDerivation rec {
     done
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A modular Wayland compositor library";
     longDescription = ''
       Pluggable, composable, unopinionated modules for building a Wayland
@@ -50,6 +50,6 @@ stdenv.mkDerivation rec {
     changelog = "https://github.com/swaywm/wlroots/releases/tag/${version}";
     license     = licenses.mit;
     platforms   = platforms.linux;
-    maintainers = with maintainers; [ primeos ];
+    maintainers = with maintainers; [ primeos synthetica ];
   };
 }

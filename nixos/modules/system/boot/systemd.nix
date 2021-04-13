@@ -84,6 +84,7 @@ let
       # Kernel module loading.
       "systemd-modules-load.service"
       "kmod-static-nodes.service"
+      "modprobe@.service"
 
       # Filesystems.
       "systemd-fsck@.service"
@@ -175,8 +176,10 @@ let
       "timers.target.wants"
     ];
 
-  upstreamUserUnits =
-    [ "basic.target"
+    upstreamUserUnits = [
+      "app.slice"
+      "background.slice"
+      "basic.target"
       "bluetooth.target"
       "default.target"
       "exit.target"
@@ -184,6 +187,7 @@ let
       "graphical-session.target"
       "paths.target"
       "printer.target"
+      "session.slice"
       "shutdown.target"
       "smartcard.target"
       "sockets.target"
@@ -193,6 +197,7 @@ let
       "systemd-tmpfiles-clean.timer"
       "systemd-tmpfiles-setup.service"
       "timers.target"
+      "xdg-desktop-autostart.target"
     ];
 
   makeJobScript = name: text:
@@ -243,6 +248,8 @@ let
           OnFailure = toString config.onFailure; }
         // optionalAttrs (options.startLimitIntervalSec.isDefined) {
           StartLimitIntervalSec = toString config.startLimitIntervalSec;
+        } // optionalAttrs (options.startLimitBurst.isDefined) {
+          StartLimitBurst = toString config.startLimitBurst;
         };
     };
   };
@@ -261,7 +268,7 @@ let
         }
         (mkIf (config.preStart != "")
           { serviceConfig.ExecStartPre =
-              makeJobScript "${name}-pre-start" config.preStart;
+              [ (makeJobScript "${name}-pre-start" config.preStart) ];
           })
         (mkIf (config.script != "")
           { serviceConfig.ExecStart =
@@ -269,7 +276,7 @@ let
           })
         (mkIf (config.postStart != "")
           { serviceConfig.ExecStartPost =
-              makeJobScript "${name}-post-start" config.postStart;
+              [ (makeJobScript "${name}-post-start" config.postStart) ];
           })
         (mkIf (config.reload != "")
           { serviceConfig.ExecReload =
@@ -545,6 +552,14 @@ in
       type = types.bool;
       description = ''
         Whether to enable cgroup accounting.
+      '';
+    };
+
+    systemd.enableUnifiedCgroupHierarchy = mkOption {
+      default = true;
+      type = types.bool;
+      description = ''
+        Whether to enable the unified cgroup hierarchy (cgroupsv2).
       '';
     };
 
@@ -884,14 +899,25 @@ in
 
   config = {
 
-    warnings = concatLists (mapAttrsToList (name: service:
-      let
-        type = service.serviceConfig.Type or "";
-        restart = service.serviceConfig.Restart or "no";
-      in optional
-      (type == "oneshot" && (restart == "always" || restart == "on-success"))
-      "Service '${name}.service' with 'Type=oneshot' cannot have 'Restart=always' or 'Restart=on-success'")
-      cfg.services);
+    warnings = concatLists (
+      mapAttrsToList
+        (name: service:
+          let
+            type = service.serviceConfig.Type or "";
+            restart = service.serviceConfig.Restart or "no";
+            hasDeprecated = builtins.hasAttr "StartLimitInterval" service.serviceConfig;
+          in
+            concatLists [
+              (optional (type == "oneshot" && (restart == "always" || restart == "on-success"))
+                "Service '${name}.service' with 'Type=oneshot' cannot have 'Restart=always' or 'Restart=on-success'"
+              )
+              (optional hasDeprecated
+                "Service '${name}.service' uses the attribute 'StartLimitInterval' in the Service section, which is deprecated. See https://github.com/NixOS/nixpkgs/issues/45786."
+              )
+            ]
+        )
+        cfg.services
+    );
 
     system.build.units = cfg.units;
 
@@ -1162,9 +1188,13 @@ in
     systemd.services.systemd-remount-fs.unitConfig.ConditionVirtualization = "!container";
     systemd.services.systemd-random-seed.unitConfig.ConditionVirtualization = "!container";
 
-    boot.kernel.sysctl = mkIf (!cfg.coredump.enable) {
-      "kernel.core_pattern" = "core";
-    };
+    boot.kernel.sysctl."kernel.core_pattern" = mkIf (!cfg.coredump.enable) "core";
+
+    # Increase numeric PID range (set directly instead of copying a one-line file from systemd)
+    # https://github.com/systemd/systemd/pull/12226
+    boot.kernel.sysctl."kernel.pid_max" = mkIf pkgs.stdenv.is64bit (lib.mkDefault 4194304);
+
+    boot.kernelParams = optional (!cfg.enableUnifiedCgroupHierarchy) "systemd.unified_cgroup_hierarchy=0";
   };
 
   # FIXME: Remove these eventually.

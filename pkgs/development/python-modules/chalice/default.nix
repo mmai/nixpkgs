@@ -22,11 +22,11 @@
 
 buildPythonPackage rec {
   pname = "chalice";
-  version = "1.21.1";
+  version = "1.21.9";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "562218c5d257607fba3440e0a1d09bdac81a11536c432ad2af1e2d46f1735df4";
+    sha256 = "312f88838c8ea4b4ac79dce0e5b4ba3125130ca66ea99a4694f535501dca95e3";
   };
 
   checkInputs = [ watchdog pytest hypothesis mock ];
@@ -52,10 +52,7 @@ buildPythonPackage rec {
   postPatch = ''
     sed -i setup.py -e "/pip>=/c\'pip',"
     substituteInPlace setup.py \
-      --replace 'pip>=9,<=19.4' 'pip' \
-      --replace 'typing==3.6.4' 'typing' \
-      --replace 'attrs==17.4.0' 'attrs' \
-      --replace 'click>=6.6,<7.0' 'click'
+      --replace 'typing==3.6.4' 'typing'
   '';
 
   checkPhase = ''

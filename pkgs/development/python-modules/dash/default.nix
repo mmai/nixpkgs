@@ -16,13 +16,13 @@
 
 buildPythonPackage rec {
   pname = "dash";
-  version = "1.16.2";
+  version = "1.19.0";
 
   src = fetchFromGitHub {
     owner = "plotly";
     repo = pname;
     rev = "v${version}";
-    sha256 = "1krhwxlz8kpaklf5ii3h339id6c3139xzxxkq7mvvag330j6nbgg";
+    sha256 = "067ipkp186h26j7whfid8hjf6cwjmw2b5jp6fvvg280j7q9bjsa9";
   };
 
   propagatedBuildInputs = [
@@ -43,7 +43,7 @@ buildPythonPackage rec {
   ];
 
   checkPhase = ''
-    pytest tests/unit/test_{configs,fingerprint,import,resources}.py \
+    pytest tests/unit/test_{configs,fingerprint,resources}.py \
       tests/unit/dash/
   '';
 

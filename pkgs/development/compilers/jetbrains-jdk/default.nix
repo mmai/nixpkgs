@@ -1,16 +1,16 @@
-{ stdenv, openjdk11, fetchFromGitHub, jetbrains }:
+{ lib, openjdk11, fetchFromGitHub, jetbrains }:
 
 openjdk11.overrideAttrs (oldAttrs: rec {
   pname = "jetbrains-jdk";
-  version = "11.0.7-b64";
+  version = "11.0.10-b37";
   src = fetchFromGitHub {
     owner = "JetBrains";
     repo = "JetBrainsRuntime";
-    rev = "jb${stdenv.lib.replaceStrings ["."] ["_"] version}";
-    sha256 = "1gxqi6dkyriv9j29ppan638w1ns2g9m4q1sq7arf9kwqr05zim90";
+    rev = "jb${lib.replaceStrings ["."] ["_"] version}";
+    sha256 = "0bcvwnwi29z000b1bk5dhfkd33xfp9899zc3idzifdwl7q42zi02";
   };
   patches = [];
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "An OpenJDK fork to better support Jetbrains's products.";
     longDescription = ''
      JetBrains Runtime is a runtime environment for running IntelliJ Platform

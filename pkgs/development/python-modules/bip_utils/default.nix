@@ -8,7 +8,7 @@
 
 buildPythonPackage rec {
   pname = "bip_utils";
-  version = "1.5.0";
+  version = "1.7.0";
 
   disabled = pythonOlder "3.6";
 
@@ -16,7 +16,7 @@ buildPythonPackage rec {
     owner = "ebellocchia";
     repo = pname;
     rev = "v${version}";
-    sha256 = "06ls1lara7sklqw6wrw5d3wpxwgyv6paxwjp37x7b3kfskm14cmd";
+    sha256 = "1dj0c9sj0c4dkdf7rbz3s1z5kfzw22hpncm4bnwqigjzi6nrk81z";
   };
 
   propagatedBuildInputs = [ ecdsa pysha3 ];

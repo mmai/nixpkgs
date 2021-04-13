@@ -398,6 +398,24 @@ in
       '';
     };
 
+    networking.fqdn = mkOption {
+      readOnly = true;
+      type = types.str;
+      default = if (cfg.hostName != "" && cfg.domain != null)
+        then "${cfg.hostName}.${cfg.domain}"
+        else throw ''
+          The FQDN is required but cannot be determined. Please make sure that
+          both networking.hostName and networking.domain are set properly.
+        '';
+      defaultText = literalExample ''''${networking.hostName}.''${networking.domain}'';
+      description = ''
+        The fully qualified domain name (FQDN) of this host. It is the result
+        of combining networking.hostName and networking.domain. Using this
+        option will result in an evaluation error if the hostname is empty or
+        no domain is specified.
+      '';
+    };
+
     networking.hostId = mkOption {
       default = null;
       example = "4e98920d";
@@ -1062,7 +1080,6 @@ in
       ];
 
     boot.kernelModules = [ ]
-      ++ optional cfg.enableIPv6 "ipv6"
       ++ optional hasVirtuals "tun"
       ++ optional hasSits "sit"
       ++ optional hasBonds "bonding";
@@ -1127,7 +1144,7 @@ in
 
     environment.systemPackages =
       [ pkgs.host
-        pkgs.iproute
+        pkgs.iproute2
         pkgs.iputils
         pkgs.nettools
       ]
@@ -1154,7 +1171,7 @@ in
         wantedBy = [ "network.target" ];
         after = [ "network-pre.target" ];
         unitConfig.ConditionCapability = "CAP_NET_ADMIN";
-        path = [ pkgs.iproute ];
+        path = [ pkgs.iproute2 ];
         serviceConfig.Type = "oneshot";
         serviceConfig.RemainAfterExit = true;
         script = ''
@@ -1232,7 +1249,7 @@ in
               ${optionalString (current.type == "mesh" && current.meshID!=null) "${pkgs.iw}/bin/iw dev ${device} set meshid ${current.meshID}"}
               ${optionalString (current.type == "monitor" && current.flags!=null) "${pkgs.iw}/bin/iw dev ${device} set monitor ${current.flags}"}
               ${optionalString (current.type == "managed" && current.fourAddr!=null) "${pkgs.iw}/bin/iw dev ${device} set 4addr ${if current.fourAddr then "on" else "off"}"}
-              ${optionalString (current.mac != null) "${pkgs.iproute}/bin/ip link set dev ${device} address ${current.mac}"}
+              ${optionalString (current.mac != null) "${pkgs.iproute2}/bin/ip link set dev ${device} address ${current.mac}"}
             '';
 
             # Udev script to execute for a new WLAN interface. The script configures the new WLAN interface.
@@ -1243,11 +1260,11 @@ in
               ${optionalString (new.type == "mesh" && new.meshID!=null) "${pkgs.iw}/bin/iw dev ${device} set meshid ${new.meshID}"}
               ${optionalString (new.type == "monitor" && new.flags!=null) "${pkgs.iw}/bin/iw dev ${device} set monitor ${new.flags}"}
               ${optionalString (new.type == "managed" && new.fourAddr!=null) "${pkgs.iw}/bin/iw dev ${device} set 4addr ${if new.fourAddr then "on" else "off"}"}
-              ${optionalString (new.mac != null) "${pkgs.iproute}/bin/ip link set dev ${device} address ${new.mac}"}
+              ${optionalString (new.mac != null) "${pkgs.iproute2}/bin/ip link set dev ${device} address ${new.mac}"}
             '';
 
             # Udev attributes for systemd to name the device and to create a .device target.
-            systemdAttrs = n: ''NAME:="${n}", ENV{INTERFACE}:="${n}", ENV{SYSTEMD_ALIAS}:="/sys/subsystem/net/devices/${n}", TAG+="systemd"'';
+            systemdAttrs = n: ''NAME:="${n}", ENV{INTERFACE}="${n}", ENV{SYSTEMD_ALIAS}="/sys/subsystem/net/devices/${n}", TAG+="systemd"'';
           in
           flip (concatMapStringsSep "\n") (attrNames wlanDeviceInterfaces) (device:
             let

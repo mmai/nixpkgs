@@ -2,12 +2,14 @@
 
 buildPythonPackage rec {
   pname = "bitarray";
-  version = "1.5.3";
+  version = "1.8.1";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "567631fc922b1c2c528c376795f18dcc0604d18702e0b8b50e8e35f0474214a5";
+    sha256 = "e02f79fba7a470d438eb39017d503498faaf760b17b6b46af1a9de12fd58d311";
   };
+
+  pythonImportsCheck = [ "bitarray" ];
 
   meta = with lib; {
     description = "Efficient arrays of booleans";

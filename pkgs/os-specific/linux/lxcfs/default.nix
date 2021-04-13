@@ -1,23 +1,23 @@
-{ config, stdenv, fetchFromGitHub, autoreconfHook, pkgconfig, help2man, fuse
-, utillinux, makeWrapper
+{ config, lib, stdenv, fetchFromGitHub, autoreconfHook, pkg-config, help2man, fuse
+, util-linux, makeWrapper
 , enableDebugBuild ? config.lxcfs.enableDebugBuild or false }:
 
-with stdenv.lib;
+with lib;
 stdenv.mkDerivation rec {
   pname = "lxcfs";
-  version = "4.0.5";
+  version = "4.0.7";
 
   src = fetchFromGitHub {
     owner = "lxc";
     repo = "lxcfs";
     rev = "lxcfs-${version}";
-    sha256 = "12mk9hgqzzh1874389lrpvldlp87qxxa1sxzk5zr0d0n1857am5y";
+    sha256 = "sha256-gC1Q+kG/oKfYvuHVKstpRWfL/thsemULrimPrV/eeaI=";
   };
 
-  nativeBuildInputs = [ pkgconfig help2man autoreconfHook ];
-  buildInputs = [ fuse makeWrapper ];
+  nativeBuildInputs = [ pkg-config help2man autoreconfHook makeWrapper ];
+  buildInputs = [ fuse ];
 
-  preConfigure = stdenv.lib.optionalString enableDebugBuild ''
+  preConfigure = lib.optionalString enableDebugBuild ''
     sed -i 's,#AM_CFLAGS += -DDEBUG,AM_CFLAGS += -DDEBUG,' Makefile.am
   '';
 
@@ -30,9 +30,9 @@ stdenv.mkDerivation rec {
   installFlags = [ "SYSTEMD_UNIT_DIR=\${out}/lib/systemd" ];
 
   postInstall = ''
-    # `mount` hook requires access to the `mount` command from `utillinux`:
+    # `mount` hook requires access to the `mount` command from `util-linux`:
     wrapProgram "$out/share/lxcfs/lxc.mount.hook" \
-      --prefix PATH : "${utillinux}/bin"
+      --prefix PATH : "${util-linux}/bin"
   '';
 
   postFixup = ''

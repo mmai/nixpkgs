@@ -33,11 +33,12 @@
 
 buildPythonPackage rec {
   pname = "bokeh";
-  version = "2.2.1";
+  # update together with panel which is not straightforward
+  version = "2.3.0";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "qC6e69eh4uu3+PwerYAv79EKhNrvjsS/yYYSEyOUhVU=";
+    sha256 = "dd417708f90702190222b1068a645acae99e66d4b58d7a336d545aeaa04e9b40";
   };
 
   patches = [

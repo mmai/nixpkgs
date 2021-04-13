@@ -79,6 +79,8 @@ lib.makeScope pkgs.newScope (self: with self; {
 
   gnome-session = callPackage ./core/gnome-session { };
 
+  gnome-session-ctl = callPackage ./core/gnome-session/ctl.nix { };
+
   gnome-shell = callPackage ./core/gnome-shell { };
 
   gnome-shell-extensions = callPackage ./core/gnome-shell-extensions { };
@@ -155,8 +157,6 @@ lib.makeScope pkgs.newScope (self: with self; {
   accerciser = callPackage ./apps/accerciser { };
 
   cheese = callPackage ./apps/cheese { };
-
-  evolution = callPackage ./apps/evolution { };
 
   file-roller = callPackage ./apps/file-roller { };
 
@@ -262,7 +262,9 @@ lib.makeScope pkgs.newScope (self: with self; {
 
   gnome-flashback = callPackage ./misc/gnome-flashback { };
 
-  gnome-panel = callPackage ./misc/gnome-panel { };
+  gnome-panel = callPackage ./misc/gnome-panel {
+    autoreconfHook = pkgs.autoreconfHook269;
+  };
 
   gnome-tweaks = callPackage ./misc/gnome-tweaks { };
 

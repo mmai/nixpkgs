@@ -3,16 +3,21 @@
 
 buildGoModule rec {
   pname = "restic";
-  version = "0.10.0";
+  version = "0.12.0";
 
   src = fetchFromGitHub {
     owner = "restic";
     repo = "restic";
     rev = "v${version}";
-    sha256 = "0nrh52cjymzcf093sqqa3kfw2nimnx6qwn8aw0wsci2v2r84yzzx";
+    sha256 = "07gxf56g45gj2arvdnrr9656i9ykhy1y6k6zdlni1sa3aa2x2bbf";
   };
 
-  vendorSha256 = "1pfixq3mbfn12gyablc4g0j8r00md3887q0l8xgxy76z0d8w924s";
+  patches = [
+    # The TestRestoreWithPermissionFailure test fails in Nix’s build sandbox
+    ./0001-Skip-testing-restore-with-permission-failure.patch
+  ];
+
+  vendorSha256 = "14z22lmdd681rn61alpqbn3i9fn0kcc74321vjvhz2ix2mch3c1z";
 
   subPackages = [ "cmd/restic" ];
 

@@ -8,13 +8,19 @@
 , fixDarwinDylibNames
 
 , cudaSupport
-, nvidia_x11
+, cudatoolkit_11_1
+, cudnn_cudatoolkit_11_1
 }:
 
 let
-  version = "1.6.0";
+  # The binary libtorch distribution statically links the CUDA
+  # toolkit. This means that we do not need to provide CUDA to
+  # this derivation. However, we should ensure on version bumps
+  # that the CUDA toolkit for `passthru.tests` is still
+  # up-to-date.
+  version = "1.8.0";
   device = if cudaSupport then "cuda" else "cpu";
-  srcs = import ./binary-hashes.nix;
+  srcs = import ./binary-hashes.nix version;
   unavailable = throw "libtorch is not available for this platform";
 in stdenv.mkDerivation {
   inherit version;
@@ -24,12 +30,7 @@ in stdenv.mkDerivation {
 
   nativeBuildInputs =
     if stdenv.isDarwin then [ fixDarwinDylibNames ]
-    else [ addOpenGLRunpath patchelf ]
-      ++ stdenv.lib.optionals cudaSupport [ addOpenGLRunpath ];
-
-  buildInputs = [
-    stdenv.cc.cc
-  ] ++ lib.optionals cudaSupport [ nvidia_x11 ];
+    else [ patchelf ] ++ lib.optionals cudaSupport [ addOpenGLRunpath ];
 
   dontBuild = true;
   dontConfigure = true;
@@ -37,7 +38,7 @@ in stdenv.mkDerivation {
 
   installPhase = ''
     # Copy headers and CMake files.
-    install -Dm755 -t $dev/lib lib/*.a
+    mkdir -p $dev
     cp -r include $dev
     cp -r share $dev
 
@@ -45,13 +46,19 @@ in stdenv.mkDerivation {
 
     # We do not care about Java support...
     rm -f $out/lib/lib*jni* 2> /dev/null || true
+
+    # Fix up library paths for split outputs
+    substituteInPlace $dev/share/cmake/Torch/TorchConfig.cmake \
+      --replace \''${TORCH_INSTALL_PREFIX}/lib "$out/lib" \
+
+    substituteInPlace \
+      $dev/share/cmake/Caffe2/Caffe2Targets-release.cmake \
+      --replace \''${_IMPORT_PREFIX}/lib "$out/lib" \
   '';
 
   postFixup = let
-    libPaths = [ stdenv.cc.cc.lib ]
-      ++ stdenv.lib.optionals cudaSupport [ nvidia_x11 ];
-    rpath = stdenv.lib.makeLibraryPath libPaths;
-  in stdenv.lib.optionalString stdenv.isLinux ''
+    rpath = lib.makeLibraryPath [ stdenv.cc.cc.lib ];
+  in lib.optionalString stdenv.isLinux ''
     find $out/lib -type f \( -name '*.so' -or -name '*.so.*' \) | while read lib; do
       echo "setting rpath for $lib..."
       patchelf --set-rpath "${rpath}:$out/lib" "$lib"
@@ -59,7 +66,7 @@ in stdenv.mkDerivation {
         addOpenGLRunpath "$lib"
       ''}
     done
-  '' + stdenv.lib.optionalString stdenv.isDarwin ''
+  '' + lib.optionalString stdenv.isDarwin ''
     install_name_tool -change @rpath/libshm.dylib $out/lib/libshm.dylib $out/lib/libtorch_python.dylib
     install_name_tool -change @rpath/libc10.dylib $out/lib/libc10.dylib $out/lib/libtorch_python.dylib
     install_name_tool -change @rpath/libiomp5.dylib $out/lib/libiomp5.dylib $out/lib/libtorch_python.dylib
@@ -100,12 +107,17 @@ in stdenv.mkDerivation {
 
   outputs = [ "out" "dev" ];
 
-  passthru.tests = callPackage ./test { };
+  passthru.tests.cmake = callPackage ./test {
+    inherit cudaSupport;
+    cudatoolkit = cudatoolkit_11_1;
+    cudnn = cudnn_cudatoolkit_11_1;
+  };
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "C++ API of the PyTorch machine learning framework";
     homepage = "https://pytorch.org/";
     license = licenses.unfree; # Includes CUDA and Intel MKL.
+    maintainers = with maintainers; [ danieldk ];
     platforms = with platforms; linux ++ darwin;
   };
 }

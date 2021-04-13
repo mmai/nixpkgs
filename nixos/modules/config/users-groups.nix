@@ -35,8 +35,7 @@ let
   '';
 
   hashedPasswordDescription = ''
-    To generate a hashed password install the <literal>mkpasswd</literal>
-    package and run <literal>mkpasswd -m sha-512</literal>.
+    To generate a hashed password run <literal>mkpasswd -m sha-512</literal>.
 
     If set to an empty string (<literal>""</literal>), this user will
     be able to log in without being asked for a password (but not via remote
@@ -154,7 +153,7 @@ let
       };
 
       shell = mkOption {
-        type = types.either types.shellPackage types.path;
+        type = types.nullOr (types.either types.shellPackage types.path);
         default = pkgs.shadow;
         defaultText = "pkgs.shadow";
         example = literalExample "pkgs.bashInteractive";
@@ -199,10 +198,8 @@ let
         type = types.bool;
         default = false;
         description = ''
-          If true, the home directory will be created automatically. If this
-          option is true and the home directory already exists but is not
-          owned by the user, directory owner and group will be changed to
-          match the user.
+          Whether to create the home directory and ensure ownership as well as
+          permissions to match the user.
         '';
       };
 
@@ -367,7 +364,7 @@ let
       count = mkOption {
         type = types.int;
         default = 1;
-        description = ''Count of subordinate user ids'';
+        description = "Count of subordinate user ids";
       };
     };
   };
@@ -384,7 +381,7 @@ let
       count = mkOption {
         type = types.int;
         default = 1;
-        description = ''Count of subordinate group ids'';
+        description = "Count of subordinate group ids";
       };
     };
   };
@@ -559,10 +556,8 @@ in {
         install -m 0700 -d /root
         install -m 0755 -d /home
 
-        ${pkgs.perl}/bin/perl -w \
-          -I${pkgs.perlPackages.FileSlurp}/${pkgs.perl.libPrefix} \
-          -I${pkgs.perlPackages.JSON}/${pkgs.perl.libPrefix} \
-          ${./update-users-groups.pl} ${spec}
+        ${pkgs.perl.withPackages (p: [ p.FileSlurp p.JSON ])}/bin/perl \
+        -w ${./update-users-groups.pl} ${spec}
       '';
 
     # for backwards compatibility
@@ -571,7 +566,7 @@ in {
     # Install all the user shells
     environment.systemPackages = systemShells;
 
-    environment.etc = (mapAttrs' (name: { packages, ... }: {
+    environment.etc = (mapAttrs' (_: { packages, name, ... }: {
       name = "profiles/per-user/${name}";
       value.source = pkgs.buildEnv {
         name = "user-environment";
@@ -596,8 +591,8 @@ in {
         # password or an SSH authorized key. Privileged accounts are
         # root and users in the wheel group.
         assertion = !cfg.mutableUsers ->
-          any id ((mapAttrsToList (name: cfg:
-            (name == "root"
+          any id ((mapAttrsToList (_: cfg:
+            (cfg.name == "root"
              || cfg.group == "wheel"
              || elem "wheel" cfg.extraGroups)
             &&
@@ -618,16 +613,16 @@ in {
         assertion = (user.hashedPassword != null)
                     -> (builtins.match ".*:.*" user.hashedPassword == null);
         message = ''
-          The password hash of user "${name}" contains a ":" character.
+          The password hash of user "${user.name}" contains a ":" character.
           This is invalid and would break the login system because the fields
           of /etc/shadow (file where hashes are stored) are colon-separated.
-          Please check the value of option `users.users."${name}".hashedPassword`.'';
+          Please check the value of option `users.users."${user.name}".hashedPassword`.'';
       }
     );
 
     warnings =
       builtins.filter (x: x != null) (
-        flip mapAttrsToList cfg.users (name: user:
+        flip mapAttrsToList cfg.users (_: user:
         # This regex matches a subset of the Modular Crypto Format (MCF)[1]
         # informal standard. Since this depends largely on the OS or the
         # specific implementation of crypt(3) we only support the (sane)
@@ -650,9 +645,9 @@ in {
             && user.hashedPassword != ""  # login without password
             && builtins.match mcf user.hashedPassword == null)
         then ''
-          The password hash of user "${name}" may be invalid. You must set a
+          The password hash of user "${user.name}" may be invalid. You must set a
           valid hash or the user will be locked out of their account. Please
-          check the value of option `users.users."${name}".hashedPassword`.''
+          check the value of option `users.users."${user.name}".hashedPassword`.''
         else null
       ));
 

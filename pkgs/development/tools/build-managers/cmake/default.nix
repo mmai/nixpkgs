@@ -1,10 +1,11 @@
-{ stdenv, lib, fetchurl, pkgconfig, fetchpatch
-, bzip2, curl, expat, libarchive, xz, zlib, libuv, rhash
+{ stdenv, lib, fetchurl, pkg-config
+, bzip2, curlMinimal, expat, libarchive, xz, zlib, libuv, rhash
 , buildPackages
 # darwin attributes
 , ps
 , isBootstrap ? false
 , useSharedLibraries ? (!isBootstrap && !stdenv.isCygwin)
+, useOpenSSL ? !isBootstrap, openssl
 , useNcurses ? false, ncurses
 , useQt4 ? false, qt4
 , withQt5 ? false, qtbase
@@ -13,18 +14,18 @@
 assert withQt5 -> useQt4 == false;
 assert useQt4 -> withQt5 == false;
 
-stdenv.mkDerivation rec {
+stdenv.mkDerivation (rec {
   pname = "cmake"
           + lib.optionalString isBootstrap "-boot"
           + lib.optionalString useNcurses "-cursesUI"
           + lib.optionalString withQt5 "-qt5UI"
           + lib.optionalString useQt4 "-qt4UI";
-  version = "3.18.2";
+  version = "3.19.7";
 
   src = fetchurl {
     url = "${meta.homepage}files/v${lib.versions.majorMinor version}/cmake-${version}.tar.gz";
     # compare with https://cmake.org/files/v${lib.versions.majorMinor version}/cmake-${version}-SHA-256.txt
-    sha256 = "0zhxsnxm5d8wdarz2gs3r41r1dfrnh35ki75fa684gaxfzy40kjx";
+    sha256 = "sha256-WKFfDVagr8zDzFNxI0/Oc/zGyPnb13XYmOUQuDF1WI4=";
   };
 
   patches = [
@@ -44,14 +45,16 @@ stdenv.mkDerivation rec {
 
   setupHook = ./setup-hook.sh;
 
-  buildInputs =
-    [ setupHook pkgconfig ]
-    ++ lib.optionals useSharedLibraries [ bzip2 curl expat libarchive xz zlib libuv rhash ]
+  depsBuildBuild = [ buildPackages.stdenv.cc ];
+
+  nativeBuildInputs = [ setupHook pkg-config ];
+
+  buildInputs = []
+    ++ lib.optionals useSharedLibraries [ bzip2 curlMinimal expat libarchive xz zlib libuv rhash ]
+    ++ lib.optional useOpenSSL openssl
     ++ lib.optional useNcurses ncurses
     ++ lib.optional useQt4 qt4
     ++ lib.optional withQt5 qtbase;
-
-  depsBuildBuild = [ buildPackages.stdenv.cc ];
 
   propagatedBuildInputs = lib.optional stdenv.isDarwin ps;
 
@@ -61,8 +64,6 @@ stdenv.mkDerivation rec {
       --subst-var-by libc_bin ${lib.getBin stdenv.cc.libc} \
       --subst-var-by libc_dev ${lib.getDev stdenv.cc.libc} \
       --subst-var-by libc_lib ${lib.getLib stdenv.cc.libc}
-    substituteInPlace Modules/FindCxxTest.cmake \
-      --replace "$""{PYTHON_EXECUTABLE}" ${stdenv.shell}
   ''
   # CC_FOR_BUILD and CXX_FOR_BUILD are used to bootstrap cmake
   + ''
@@ -91,13 +92,15 @@ stdenv.mkDerivation rec {
     "-DCMAKE_AR=${lib.getBin stdenv.cc.bintools.bintools}/bin/${stdenv.cc.targetPrefix}ar"
     "-DCMAKE_RANLIB=${lib.getBin stdenv.cc.bintools.bintools}/bin/${stdenv.cc.targetPrefix}ranlib"
     "-DCMAKE_STRIP=${lib.getBin stdenv.cc.bintools.bintools}/bin/${stdenv.cc.targetPrefix}strip"
-  ]
+
+    "-DCMAKE_USE_OPENSSL=${if useOpenSSL then "ON" else "OFF"}"
     # Avoid depending on frameworks.
-    ++ lib.optional (!useNcurses) "-DBUILD_CursesDialog=OFF";
+    "-DBUILD_CursesDialog=${if useNcurses then "ON" else "OFF"}"
+  ];
 
   # make install attempts to use the just-built cmake
   preInstall = lib.optional (stdenv.hostPlatform != stdenv.buildPlatform) ''
-    sed -i 's|bin/cmake|${buildPackages.cmake}/bin/cmake|g' Makefile
+    sed -i 's|bin/cmake|${buildPackages.cmakeMinimal}/bin/cmake|g' Makefile
   '';
 
   dontUseCmakeConfigure = true;
@@ -125,4 +128,5 @@ stdenv.mkDerivation rec {
     maintainers = with maintainers; [ ttuegel lnl7 ];
     license = licenses.bsd3;
   };
-}
+} // (if withQt5 then { dontWrapQtApps = true; } else {})
+)

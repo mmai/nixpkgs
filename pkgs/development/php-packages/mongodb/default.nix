@@ -1,20 +1,21 @@
-{ buildPecl, lib, pkgs, pcre' }:
+{ stdenv, buildPecl, lib, pcre', pkg-config, cyrus_sasl, icu64
+, openssl, snappy, zlib, darwin }:
 
 buildPecl {
   pname = "mongodb";
 
-  version = "1.6.1";
-  sha256 = "1j1w4n33347j9kwvxwsrix3gvjbiqcn1s5v59pp64s536cci8q0m";
+  version = "1.9.0";
+  sha256 = "16mbw3p80qxsj86nmjbfch8wv6jaq8wbz4rlpmixvhj9nwbp37hs";
 
-  nativeBuildInputs = [ pkgs.pkgconfig ];
-  buildInputs = with pkgs; [
+  nativeBuildInputs = [ pkg-config ];
+  buildInputs = [
     cyrus_sasl
     icu64
     openssl
     snappy
     zlib
     pcre'
-  ] ++ lib.optional (pkgs.stdenv.isDarwin) pkgs.darwin.apple_sdk.frameworks.Security;
+  ] ++ lib.optional stdenv.isDarwin darwin.apple_sdk.frameworks.Security;
 
   meta.maintainers = lib.teams.php.members;
 }

@@ -1,8 +1,7 @@
-{ stdenv
+{ lib, stdenv
 , fetchurl
-, fetchpatch
 , autoconf213
-, pkgconfig
+, pkg-config
 , perl
 , python3
 , zip
@@ -15,17 +14,17 @@
 , rustc
 , rust-cbindgen
 , yasm
-, llvmPackages
+, llvmPackages_11
 , nspr
 }:
 
 stdenv.mkDerivation rec {
   pname = "spidermonkey";
-  version = "78.1.0";
+  version = "78.8.0";
 
   src = fetchurl {
     url = "mirror://mozilla/firefox/releases/${version}esr/source/firefox-${version}esr.source.tar.xz";
-    sha256 = "18k47dl9hbnpqw69csxjar5dhwa7r8k7j9kvcfgmwb1iv6ba601n";
+    sha256 = "0451hhjrj9hb6limxim7sbhvw4gs6dd2gmnfxjjx07z3wbgdzwhw";
   };
 
   outputs = [ "out" "dev" ];
@@ -34,9 +33,9 @@ stdenv.mkDerivation rec {
   nativeBuildInputs = [
     autoconf213
     cargo
-    llvmPackages.llvm # for llvm-objdump
+    llvmPackages_11.llvm # for llvm-objdump
     perl
-    pkgconfig
+    pkg-config
     python3
     rust-cbindgen
     rustc
@@ -50,18 +49,6 @@ stdenv.mkDerivation rec {
     nspr
     readline
     zlib
-  ];
-
-  patches = [
-    # https://mail.gnome.org/archives/distributor-list/2020-August/msg00000.html
-    (fetchpatch {
-      url = "https://github.com/ptomato/mozjs/commit/b2974f8a6558d2dc4517b49ee313a9900a853285.patch";
-      sha256 = "1bl5mbx7gmad6fmpc427263i1ychi2linpg69kxlr2w91r5m6ji3";
-    })
-    (fetchpatch {
-      url = "https://github.com/ptomato/mozjs/commit/e5a2eb99f653ae03c67e536df1d55d265a0a1605.patch";
-      sha256 = "0xhy63nw2byibmjc41yh6dwpg282nylganrs5aprn9pbqbcpsvif";
-    })
   ];
 
   preConfigure = ''
@@ -88,7 +75,7 @@ stdenv.mkDerivation rec {
     # https://src.fedoraproject.org/rpms/mozjs38/c/761399aba092bcb1299bb4fccfd60f370ab4216e
     "--enable-optimize"
     "--enable-release"
-  ] ++ stdenv.lib.optionals (stdenv.hostPlatform != stdenv.buildPlatform) [
+  ] ++ lib.optionals (stdenv.hostPlatform != stdenv.buildPlatform) [
     # Spidermonkey seems to use different host/build terminology for cross
     # compilation here.
     "--host=${stdenv.buildPlatform.config}"
@@ -101,18 +88,28 @@ stdenv.mkDerivation rec {
 
   # Remove unnecessary static lib
   preFixup = ''
-    moveToOutput bin/js60-config "$dev"
+    moveToOutput bin/js78-config "$dev"
     rm $out/lib/libjs_static.ajs
-    ln -s $out/bin/js60 $out/bin/js
+    ln -s $out/bin/js78 $out/bin/js
   '';
 
   enableParallelBuilding = true;
 
-  meta = with stdenv.lib; {
+  postPatch = ''
+    # This patch is a manually applied fix of
+    #   https://bugzilla.mozilla.org/show_bug.cgi?id=1644600
+    # Once that bug is fixed, this can be removed.
+    # This is needed in, for example, `zeroad`.
+    substituteInPlace js/public/StructuredClone.h \
+         --replace "class SharedArrayRawBufferRefs {" \
+                   "class JS_PUBLIC_API SharedArrayRawBufferRefs {"
+  '';
+
+  meta = with lib; {
     description = "Mozilla's JavaScript engine written in C/C++";
-    homepage = "https://developer.mozilla.org/en/SpiderMonkey";
+    homepage = "https://spidermonkey.dev/";
     license = licenses.gpl2; # TODO: MPL/GPL/LGPL tri-license.
-    maintainers = [ maintainers.abbradar ];
+    maintainers = with maintainers; [ abbradar lostnet ];
     platforms = platforms.linux;
   };
 }

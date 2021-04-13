@@ -1,36 +1,48 @@
 {
-  mkDerivation, lib, fetchgit,
-  extra-cmake-modules,
+  lib, mkDerivation, extra-cmake-modules, fetchurl,
 
   kconfig, kdoctools, kguiaddons, ki18n, kinit, kiconthemes, kio,
-  knewstuff, kplotting, kwidgetsaddons, kxmlgui,
+  knewstuff, kplotting, kwidgetsaddons, kxmlgui, knotifyconfig,
 
-  qtx11extras, qtwebsockets,
+
+  qtx11extras, qtwebsockets, qtkeychain, libsecret,
 
   eigen, zlib,
 
-  cfitsio, indilib, xplanet
+  cfitsio, indi-full, xplanet, libnova, libraw, gsl, wcslib, stellarsolver
 }:
 
-mkDerivation {
-  name = "kstars";
-  
-  src = fetchgit {
-    url = "https://anongit.kde.org/kstars.git";
-    rev = "7acc527939280edd22823371dc4e22494c6c626a";
-    sha256 = "1n1lgi7p3dj893fdnzjbnrha40p4apl0dy8zppcabxwrb1khb84v";
+mkDerivation rec {
+  pname = "kstars";
+  version = "3.5.2";
+
+  src = fetchurl {
+    url = "mirror://kde/stable/kstars/kstars-${version}.tar.xz";
+    sha256 = "sha256-iX7rMQbctdK3AeH4ZvH+T4rv1ZHwn55urJh150KoXXU=";
   };
-  
+
+  patches = [
+    # Patches ksutils.cpp to use nix store prefixes to find program binaries of
+    # indilib and xplanet dependencies. Without the patch, Ekos is unable to spawn
+    # indi servers for local telescope/camera control.
+    ./fs-fixes.patch
+  ];
+
   nativeBuildInputs = [ extra-cmake-modules kdoctools ];
   buildInputs = [
     kconfig kdoctools kguiaddons ki18n kinit kiconthemes kio
-    knewstuff kplotting kwidgetsaddons kxmlgui
+    knewstuff kplotting kwidgetsaddons kxmlgui knotifyconfig
 
-    qtx11extras qtwebsockets
+    qtx11extras qtwebsockets qtkeychain libsecret
 
     eigen zlib
 
-    cfitsio indilib xplanet
+    cfitsio indi-full xplanet libnova libraw gsl wcslib stellarsolver
+  ];
+
+  cmakeFlags = [
+    "-DINDI_NIX_ROOT=${indi-full}"
+    "-DXPLANET_NIX_ROOT=${xplanet}"
   ];
 
   meta = with lib; {
@@ -41,8 +53,8 @@ mkDerivation {
       The display includes up to 100 million stars, 13.000 deep-sky objects, all 8 planets, the Sun and Moon, and thousands of comets, asteroids, supernovae, and satellites.
       For students and teachers, it supports adjustable simulation speeds in order to view phenomena that happen over long timescales, the KStars Astrocalculator to predict conjunctions, and many common astronomical calculations.
     '';
-    license = licenses.gpl2;
+    license = licenses.gpl2Plus;
     platforms = platforms.linux;
-    maintainers = with maintainers; [ timput ];
+    maintainers = with maintainers; [ timput hjones2199 ];
   };
 }

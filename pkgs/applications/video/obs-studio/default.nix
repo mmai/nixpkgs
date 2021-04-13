@@ -1,4 +1,4 @@
-{ config, stdenv
+{ config, lib, stdenv
 , mkDerivation
 , fetchFromGitHub
 , addOpenGLRunpath
@@ -17,9 +17,10 @@
 , libv4l
 , x264
 , curl
+, wayland
 , xorg
 , makeWrapper
-, pkgconfig
+, pkg-config
 , libvlc
 , mbedtls
 
@@ -32,29 +33,32 @@
 , alsaLib
 , pulseaudioSupport ? config.pulseaudio or stdenv.isLinux
 , libpulseaudio
+, libcef
 }:
 
 let
-  inherit (stdenv.lib) optional optionals;
+  inherit (lib) optional optionals;
 
 in mkDerivation rec {
   pname = "obs-studio";
-  version = "26.0.0";
+  version = "26.1.2";
 
   src = fetchFromGitHub {
     owner = "obsproject";
     repo = "obs-studio";
     rev = version;
-    sha256 = "09y57b3c88szl3wyx3cxq8jrm3pfnyg2n25hxl1ynkq3rgaavdq2";
+    sha256 = "1plr5a7k5scxlibhbknhhk19ipk8las14dzs7v64zx7rhpj00009";
+    fetchSubmodules = true;
   };
 
-  nativeBuildInputs = [ addOpenGLRunpath cmake pkgconfig ];
+  nativeBuildInputs = [ addOpenGLRunpath cmake pkg-config ];
 
   buildInputs = [
     curl
     fdk_aac
     ffmpeg
     jansson
+    libcef
     libjack2
     libv4l
     libxkbcommon
@@ -64,6 +68,7 @@ in mkDerivation rec {
     qtx11extras
     qtsvg
     speex
+    wayland
     x264
     libvlc
     makeWrapper
@@ -73,6 +78,18 @@ in mkDerivation rec {
   ++ optional alsaSupport alsaLib
   ++ optional pulseaudioSupport libpulseaudio;
 
+  # Copied from the obs-linuxbrowser
+  postUnpack = ''
+    mkdir -p cef/Release cef/Resources cef/libcef_dll_wrapper/
+    for i in ${libcef}/share/cef/*; do
+      cp -r $i cef/Release/
+      cp -r $i cef/Resources/
+    done
+    cp -r ${libcef}/lib/libcef.so cef/Release/
+    cp -r ${libcef}/lib/libcef_dll_wrapper.a cef/libcef_dll_wrapper/
+    cp -r ${libcef}/include cef/
+  '';
+
   # obs attempts to dlopen libobs-opengl, it fails unless we make sure
   # DL_OPENGL is an explicit path. Not sure if there's a better way
   # to handle this.
@@ -80,6 +97,9 @@ in mkDerivation rec {
     "-DCMAKE_CXX_FLAGS=-DDL_OPENGL=\\\"$(out)/lib/libobs-opengl.so\\\""
     "-DOBS_VERSION_OVERRIDE=${version}"
     "-Wno-dev" # kill dev warnings that are useless for packaging
+    # Add support for browser source
+    "-DBUILD_BROWSER=ON"
+    "-DCEF_ROOT_DIR=../../cef"
   ];
 
   postInstall = ''
@@ -87,12 +107,12 @@ in mkDerivation rec {
         --prefix "LD_LIBRARY_PATH" : "${xorg.libX11.out}/lib:${libvlc}/lib"
   '';
 
-  postFixup = stdenv.lib.optionalString stdenv.isLinux ''
+  postFixup = lib.optionalString stdenv.isLinux ''
       addOpenGLRunpath $out/lib/lib*.so
       addOpenGLRunpath $out/lib/obs-plugins/*.so
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Free and open source software for video recording and live streaming";
     longDescription = ''
       This project is a rewrite of what was formerly known as "Open Broadcaster

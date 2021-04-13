@@ -1,12 +1,12 @@
-{ stdenv , darwin , fetchurl , blas , gfortran , lapack , python }:
+{ lib, stdenv , darwin , fetchurl , blas , gfortran , lapack , python }:
 
 stdenv.mkDerivation rec {
   pname = "petsc";
-  version = "3.13.4";
+  version = "3.14.2";
 
   src = fetchurl {
     url = "http://ftp.mcs.anl.gov/pub/petsc/release-snapshots/petsc-${version}.tar.gz";
-    sha256 = "1n2paqw5c0ja392s1qhp7q2ypwav8s5drxxz2w5m2cn31vbspy1c";
+    sha256 = "04vy3qyakikslc58qyv8c9qrwlivix3w6znc993i37cvfg99dch9";
   };
 
   nativeBuildInputs = [ blas gfortran gfortran.cc.lib lapack python ];
@@ -20,7 +20,7 @@ stdenv.mkDerivation rec {
   prePatch = ''
     substituteInPlace configure \
       --replace /bin/sh /usr/bin/python
-  '' + stdenv.lib.optionalString stdenv.isDarwin ''
+  '' + lib.optionalString stdenv.isDarwin ''
     substituteInPlace config/install.py \
       --replace /usr/bin/install_name_tool ${darwin.cctools}/bin/install_name_tool
   '';
@@ -39,7 +39,7 @@ stdenv.mkDerivation rec {
     )
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = ''
       Library of linear algebra algorithms for solving partial differential
       equations

@@ -1,34 +1,60 @@
 { lib
+, stdenv
 , fetchFromGitHub
 , rustPlatform
 , withFzf ? true
 , fzf
+, libiconv
+  # checkInputs
+, fish
+, powershell
+, shellcheck
+, shfmt
+, xonsh
+, zsh
 }:
-let
-  version = "0.4.3";
-in
-rustPlatform.buildRustPackage {
+
+rustPlatform.buildRustPackage rec {
   pname = "zoxide";
-  inherit version;
+  version = "0.6.0";
 
   src = fetchFromGitHub {
     owner = "ajeetdsouza";
     repo = "zoxide";
     rev = "v${version}";
-    sha256 = "1ghdal6pqkp56rqawhj26ch1x4cvnjj032xz3626aiddqgn134zj";
+    sha256 = "ZeGFsVBpEhKi4EIhpQlCuriFzmHAgLYw3qE/zqfyqgU=";
   };
+
+  buildInputs = lib.optionals stdenv.isDarwin [ libiconv ];
+
+  # tests are broken on darwin
+  doCheck = !stdenv.isDarwin;
+
+  # fish needs a writable HOME for whatever reason
+  preCheck = ''
+    export HOME=$(mktemp -d)
+  '';
+
+  checkInputs = [
+    fish
+    powershell
+    shellcheck
+    shfmt
+    xonsh
+    zsh
+  ];
 
   postPatch = lib.optionalString withFzf ''
     substituteInPlace src/fzf.rs \
       --replace '"fzf"' '"${fzf}/bin/fzf"'
   '';
 
-  cargoSha256 = "0klnjmda77bq9i9f0rz48jzaw4rcf7hafcjjpb0i570d7hlxnwsr";
+  cargoSha256 = "Hzn01+OhdBrZD1woXN4Pwf/S72Deln1gyyBOWyDC6iM=";
 
   meta = with lib; {
     description = "A fast cd command that learns your habits";
     homepage = "https://github.com/ajeetdsouza/zoxide";
     license = with licenses; [ mit ];
-    maintainers = with maintainers; [ ysndr cole-h ];
+    maintainers = with maintainers; [ ysndr cole-h SuperSandro2000 ];
   };
 }

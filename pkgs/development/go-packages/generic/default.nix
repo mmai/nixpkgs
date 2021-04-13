@@ -1,5 +1,5 @@
 { go, govers, lib, fetchgit, fetchhg, fetchbzr, rsync
-, removeReferencesTo, fetchFromGitHub, stdenv }:
+, fetchFromGitHub, stdenv }:
 
 { buildInputs ? []
 , nativeBuildInputs ? []
@@ -9,9 +9,6 @@
 
 # We want parallel builds by default
 , enableParallelBuilding ? true
-
-# Disabled flag
-, disabled ? false
 
 # Go import path of the package
 , goPackagePath
@@ -38,16 +35,14 @@
 # IE: programs coupled with the compiler
 , allowGoReference ? false
 
+, CGO_ENABLED ? go.CGO_ENABLED
+
 , meta ? {}, ... } @ args:
 
 
 with builtins;
 
 let
-  removeReferences = [ ] ++ lib.optional (!allowGoReference) go;
-
-  removeExpr = refs: ''remove-references-to ${lib.concatMapStrings (ref: " -t ${ref}") refs}'';
-
   dep2src = goDep:
     {
       inherit (goDep) goPackagePath;
@@ -78,18 +73,21 @@ let
   package = stdenv.mkDerivation (
     (builtins.removeAttrs args [ "goPackageAliases" "disabled" "extraSrcs"]) // {
 
-    nativeBuildInputs = [ removeReferencesTo go ]
+    nativeBuildInputs = [ go ]
       ++ (lib.optional (!dontRenameImports) govers) ++ nativeBuildInputs;
     buildInputs = buildInputs;
 
-    inherit (go) GOOS GOARCH GO386 CGO_ENABLED;
+    inherit (go) GOOS GOARCH GO386;
 
     GOHOSTARCH = go.GOHOSTARCH or null;
     GOHOSTOS = go.GOHOSTOS or null;
 
-    GO111MODULE = "off";
+    inherit CGO_ENABLED;
 
-    GOARM = toString (stdenv.lib.intersectLists [(stdenv.hostPlatform.parsed.cpu.version or "")] ["5" "6" "7"]);
+    GO111MODULE = "off";
+    GOFLAGS = lib.optionals (!allowGoReference) [ "-trimpath" ];
+
+    GOARM = toString (lib.intersectLists [(stdenv.hostPlatform.parsed.cpu.version or "")] ["5" "6" "7"]);
 
     configurePhase = args.configurePhase or ''
       runHook preConfigure
@@ -225,10 +223,6 @@ let
       runHook postInstall
     '';
 
-    preFixup = preFixup + ''
-      find $out/{bin,libexec,lib} -type f 2>/dev/null | xargs -r ${removeExpr removeReferences} || true
-    '';
-
     strictDeps = true;
 
     shellHook = ''
@@ -256,7 +250,5 @@ let
       platforms = go.meta.platforms or lib.platforms.all;
     } // meta;
   });
-in if disabled then
-  throw "${package.name} not supported for go ${go.meta.branch}"
-else
+in
   package

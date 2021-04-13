@@ -8,7 +8,7 @@
 
 buildPythonPackage rec {
   pname = "casbin";
-  version = "0.9.0";
+  version = "0.19.1";
 
   disabled = isPy27;
 
@@ -16,7 +16,7 @@ buildPythonPackage rec {
     owner = pname;
     repo = "pycasbin";
     rev = "v${version}";
-    sha256 = "16bqa2f5l2cns2izc4siy8jw23q9vrqm9wnyp696fj83y77nkp75";
+    sha256 = "0fkkz5k3h4pkxacrbacamnh4yfghxgajdzzmdlck7i4v5x06vz8f";
   };
 
   propagatedBuildInputs = [

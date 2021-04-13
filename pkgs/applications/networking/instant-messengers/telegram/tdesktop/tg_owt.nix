@@ -1,10 +1,11 @@
-{ lib, stdenv, fetchFromGitHub, cmake, ninja, yasm
-, pkg-config, libjpeg, openssl, libopus, ffmpeg, alsaLib, libpulseaudio
+{ lib, stdenv, fetchFromGitHub, pkg-config, cmake, ninja, yasm
+, libjpeg, openssl, libopus, ffmpeg, alsaLib, libpulseaudio, protobuf
+, xorg, libXtst
 }:
 
 let
-  rev = "c73a4718cbff7048373a63db32068482e5fd11ef";
-  sha256 = "0nr20mvvmmg8ii8f2rljd7iv2szplcfjn40rpy6llkmf705mwr1k";
+  rev = "2d804d2c9c5d05324c8ab22f2e6ff8306521b3c3";
+  sha256 = "0kz0i381iwsgcc3yzsq7njx3gkqja4bb9fsgc24vhg0md540qhyn";
 
 in stdenv.mkDerivation {
   pname = "tg_owt";
@@ -14,13 +15,22 @@ in stdenv.mkDerivation {
     owner = "desktop-app";
     repo = "tg_owt";
     inherit rev sha256;
+    fetchSubmodules = true;
   };
 
-  patches = [ ./tg_owt-install.patch ];
+  outputs = [ "out" "dev" ];
 
   nativeBuildInputs = [ pkg-config cmake ninja yasm ];
 
-  buildInputs = [ libjpeg openssl libopus ffmpeg alsaLib libpulseaudio ];
+  buildInputs = [
+    libjpeg openssl libopus ffmpeg alsaLib libpulseaudio protobuf
+    xorg.libX11 libXtst
+  ];
+
+  cmakeFlags = [
+    # Building as a shared library isn't officially supported and currently broken:
+    "-DBUILD_SHARED_LIBS=OFF"
+  ];
 
   meta.license = lib.licenses.bsd3;
 }

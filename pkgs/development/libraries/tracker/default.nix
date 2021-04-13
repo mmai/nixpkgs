@@ -1,19 +1,18 @@
-{ stdenv
+{ lib, stdenv
 , fetchurl
 , gettext
 , meson
 , ninja
-, pkgconfig
+, pkg-config
+, asciidoc
 , gobject-introspection
 , python3
 , gtk-doc
-, docbook_xsl
-, docbook_xml_dtd_412
-, docbook_xml_dtd_43
+, docbook-xsl-nons
 , docbook_xml_dtd_45
 , libxml2
 , glib
-, wrapGAppsHook
+, wrapGAppsNoGuiHook
 , vala
 , sqlite
 , libxslt
@@ -21,7 +20,6 @@
 , gnome3
 , icu
 , libuuid
-, networkmanager
 , libsoup
 , json-glib
 , systemd
@@ -29,21 +27,21 @@
 , substituteAll
 }:
 
-stdenv.mkDerivation rec {
+stdenv.mkDerivation (rec {
   pname = "tracker";
-  version = "2.3.4";
+  version = "3.0.3";
 
   outputs = [ "out" "dev" "devdoc" ];
 
   src = fetchurl {
-    url = "mirror://gnome/sources/${pname}/${stdenv.lib.versions.majorMinor version}/${pname}-${version}.tar.xz";
-    sha256 = "0vai0qz9jn3z5dlzysynwhbbmslp84ygdql81f5wfxxr98j54yap";
+    url = "mirror://gnome/sources/${pname}/${lib.versions.majorMinor version}/${pname}-${version}.tar.xz";
+    sha256 = "sha256-b1yEqzvh7aUgUBsq7XIhYWoM8VKRDFN3V7U4vAXv/KM=";
   };
 
   patches = [
     (substituteAll {
       src = ./fix-paths.patch;
-      gdbus = "${glib.bin}/bin/gdbus";
+      inherit asciidoc;
     })
   ];
 
@@ -51,19 +49,18 @@ stdenv.mkDerivation rec {
     meson
     ninja
     vala
-    pkgconfig
+    pkg-config
+    asciidoc
     gettext
     libxslt
-    wrapGAppsHook
+    wrapGAppsNoGuiHook
     gobject-introspection
     gtk-doc
-    docbook_xsl
-    docbook_xml_dtd_412
-    docbook_xml_dtd_43
+    docbook-xsl-nons
     docbook_xml_dtd_45
     python3 # for data-generators
     systemd # used for checks to install systemd user service
-    dbus # used for checks and pkgconfig to install dbus service/s
+    dbus # used for checks and pkg-config to install dbus service/s
   ];
 
   buildInputs = [
@@ -71,7 +68,6 @@ stdenv.mkDerivation rec {
     libxml2
     sqlite
     icu
-    networkmanager
     libsoup
     libuuid
     json-glib
@@ -83,12 +79,11 @@ stdenv.mkDerivation rec {
   ];
 
   mesonFlags = [
-    # TODO: figure out wrapping unit tests, some of them fail on missing gsettings-desktop-schemas
-    # "-Dfunctional_tests=true"
     "-Ddocs=true"
   ];
 
-  doCheck = true;
+  # https://gitlab.gnome.org/GNOME/tracker/-/issues/292#note_1075369
+  doCheck = !stdenv.isi686;
 
   postPatch = ''
     patchShebangs utils/g-ir-merge/g-ir-merge
@@ -106,18 +101,22 @@ stdenv.mkDerivation rec {
     # though, so we need to replace the absolute path with a local one during build.
     # We are using a symlink that will be overridden during installation.
     mkdir -p $out/lib
-    ln -s $PWD/src/libtracker-sparql-backend/libtracker-sparql-2.0.so $out/lib/libtracker-sparql-2.0.so.0
-    ln -s $PWD/src/libtracker-miner/libtracker-miner-2.0.so $out/lib/libtracker-miner-2.0.so.0
-    ln -s $PWD/src/libtracker-data/libtracker-data.so $out/lib/libtracker-data.so
+    ln -s $PWD/src/libtracker-sparql/libtracker-sparql-3.0.so $out/lib/libtracker-sparql-3.0.so.0
+  '';
+
+  checkPhase = ''
+    runHook preCheck
+
+    dbus-run-session \
+      --config-file=${dbus.daemon}/share/dbus-1/session.conf \
+      meson test --print-errorlogs
+
+    runHook postCheck
   '';
 
   postCheck = ''
     # Clean up out symlinks
     rm -r $out/lib
-  '';
-
-  postInstall = ''
-    glib-compile-schemas "$out/share/glib-2.0/schemas"
   '';
 
   passthru = {
@@ -127,7 +126,7 @@ stdenv.mkDerivation rec {
     };
   };
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://wiki.gnome.org/Projects/Tracker";
     description = "Desktop-neutral user information store, search tool and indexer";
     maintainers = teams.gnome.members;
@@ -135,3 +134,8 @@ stdenv.mkDerivation rec {
     platforms = platforms.linux;
   };
 }
+  // lib.optionalAttrs stdenv.isi686 {
+    # TMP: fatal error: libtracker-sparql/tracker-sparql-enum-types.h: No such file or directory
+    enableParallelBuilding = false;
+  }
+)

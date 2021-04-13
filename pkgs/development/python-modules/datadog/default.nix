@@ -1,27 +1,57 @@
-{ lib, buildPythonPackage, fetchPypi, pythonOlder
-, decorator, requests, simplejson, pillow, typing
-, nose, mock, pytest, freezegun }:
+{ lib
+, buildPythonPackage
+, fetchPypi
+, pythonOlder
+, decorator
+, requests
+, typing
+, configparser
+, click
+, freezegun
+, mock
+, pytestCheckHook
+, pytest-vcr
+, python-dateutil
+, vcrpy
+}:
 
 buildPythonPackage rec {
   pname = "datadog";
-  version = "0.39.0";
+  version = "0.40.0";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "b0ef69a27aad0e4412c1ac3e6894fa1b5741db735515c34dfe1606d8cf30e4e5";
+    sha256 = "4bbd66a02bbcf9cd03ba05194d605a64c9efb7aed90d5e69c6ec42655c3c01a4";
   };
 
   postPatch = ''
     find . -name '*.pyc' -exec rm {} \;
   '';
 
-  propagatedBuildInputs = [ decorator requests simplejson pillow ]
-    ++ lib.optionals (pythonOlder "3.5") [ typing ];
+  propagatedBuildInputs = [ decorator requests ]
+    ++ lib.optional (pythonOlder "3.5") typing
+    ++ lib.optional (pythonOlder "3.0") configparser;
 
-  checkInputs = [ nose mock pytest freezegun ];
-  checkPhase = ''
-    pytest tests/unit
-  '';
+  checkInputs = [
+    click
+    freezegun
+    mock
+    pytestCheckHook
+    pytest-vcr
+    python-dateutil
+    vcrpy
+  ];
+
+  disabledTestPaths = [
+    "tests/unit/dogstatsd/test_statsd.py" # does not work in sandbox
+  ];
+
+  disabledTests = [
+    "test_default_settings_set"
+    "test_threadstats_thread_safety"
+  ];
+
+  pythonImportsCheck = [ "datadog" ];
 
   meta = with lib; {
     description = "The Datadog Python library";

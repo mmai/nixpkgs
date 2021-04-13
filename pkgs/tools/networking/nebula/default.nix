@@ -17,7 +17,7 @@ buildGoModule rec {
 
   subPackages = [ "cmd/nebula" "cmd/nebula-cert" ];
 
-  buildFlagsArray = [ "-ldflags='-X main.Build=${version}'" ];
+  buildFlagsArray = [ "-ldflags=" "-X main.Build=${version}" ];
 
   meta = with lib; {
     description = "A scalable overlay networking tool with a focus on performance, simplicity and security";
@@ -38,7 +38,7 @@ buildGoModule rec {
     '';
     homepage = "https://github.com/slackhq/nebula";
     license = licenses.mit;
-    maintainers = with maintainers; [ filalex77 ];
+    maintainers = with maintainers; [ Br1ght0ne ];
   };
 
 }

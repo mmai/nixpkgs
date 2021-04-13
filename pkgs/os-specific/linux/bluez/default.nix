@@ -1,12 +1,13 @@
 { stdenv
 , lib
+, fetchpatch
 , fetchurl
 , alsaLib
 , dbus
 , glib
 , json_c
 , libical
-, pkgconfig
+, pkg-config
 , python3
 , readline
 , systemd
@@ -19,11 +20,11 @@
   ];
 in stdenv.mkDerivation rec {
   pname = "bluez";
-  version = "5.54";
+  version = "5.56";
 
   src = fetchurl {
     url = "mirror://kernel/linux/bluetooth/${pname}-${version}.tar.xz";
-    sha256 = "1p2ncvjz6alr9n3l5wvq2arqgc7xjs6dqyar1l9jp0z8cfgapkb8";
+    sha256 = "sha256-WcTbqfyKripqX48S8ZvBsMLcJzVcfKMSPu0/5r19C50=";
   };
 
   buildInputs = [
@@ -38,11 +39,20 @@ in stdenv.mkDerivation rec {
   ];
 
   nativeBuildInputs = [
-    pkgconfig
+    pkg-config
     python3.pkgs.wrapPython
   ];
 
   outputs = [ "out" "dev" ] ++ lib.optional doCheck "test";
+
+  patches = [
+    # Fixes https://github.com/NixOS/nixpkgs/issues/117663
+    (fetchpatch {
+      name = "disconnect-fix.patch";
+      url = "https://github.com/bluez/bluez/commit/28ddec8d6b829e002fa268c07b71e4c564ba9e16.patch";
+      sha256 = "sha256-vzMf1i44e4JrpL7cXbn9oDr+3B+Glf7dPW3QDstEnEM=";
+    })
+  ];
 
   postPatch = ''
     substituteInPlace tools/hid2hci.rules \
@@ -112,7 +122,7 @@ in stdenv.mkDerivation rec {
 
   enableParallelBuilding = true;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Bluetooth support for Linux";
     homepage = "http://www.bluez.org/";
     license = with licenses; [ gpl2 lgpl21 ];

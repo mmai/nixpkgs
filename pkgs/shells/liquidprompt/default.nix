@@ -1,14 +1,14 @@
-{ stdenv, fetchFromGitHub }:
+{ lib, stdenv, fetchFromGitHub }:
 
 stdenv.mkDerivation rec {
   pname = "liquidprompt";
-  version = "1.12.0";
+  version = "2.0.2";
 
   src = fetchFromGitHub {
     owner = "nojhan";
     repo = pname;
     rev = "v${version}";
-    sha256 = "0ibp1bz9s4bp3y5anivg5gp31q78024w39v7hbfw05qy25ax5h60";
+    sha256 = "sha256-FXBClOkGRUey/FnLw3g3uiHUJeNiB4tXqP4Na6CuwIM=";
   };
 
   installPhase = ''
@@ -22,7 +22,7 @@ stdenv.mkDerivation rec {
       $out/share/zsh/plugins/liquidprompt/liquidprompt
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A full-featured & carefully designed adaptive prompt for Bash & Zsh";
     homepage = "https://github.com/nojhan/liquidprompt";
     license = licenses.agpl3;

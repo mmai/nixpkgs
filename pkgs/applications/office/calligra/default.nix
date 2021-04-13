@@ -1,25 +1,24 @@
-{
-  mkDerivation, lib, fetchurl, extra-cmake-modules, kdoctools, makeWrapper,
-  boost, qtwebkit, qtx11extras, shared-mime-info,
-  breeze-icons, kactivities, karchive, kcodecs, kcompletion, kconfig, kconfigwidgets,
-  kcoreaddons, kdbusaddons, kdiagram, kguiaddons, khtml, ki18n,
-  kiconthemes, kitemviews, kjobwidgets, kcmutils, kdelibs4support, kio, kross,
-  knotifications, knotifyconfig, kparts, ktextwidgets, kwallet, kwidgetsaddons,
-  kwindowsystem, kxmlgui, sonnet, threadweaver,
-  kcontacts, akonadi, akonadi-calendar, akonadi-contacts,
-  eigen, git, gsl, ilmbase, kproperty, kreport, lcms2, marble, pcre, libgit2, libodfgen,
-  librevenge, libvisio, libwpd, libwpg, libwps, okular, openexr, openjpeg, phonon,
-  poppler, pstoedit, qca-qt5, vc
+{ mkDerivation, lib, fetchurl, extra-cmake-modules, kdoctools
+, boost, qtwebkit, qtx11extras, shared-mime-info
+, breeze-icons, kactivities, karchive, kcodecs, kcompletion, kconfig, kconfigwidgets
+, kcoreaddons, kdbusaddons, kdiagram, kguiaddons, khtml, ki18n
+, kiconthemes, kitemviews, kjobwidgets, kcmutils, kdelibs4support, kio, kross
+, knotifications, knotifyconfig, kparts, ktextwidgets, kwallet, kwidgetsaddons
+, kwindowsystem, kxmlgui, sonnet, threadweaver
+, kcontacts, akonadi, akonadi-calendar, akonadi-contacts
+, eigen, git, gsl, ilmbase, kproperty, kreport, lcms2, marble, pcre, libgit2, libodfgen
+, librevenge, libvisio, libwpd, libwpg, libwps, okular, openexr, openjpeg, phonon
+, poppler, pstoedit, qca-qt5, vc
 # TODO: package Spnav, m2mml LibEtonyek, Libqgit2
 }:
 
 mkDerivation rec {
   pname = "calligra";
-  version = "3.2.0";
+  version = "3.2.1";
 
   src = fetchurl {
     url = "mirror://kde/stable/${pname}/${version}/${pname}-${version}.tar.xz";
-    sha256 = "sha256-flViKGZdeeZ8Bi/RFz1mdvCw187v3W4bC8+aeB6nCVE=";
+    sha256 = "0iqi6z6gkck2afgy200dacgcspq7i7887alcj0pklm08hbmsdy5i";
   };
 
   nativeBuildInputs = [ extra-cmake-modules kdoctools ];

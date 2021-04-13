@@ -1,12 +1,65 @@
 # Definitions related to run-time type checking.  Used in particular
 # to type-check NixOS configurations.
 { lib }:
-with lib.lists;
-with lib.attrsets;
-with lib.options;
-with lib.trivial;
-with lib.strings;
+
 let
+  inherit (lib)
+    elem
+    flip
+    functionArgs
+    isAttrs
+    isBool
+    isDerivation
+    isFloat
+    isFunction
+    isInt
+    isList
+    isString
+    isStorePath
+    setFunctionArgs
+    toDerivation
+    toList
+    ;
+  inherit (lib.lists)
+    all
+    concatLists
+    count
+    elemAt
+    filter
+    foldl'
+    head
+    imap1
+    last
+    length
+    tail
+    unique
+    ;
+  inherit (lib.attrsets)
+    attrNames
+    filterAttrs
+    hasAttr
+    mapAttrs
+    optionalAttrs
+    zipAttrsWith
+    ;
+  inherit (lib.options)
+    getFiles
+    getValues
+    mergeDefaultOption
+    mergeEqualOption
+    mergeOneOption
+    showFiles
+    showOption
+    ;
+  inherit (lib.strings)
+    concatMapStringsSep
+    concatStringsSep
+    escapeNixString
+    isCoercibleToString
+    ;
+  inherit (lib.trivial)
+    boolToString
+    ;
 
   inherit (lib.modules) mergeDefinitions;
   outer_types =
@@ -270,7 +323,7 @@ rec {
       name = "attrs";
       description = "attribute set";
       check = isAttrs;
-      merge = loc: foldl' (res: def: mergeAttrs res def.value) {};
+      merge = loc: foldl' (res: def: res // def.value) {};
       emptyValue = { value = {}; };
     };
 
@@ -400,6 +453,17 @@ rec {
       functor = (defaultFunctor name) // { wrapped = elemType; };
     };
 
+    functionTo = elemType: mkOptionType {
+      name = "functionTo";
+      description = "function that evaluates to a(n) ${elemType.name}";
+      check = isFunction;
+      merge = loc: defs:
+        fnArgs: (mergeDefinitions (loc ++ [ "[function body]" ]) elemType (map (fn: { inherit (fn) file; value = fn.value fnArgs; }) defs)).mergedValue;
+      getSubOptions = elemType.getSubOptions;
+      getSubModules = elemType.getSubModules;
+      substSubModules = m: functionTo (elemType.substSubModules m);
+    };
+
     # A submodule (like typed attribute set). See NixOS manual.
     submodule = modules: submoduleWith {
       shorthandOnlyDefinesConfig = true;
@@ -499,7 +563,7 @@ rec {
         show = v:
                if builtins.isString v then ''"${v}"''
           else if builtins.isInt v then builtins.toString v
-          else if builtins.isBool v then if v then "true" else "false"
+          else if builtins.isBool v then boolToString v
           else ''<${builtins.typeOf v}>'';
       in
       mkOptionType rec {

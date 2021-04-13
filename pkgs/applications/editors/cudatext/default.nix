@@ -30,33 +30,28 @@ let
   deps = lib.mapAttrs
     (name: spec:
       fetchFromGitHub {
-        owner = "Alexey-T";
         repo = name;
-        inherit (spec) rev sha256;
+        inherit (spec) owner rev sha256;
       }
     )
     (builtins.fromJSON (builtins.readFile ./deps.json));
 in
 stdenv.mkDerivation rec {
   pname = "cudatext";
-  version = "1.111.0";
+  version = "1.131.0";
 
   src = fetchFromGitHub {
     owner = "Alexey-T";
     repo = "CudaText";
     rev = version;
-    sha256 = "1ai0g8fmw4m237dqh5dkr8w9qqricyvp49ijz2ivvmg9dsdfzjfp";
+    sha256 = "1zq17yi5zn4hdgrrn3c3cdk6s38fv36r66dl0dqz2z8jjd6vy4p3";
   };
-
-  patches = [
-    # Don't check for update
-    ./dont-check-update.patch
-  ];
 
   postPatch = ''
     substituteInPlace app/proc_globdata.pas \
       --replace "/usr/share/cudatext" "$out/share/cudatext" \
-      --replace "libpython3.so" "${python3}/lib/libpython3.so"
+      --replace "libpython3.so" "${python3}/lib/libpython${python3.pythonVersion}.so" \
+      --replace "AllowProgramUpdates:= true;" "AllowProgramUpdates:= false;"
   '';
 
   nativeBuildInputs = [ lazarus fpc ]
@@ -74,6 +69,7 @@ stdenv.mkDerivation rec {
     cp -r --no-preserve=mode ${dep} ${name}
   '') deps) + ''
     lazbuild --lazarusdir=${lazarus}/share/lazarus --pcp=./lazarus --ws=${widgetset} \
+      bgrabitmap/bgrabitmap/bgrabitmappack.lpk \
       EncConv/encconv/encconv_package.lpk \
       ATBinHex-Lazarus/atbinhex/atbinhex_package.lpk \
       ATFlatControls/atflatcontrols/atflatcontrols_package.lpk \
@@ -95,7 +91,12 @@ stdenv.mkDerivation rec {
     install -Dm644 setup/debfiles/cudatext-512.png -t $out/share/pixmaps
     install -Dm644 setup/debfiles/cudatext.desktop -t $out/share/applications
   '' + lib.concatMapStringsSep "\n" (lexer: ''
-    install -Dm644 CudaText-lexers/${lexer}/*.{cuda-lexmap,lcf} $out/share/cudatext/data/lexlib
+    if [ -d "CudaText-lexers/${lexer}" ]; then
+      install -Dm644 CudaText-lexers/${lexer}/*.{cuda-lexmap,lcf} $out/share/cudatext/data/lexlib
+    else
+      echo "${lexer} lexer not found"
+      exit 1
+    fi
   '') additionalLexers;
 
   meta = with lib; {
@@ -105,7 +106,8 @@ stdenv.mkDerivation rec {
       Config system in JSON files. Multi-carets and multi-selections.
       Search and replace with RegEx. Extendable by Python plugins and themes.
     '';
-    homepage = "http://www.uvviewsoft.com/cudatext/";
+    homepage = "https://cudatext.github.io/";
+    changelog = "https://cudatext.github.io/history.txt";
     license = licenses.mpl20;
     maintainers = with maintainers; [ sikmir ];
     platforms = platforms.linux;

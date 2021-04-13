@@ -77,6 +77,7 @@ in {
           '';
         };
         extraPackages = mkOption {
+          type = types.functionTo (types.listOf types.package);
           default = ps: [];
           defaultText = "ps: []";
           example = literalExample ''
@@ -122,9 +123,20 @@ in {
             "error log" = "syslog";
           };
         '';
-        };
+      };
+
+      enableAnalyticsReporting = mkOption {
+        type = types.bool;
+        default = false;
+        description = ''
+          Enable reporting of anonymous usage statistics to Netdata Inc. via either
+          Google Analytics (in versions prior to 1.29.4), or Netdata Inc.'s
+          self-hosted PostHog (in versions 1.29.4 and later).
+          See: <link xlink:href="https://learn.netdata.cloud/docs/agent/anonymous-statistics"/>
+        '';
       };
     };
+  };
 
   config = mkIf cfg.enable {
     assertions =
@@ -139,10 +151,14 @@ in {
       wantedBy = [ "multi-user.target" ];
       path = (with pkgs; [ curl gawk which ]) ++ lib.optional cfg.python.enable
         (pkgs.python3.withPackages cfg.python.extraPackages);
+      environment = {
+        PYTHONPATH = "${cfg.package}/libexec/netdata/python.d/python_modules";
+      } // lib.optionalAttrs (!cfg.enableAnalyticsReporting) {
+        DO_NOT_TRACK = "1";
+      };
       serviceConfig = {
-        Environment="PYTHONPATH=${cfg.package}/libexec/netdata/python.d/python_modules";
         ExecStart = "${cfg.package}/bin/netdata -P /run/netdata/netdata.pid -D -c ${configFile}";
-        ExecReload = "${pkgs.utillinux}/bin/kill -s HUP -s USR1 -s USR2 $MAINPID";
+        ExecReload = "${pkgs.util-linux}/bin/kill -s HUP -s USR1 -s USR2 $MAINPID";
         TimeoutStopSec = 60;
         Restart = "on-failure";
         # User and group

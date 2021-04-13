@@ -46,6 +46,7 @@ in
       enable = mkEnableOption "the Netatalk AFP fileserver";
 
       port = mkOption {
+        type = types.port;
         default = 548;
         description = "TCP port to be used for AFP.";
       };
@@ -68,6 +69,7 @@ in
         };
 
         path = mkOption {
+          type = types.str;
           default = "";
           example = "afp-data";
           description = "Share not the whole user home but this subdirectory path.";
@@ -75,6 +77,7 @@ in
 
         basedirRegex = mkOption {
           example = "/home";
+          type = types.str;
           description = "Regex which matches the parent directory of the user homes.";
         };
 
@@ -108,10 +111,10 @@ in
 
       extmap = mkOption {
         type = types.lines;
-	default = "";
-	description = ''
-	  File name extension mappings.
-	  See <literal>man extmap.conf</literal> for more information.
+        default = "";
+        description = ''
+          File name extension mappings.
+          See <literal>man extmap.conf</literal> for more information.
         '';
       };
 
@@ -132,10 +135,10 @@ in
         Type = "forking";
         GuessMainPID = "no";
         PIDFile = "/run/lock/netatalk";
-	ExecStartPre = "${pkgs.coreutils}/bin/mkdir -m 0755 -p /var/lib/netatalk/CNID";
+        ExecStartPre = "${pkgs.coreutils}/bin/mkdir -m 0755 -p /var/lib/netatalk/CNID";
         ExecStart  = "${pkgs.netatalk}/sbin/netatalk -F ${afpConfFile}";
         ExecReload = "${pkgs.coreutils}/bin/kill -HUP  $MAINPID";
-	ExecStop   = "${pkgs.coreutils}/bin/kill -TERM $MAINPID";
+        ExecStop   = "${pkgs.coreutils}/bin/kill -TERM $MAINPID";
         Restart = "always";
         RestartSec = 1;
       };

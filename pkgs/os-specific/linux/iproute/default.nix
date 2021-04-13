@@ -1,23 +1,20 @@
-{ stdenv, fetchurl
+{ lib, stdenv, fetchurl
 , buildPackages, bison, flex, pkg-config
 , db, iptables, libelf, libmnl
 }:
 
 stdenv.mkDerivation rec {
   pname = "iproute2";
-  version = "5.8.0";
+  version = "5.11.0";
 
   src = fetchurl {
     url = "mirror://kernel/linux/utils/net/${pname}/${pname}-${version}.tar.xz";
-    sha256 = "0vk4vickrpahdhl3zazr2qn2bf99v5549ncirjpwiy4h0a4izkfg";
+    sha256 = "0m2wa14rhmdb6k07minmw5lk97vz4vn56ndka5849cqjh88fmqn5";
   };
 
   preConfigure = ''
     # Don't try to create /var/lib/arpd:
     sed -e '/ARPDDIR/d' -i Makefile
-    # TODO: Drop temporary version fix for 5.8 (53159d81) once 5.9 is out:
-    substituteInPlace include/version.h \
-      --replace "v5.7.0-77-gb687d1067169" "5.8.0"
   '';
 
   outputs = [ "out" "dev" ];
@@ -43,7 +40,7 @@ stdenv.mkDerivation rec {
 
   enableParallelBuilding = true;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://wiki.linuxfoundation.org/networking/iproute2";
     description = "A collection of utilities for controlling TCP/IP networking and traffic control in Linux";
     platforms = platforms.linux;

@@ -1,8 +1,8 @@
 { newScope, config, stdenv, fetchurl, makeWrapper
-, llvmPackages_11, ed, gnugrep, coreutils, xdg_utils
+, llvmPackages_11, llvmPackages_12, ed, gnugrep, coreutils, xdg-utils
 , glib, gtk3, gnome3, gsettings-desktop-schemas, gn, fetchgit
 , libva ? null
-, pipewire_0_2
+, pipewire
 , gcc, nspr, nss, runCommand
 , lib
 
@@ -12,11 +12,8 @@
 , gnomeSupport ? false, gnome ? null
 , gnomeKeyringSupport ? false
 , proprietaryCodecs ? true
-, enablePepperFlash ? false
 , enableWideVine ? false
-, useVaapi ? false # Deprecated, use enableVaapi instead!
-, enableVaapi ? false # Disabled by default due to unofficial support
-, useOzone ? false
+, ungoogled ? false # Whether to build chromium or ungoogled-chromium
 , cupsSupport ? true
 , pulseSupport ? config.pulseaudio or stdenv.isLinux
 , commandLineArgs ? ""
@@ -35,45 +32,43 @@ let
 
     mkChromiumDerivation = callPackage ./common.nix ({
       inherit channel gnome gnomeSupport gnomeKeyringSupport proprietaryCodecs
-              cupsSupport pulseSupport useOzone;
-      # TODO: Remove after we can update gn for the stable channel (backward incompatible changes):
+              cupsSupport pulseSupport ungoogled;
       gnChromium = gn.overrideAttrs (oldAttrs: {
-        version = "2020-07-20";
+        inherit (upstream-info.deps.gn) version;
         src = fetchgit {
-          url = "https://gn.googlesource.com/gn";
-          rev = "3028c6a426a4aaf6da91c4ebafe716ae370225fe";
-          sha256 = "0h3wf4152zdvrbb0jbj49q6814lfl3rcy5mj8b2pl9s0ahvkbc6q";
+          inherit (upstream-info.deps.gn) url rev sha256;
         };
       });
-    } // lib.optionalAttrs (lib.versionAtLeast upstream-info.version "87") {
-      useOzone = true; # YAY: https://chromium-review.googlesource.com/c/chromium/src/+/2382834 \o/
-      gnChromium = gn.overrideAttrs (oldAttrs: {
-        version = "2020-08-17";
-        src = fetchgit {
-          url = "https://gn.googlesource.com/gn";
-          rev = "6f13aaac55a977e1948910942675c69f2b4f7a94";
-          sha256 = "01hpma1sllpdx09mvr4d6073sg6zmk6iv44kd3r28khymcj4s251";
-        };
-      });
+    } // lib.optionalAttrs (lib.versionAtLeast upstream-info.version "90") {
+      llvmPackages = llvmPackages_12;
+      stdenv = llvmPackages_12.stdenv;
     });
 
-    browser = callPackage ./browser.nix { inherit channel enableWideVine; };
+    browser = callPackage ./browser.nix { inherit channel enableWideVine ungoogled; };
 
-    plugins = callPackage ./plugins.nix {
-      inherit enablePepperFlash;
-    };
+    ungoogled-chromium = callPackage ./ungoogled.nix {};
   };
 
-  pkgSuffix = if channel == "dev" then "unstable" else channel;
+  pkgSuffix = if channel == "dev" then "unstable" else
+    (if channel == "ungoogled-chromium" then "stable" else channel);
   pkgName = "google-chrome-${pkgSuffix}";
-  chromeSrc = fetchurl {
-    urls = map (repo: "${repo}/${pkgName}/${pkgName}_${version}-1_amd64.deb") [
-      "https://dl.google.com/linux/chrome/deb/pool/main/g"
-      "http://95.31.35.30/chrome/pool/main/g"
-      "http://mirror.pcbeta.com/google/chrome/deb/pool/main/g"
-      "http://repo.fdzh.org/chrome/deb/pool/main/g"
-    ];
-    sha256 = chromium.upstream-info.sha256bin64;
+  chromeSrc =
+    let
+      # Use the latest stable Chrome version if necessary:
+      version = if chromium.upstream-info.sha256bin64 != null
+        then chromium.upstream-info.version
+        else (lib.importJSON ./upstream-info.json).stable.version;
+      sha256 = if chromium.upstream-info.sha256bin64 != null
+        then chromium.upstream-info.sha256bin64
+        else (lib.importJSON ./upstream-info.json).stable.sha256bin64;
+    in fetchurl {
+      urls = map (repo: "${repo}/${pkgName}/${pkgName}_${version}-1_amd64.deb") [
+        "https://dl.google.com/linux/chrome/deb/pool/main/g"
+        "http://95.31.35.30/chrome/pool/main/g"
+        "http://mirror.pcbeta.com/google/chrome/deb/pool/main/g"
+        "http://repo.fdzh.org/chrome/deb/pool/main/g"
+      ];
+      inherit sha256;
   };
 
   mkrpath = p: "${lib.makeSearchPathOutput "lib" "lib64" p}:${lib.makeLibraryPath p}";
@@ -86,7 +81,7 @@ let
 
     unpackCmd = let
       widevineCdmPath =
-        if channel == "stable" then
+        if (channel == "stable" || channel == "ungoogled-chromium") then
           "./opt/google/chrome/WidevineCdm"
         else if channel == "beta" then
           "./opt/google/chrome-beta/WidevineCdm"
@@ -128,7 +123,9 @@ let
     };
   };
 
-  suffix = if channel != "stable" then "-" + channel else "";
+  suffix = if (channel == "stable" || channel == "ungoogled-chromium")
+    then ""
+    else "-" + channel;
 
   sandboxExecutableName = chromium.browser.passthru.sandboxExecutableName;
 
@@ -147,15 +144,9 @@ let
       ''
     else browser;
 
-  optionalVaapiFlags = if useVaapi # TODO: Remove after 20.09:
-    then throw ''
-      Chromium's useVaapi was replaced by enableVaapi and you don't need to pass
-      "--ignore-gpu-blacklist" anymore (also no rebuilds are required anymore).
-    '' else lib.optionalString
-      (enableVaapi)
-      "--add-flags --enable-accelerated-video-decode";
 in stdenv.mkDerivation {
-  name = "chromium${suffix}-${version}";
+  name = lib.optionalString ungoogled "ungoogled-"
+    + "chromium${suffix}-${version}";
   inherit version;
 
   buildInputs = [
@@ -172,16 +163,13 @@ in stdenv.mkDerivation {
 
   buildCommand = let
     browserBinary = "${chromiumWV}/libexec/chromium/chromium";
-    getWrapperFlags = plugin: "$(< \"${plugin}/nix-support/wrapper-flags\")";
-    libPath = stdenv.lib.makeLibraryPath [ libva pipewire_0_2 ];
+    libPath = lib.makeLibraryPath [ libva pipewire ];
 
-  in with stdenv.lib; ''
+  in with lib; ''
     mkdir -p "$out/bin"
 
     eval makeWrapper "${browserBinary}" "$out/bin/chromium" \
-      --add-flags ${escapeShellArg (escapeShellArg commandLineArgs)} \
-      ${optionalVaapiFlags} \
-      ${concatMapStringsSep " " getWrapperFlags chromium.plugins.enabled}
+      --add-flags ${escapeShellArg (escapeShellArg commandLineArgs)}
 
     ed -v -s "$out/bin/chromium" << EOF
     2i
@@ -205,7 +193,7 @@ in stdenv.mkDerivation {
     export XDG_DATA_DIRS=$XDG_ICON_DIRS:$GSETTINGS_SCHEMAS_PATH\''${XDG_DATA_DIRS:+:}\$XDG_DATA_DIRS
 
     # Mainly for xdg-open but also other xdg-* tools:
-    export PATH="${xdg_utils}/bin\''${PATH:+:}\$PATH"
+    export PATH="${xdg-utils}/bin\''${PATH:+:}\$PATH"
 
     .
     w

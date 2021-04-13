@@ -1,4 +1,4 @@
-{ stdenv
+{ lib
 , buildGoModule
 , fetchFromGitHub
 , go-md2man
@@ -14,16 +14,20 @@
 
 buildGoModule rec {
   pname = "buildah";
-  version = "1.16.4";
+  version = "1.20.0";
 
   src = fetchFromGitHub {
     owner = "containers";
     repo = "buildah";
     rev = "v${version}";
-    sha256 = "1i7v4chbgl15n3vn1liinjd4lxaxk9q2lyi1l2ak7iazx9px6cn9";
+    sha256 = "12gmn61mfrr58071x3cdsksad6swn1b23ghih128hjdpdzk1zxs3";
   };
 
   outputs = [ "out" "man" ];
+
+  patches = [
+    ../../../applications/virtualization/podman/remove-unconfigured-runtime-warn.patch
+  ];
 
   vendorSha256 = null;
 
@@ -41,18 +45,22 @@ buildGoModule rec {
   ];
 
   buildPhase = ''
+    runHook preBuild
     patchShebangs .
     make bin/buildah GIT_COMMIT="unknown"
     make -C docs GOMD2MAN="${go-md2man}/bin/go-md2man"
+    runHook postBuild
   '';
 
   installPhase = ''
+    runHook preInstall
     install -Dm755 bin/buildah $out/bin/buildah
     installShellCompletion --bash contrib/completions/bash/buildah
     make -C docs install PREFIX="$man"
+    runHook postInstall
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A tool which facilitates building OCI images";
     homepage = "https://buildah.io/";
     changelog = "https://github.com/containers/buildah/releases/tag/v${version}";

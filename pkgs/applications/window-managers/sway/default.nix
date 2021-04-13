@@ -1,29 +1,30 @@
-{ stdenv, fetchFromGitHub, makeWrapper
+{ lib, stdenv, fetchFromGitHub, substituteAll, swaybg
 , meson, ninja, pkg-config, wayland, scdoc
 , libxkbcommon, pcre, json_c, dbus, libevdev
 , pango, cairo, libinput, libcap, pam, gdk-pixbuf, librsvg
-, wlroots, wayland-protocols
+, wlroots, wayland-protocols, libdrm
 }:
 
 stdenv.mkDerivation rec {
   pname = "sway-unwrapped";
-  version = "1.5";
+  version = "1.6";
 
   src = fetchFromGitHub {
     owner = "swaywm";
     repo = "sway";
     rev = version;
-    sha256 = "0r3b7h778l9i20z3him9i2qsaynpn9y78hzfgv3cqi8fyry2c4f9";
+    sha256 = "0vnplva11yafhbijrk68wy7pw0psn9jm0caaymswq1s951xsn1c8";
   };
 
   patches = [
     ./sway-config-no-nix-store-references.patch
     ./load-configuration-from-etc.patch
-  ];
 
-  postPatch = ''
-    substituteInPlace meson.build --replace "v1.5" "1.5"
-  '';
+    (substituteAll {
+      src = ./fix-paths.patch;
+      inherit swaybg;
+    })
+  ];
 
   nativeBuildInputs = [
     meson ninja pkg-config wayland scdoc
@@ -32,14 +33,15 @@ stdenv.mkDerivation rec {
   buildInputs = [
     wayland libxkbcommon pcre json_c dbus libevdev
     pango cairo libinput libcap pam gdk-pixbuf librsvg
-    wlroots wayland-protocols
+    wlroots wayland-protocols libdrm
   ];
 
   mesonFlags = [
     "-Ddefault-wallpaper=false"
+    "-Dsd-bus-provider=libsystemd"
   ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "An i3-compatible tiling Wayland compositor";
     longDescription = ''
       Sway is a tiling Wayland compositor and a drop-in replacement for the i3

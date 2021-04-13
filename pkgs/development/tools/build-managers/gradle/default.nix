@@ -1,6 +1,15 @@
-{ stdenv, fetchurl, unzip, jdk, java ? jdk, makeWrapper }:
+{ lib, stdenv, fetchurl, unzip, jdk, java ? jdk, makeWrapper }:
 
-rec {
+let
+  gradleSpec = { version, nativeVersion, sha256 }: rec {
+    inherit nativeVersion;
+    name = "gradle-${version}";
+    src = fetchurl {
+      inherit sha256;
+      url = "https://services.gradle.org/distributions/${name}-bin.zip";
+    };
+  };
+in rec {
   gradleGen = {name, src, nativeVersion} : stdenv.mkDerivation {
     inherit name src nativeVersion;
 
@@ -33,7 +42,8 @@ rec {
         echo ${stdenv.cc.cc} > $out/nix-support/manual-runtime-dependencies
       '';
 
-    buildInputs = [ unzip java makeWrapper ];
+    nativeBuildInputs = [ makeWrapper unzip ];
+    buildInputs = [ java ];
 
     meta = {
       description = "Enterprise-grade build system";
@@ -46,40 +56,35 @@ rec {
         build-by-convention behavior.
       '';
       homepage = "http://www.gradle.org/";
-      license = stdenv.lib.licenses.asl20;
-      platforms = stdenv.lib.platforms.unix;
+      license = lib.licenses.asl20;
+      platforms = lib.platforms.unix;
     };
   };
 
-  gradle_latest = gradle_6_6;
+  # NOTE: Gradle 7 is a release candidate, so point to 6.8.
+  gradle_latest = gradle_6_8;
 
-  gradle_6_6 = gradleGen rec {
-    name = "gradle-6.6";
-    nativeVersion = "0.22-milestone-4";
+  gradle_7 = gradleGen (gradleSpec {
+    version = "7.0-rc-2";
+    nativeVersion = "0.22-milestone-11";
+    sha256 = "0gzvigyvwwizx90vnzhdnbm5rdaki11inxna11s4y67xkn8hrnx5";
+  });
 
-    src = fetchurl {
-      url = "https://services.gradle.org/distributions/${name}-bin.zip";
-      sha256 = "09a0fnz6fn8yaxm3q3iwyjm3nnaz7k8i1xlpc7sm414py043by76";
-    };
-  };
+  gradle_6_8 = gradleGen (gradleSpec {
+    version = "6.8.3";
+    nativeVersion = "0.22-milestone-9";
+    sha256 = "01fjrk5nfdp6mldyblfmnkq2gv1rz1818kzgr0k2i1wzfsc73akz";
+  });
 
-  gradle_5_6 = gradleGen rec {
-    name = "gradle-5.6.4";
+  gradle_5_6 = gradleGen (gradleSpec {
+    version = "5.6.4";
     nativeVersion = "0.18";
+    sha256 = "1f3067073041bc44554d0efe5d402a33bc3d3c93cc39ab684f308586d732a80d";
+  });
 
-    src = fetchurl {
-      url = "https://services.gradle.org/distributions/${name}-bin.zip";
-      sha256 = "1f3067073041bc44554d0efe5d402a33bc3d3c93cc39ab684f308586d732a80d";
-    };
-  };
-
-  gradle_4_10 = gradleGen rec {
-    name = "gradle-4.10.3";
+  gradle_4_10 = gradleGen (gradleSpec {
+    version = "4.10.3";
     nativeVersion = "0.14";
-
-    src = fetchurl {
-      url = "https://services.gradle.org/distributions/${name}-bin.zip";
-      sha256 = "0vhqxnk0yj3q9jam5w4kpia70i4h0q4pjxxqwynh3qml0vrcn9l6";
-    };
-  };
+    sha256 = "0vhqxnk0yj3q9jam5w4kpia70i4h0q4pjxxqwynh3qml0vrcn9l6";
+  });
 }

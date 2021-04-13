@@ -1,4 +1,4 @@
-{ stdenv, fetchFromGitHub, autoconf, runtimeShell, python3Packages, makeWrapper }:
+{ lib, stdenv, fetchFromGitHub, autoconf, runtimeShell, python3Packages, makeWrapper }:
 
 stdenv.mkDerivation rec {
   pname = "argbash";
@@ -8,7 +8,7 @@ stdenv.mkDerivation rec {
   src = fetchFromGitHub {
     owner = "matejak";
     repo = "argbash";
-    rev = "${version}";
+    rev = version;
     sha256 = "1xdhpbnc0xjv6ydcm122hhdjcl77jhiqnccjfqjp3cd1lfmzvg8v";
   };
 
@@ -30,7 +30,7 @@ stdenv.mkDerivation rec {
       --prefix PATH : '${autoconf}/bin'
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Bash argument parsing code generator";
     homepage = "https://argbash.io/";
     license = licenses.free; # custom license.  See LICENSE in source repo.

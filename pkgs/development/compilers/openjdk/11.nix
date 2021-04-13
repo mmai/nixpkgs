@@ -1,4 +1,4 @@
-{ stdenv, lib, fetchurl, bash, pkgconfig, autoconf, cpio, file, which, unzip
+{ stdenv, lib, fetchFromGitHub, bash, pkg-config, autoconf, cpio, file, which, unzip
 , zip, perl, cups, freetype, alsaLib, libjpeg, giflib, libpng, zlib, lcms2
 , libX11, libICE, libXrender, libXext, libXt, libXtst, libXi, libXinerama
 , libXcursor, libXrandr, fontconfig, openjdk11-bootstrap
@@ -11,21 +11,23 @@
 let
   major = "11";
   minor = "0";
-  update = "8";
-  build = "10";
+  update = "10";
+  build = "9";
 
   openjdk = stdenv.mkDerivation rec {
     pname = "openjdk" + lib.optionalString headless "-headless";
     version = "${major}.${minor}.${update}+${build}";
 
-    src = fetchurl {
-      url = "http://hg.openjdk.java.net/jdk-updates/jdk${major}u/archive/jdk-${version}.tar.gz";
-      sha256 = "1sdncn1bk4h8xxfnmrl1125maqy6mc0v0y1dyifwsa04wasj9hbz";
+    src = fetchFromGitHub {
+      owner = "openjdk";
+      repo = "jdk${major}u";
+      rev = "jdk-${version}";
+      sha256 = "06pm3hpz4ggiqwvkgzxr39y9kga7vk4flakfznz5979bvgb926vw";
     };
 
-    nativeBuildInputs = [ pkgconfig autoconf ];
+    nativeBuildInputs = [ pkg-config autoconf unzip ];
     buildInputs = [
-      cpio file which unzip zip perl zlib cups freetype alsaLib libjpeg giflib
+      cpio file which zip perl zlib cups freetype alsaLib libjpeg giflib
       libpng zlib lcms2 libX11 libICE libXrender libXext libXtst libXt libXtst
       libXi libXinerama libXcursor libXrandr fontconfig openjdk11-bootstrap
     ] ++ lib.optionals (!headless && enableGnome2) [
@@ -134,7 +136,7 @@ let
 
     disallowedReferences = [ openjdk11-bootstrap ];
 
-    meta = with stdenv.lib; {
+    meta = with lib; {
       homepage = "http://openjdk.java.net/";
       license = licenses.gpl2;
       description = "The open-source Java Development Kit";
@@ -145,6 +147,7 @@ let
     passthru = {
       architecture = "";
       home = "${openjdk}/lib/openjdk";
+      inherit gtk3;
     };
   };
 in openjdk

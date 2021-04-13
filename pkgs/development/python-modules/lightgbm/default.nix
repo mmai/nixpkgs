@@ -1,4 +1,4 @@
-{ stdenv
+{ lib, stdenv
 , buildPythonPackage
 , fetchPypi
 , cmake
@@ -10,11 +10,11 @@
 
 buildPythonPackage rec {
   pname = "lightgbm";
-  version = "3.0.0";
+  version = "3.2.0";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "05f5b358469a679dbf27521d926750ca53ff1e61a6c0293d49af30094ebd9d4a";
+    sha256 = "000c6e0e225834a8a94a84571cf41e4b7c7b97a0db6d286c1237de8ba6066726";
   };
 
   nativeBuildInputs = [
@@ -26,7 +26,7 @@ buildPythonPackage rec {
   # we never actually explicitly call the install command so this is the only way
   # to inject these options to it - however, openmp-library doesn't appear to have
   # any effect, so we have to inject it into NIX_LDFLAGS manually below
-  postPatch = stdenv.lib.optionalString stdenv.cc.isClang ''
+  postPatch = lib.optionalString stdenv.cc.isClang ''
     cat >> setup.cfg <<EOF
 
     [install]
@@ -44,7 +44,7 @@ buildPythonPackage rec {
 
   postConfigure = ''
     export HOME=$(mktemp -d)
-  '' + stdenv.lib.optionalString stdenv.cc.isClang ''
+  '' + lib.optionalString stdenv.cc.isClang ''
     export NIX_LDFLAGS="$NIX_LDFLAGS -L${llvmPackages.openmp}/lib -lomp"
   '';
 
@@ -53,7 +53,7 @@ buildPythonPackage rec {
   # `make check`.
   doCheck = false;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A fast, distributed, high performance gradient boosting (GBDT, GBRT, GBM or MART) framework";
     homepage = "https://github.com/Microsoft/LightGBM";
     license = licenses.mit;

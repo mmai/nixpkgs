@@ -14,14 +14,14 @@
 
 buildPythonPackage rec {
   pname = "csvw";
-  version = "1.8.0";
+  version = "1.10.1";
   disabled = isPy27;
 
   src = fetchFromGitHub {
     owner = "cldf";
     repo = "csvw";
     rev = "v${version}";
-    sha256 = "0maxrsiv9i9hkg627hwqyq8g6jg3g8iv8gdqaxz4aysjd9xddydd";
+    sha256 = "1764nfa4frjdd7v6wj35y7prnciaqz57wwygy5zfavl4laxn4nxd";
   };
 
   patchPhase = ''

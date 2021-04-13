@@ -4,40 +4,35 @@
 , fetchPypi
 , cvxopt
 , ecos
-, multiprocess
 , numpy
 , osqp
 , scipy
 , scs
-, six
   # Check inputs
 , pytestCheckHook
-, nose
 }:
 
 buildPythonPackage rec {
   pname = "cvxpy";
-  version = "1.1.6";
+  version = "1.1.11";
 
   disabled = pythonOlder "3.5";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "36527573c937cedd270f46c77b50bb5e16b96ca7b05a7a480bdc8c9052595723";
+    hash = "sha256-W4qly+g07Q1iYJ76/tGZNkBPa+oavhTDUYRQ3cZ+s1I=";
   };
 
   propagatedBuildInputs = [
     cvxopt
     ecos
-    multiprocess
     numpy
     osqp
     scipy
     scs
-    six
   ];
 
-  checkInputs = [ pytestCheckHook nose ];
+  checkInputs = [ pytestCheckHook ];
   pytestFlagsArray = [ "./cvxpy" ];
   # Disable the slowest benchmarking tests, cuts test time in half
   disabledTests = [
@@ -46,7 +41,7 @@ buildPythonPackage rec {
   ];
 
   meta = with lib; {
-    description = "A domain-specific language for modeling convex optimization problems in Python.";
+    description = "A domain-specific language for modeling convex optimization problems in Python";
     homepage = "https://www.cvxpy.org/";
     downloadPage = "https://github.com/cvxgrp/cvxpy/releases";
     changelog = "https://github.com/cvxgrp/cvxpy/releases/tag/v${version}";

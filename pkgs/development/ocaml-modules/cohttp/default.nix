@@ -1,27 +1,33 @@
 { lib, fetchurl, buildDunePackage
 , ppx_fields_conv, ppx_sexp_conv, stdlib-shims
 , base64, fieldslib, jsonm, re, stringext, uri-sexp
+, ocaml, fmt, alcotest
 }:
 
 buildDunePackage rec {
-	pname = "cohttp";
-	version = "2.5.4";
+  pname = "cohttp";
+  version = "2.5.5";
 
-	minimumOCamlVersion = "4.04.1";
+  useDune2 = true;
 
-	src = fetchurl {
-		url = "https://github.com/mirage/ocaml-cohttp/releases/download/v${version}/cohttp-v${version}.tbz";
-		sha256 = "1q04spmki5zis5p5m1vs77i3k7ijm134j62g61071vblwx25z17a";
-	};
+  minimumOCamlVersion = "4.04.1";
 
-	buildInputs = [ jsonm ppx_fields_conv ppx_sexp_conv ];
+  src = fetchurl {
+    url = "https://github.com/mirage/ocaml-cohttp/releases/download/v${version}/cohttp-v${version}.tbz";
+    sha256 = "0ywmql4lp6ps2gd064ixbjzsdnnn5vk3pipm005sswl553qqwaim";
+  };
 
-	propagatedBuildInputs = [ base64 fieldslib re stringext uri-sexp stdlib-shims ];
+  buildInputs = [ jsonm ppx_fields_conv ppx_sexp_conv ];
 
-	meta = {
-		description = "HTTP(S) library for Lwt, Async and Mirage";
-		license = lib.licenses.isc;
-		maintainers = [ lib.maintainers.vbgl ];
-		homepage = "https://github.com/mirage/ocaml-cohttp";
-	};
+  propagatedBuildInputs = [ base64 fieldslib re stringext uri-sexp stdlib-shims ];
+
+  doCheck = lib.versionAtLeast ocaml.version "4.05";
+  checkInputs = [ fmt alcotest ];
+
+  meta = {
+    description = "HTTP(S) library for Lwt, Async and Mirage";
+    license = lib.licenses.isc;
+    maintainers = [ lib.maintainers.vbgl ];
+    homepage = "https://github.com/mirage/ocaml-cohttp";
+  };
 }

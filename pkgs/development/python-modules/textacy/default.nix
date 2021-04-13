@@ -17,12 +17,12 @@
 
 buildPythonPackage rec {
   pname = "textacy";
-  version = "0.10.0";
+  version = "0.10.1";
   disabled = isPy27;
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "0a824333f53d19d24ca864c92da52f3fecd412f4ef3e1448864c45f06189fd6d";
+    sha256 = "ff72adc6dbb85db6981324e226fff77830da57d7fe7e4adb2cafd9dc2a8bfa7d";
   };
 
   propagatedBuildInputs = [
@@ -51,6 +51,9 @@ buildPythonPackage rec {
   '';
 
   meta = with lib; {
+    # scikit-learn in pythonPackages is too new for textacy
+    # remove as soon as textacy support scikit-learn >= 0.24
+    broken = true;
     description = "Higher-level text processing, built on spaCy";
     homepage = "https://textacy.readthedocs.io/";
     license = licenses.asl20;

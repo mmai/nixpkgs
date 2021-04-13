@@ -1,4 +1,4 @@
-{ stdenv, buildPythonPackage, fetchFromGitHub
+{ lib, buildPythonPackage, fetchFromGitHub
 , execnet
 , glob2
 , Mako
@@ -22,7 +22,9 @@ buildPythonPackage rec {
     sha256 = "1yqzz44as4pxffmg4hk9lijvnvlc2chg1maq1fbj5i4k4jpagvjz";
   };
 
-  propagatedBuildInputs = [ glob2 Mako parse parse-type py pytest six ];
+  buildInputs = [ pytest ];
+
+  propagatedBuildInputs = [ glob2 Mako parse parse-type py six ];
 
   # Tests require extra dependencies
   checkInputs = [ execnet mock pytest ];
@@ -30,7 +32,7 @@ buildPythonPackage rec {
     PATH=$PATH:$out/bin pytest
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "BDD library for the py.test runner";
     homepage = "https://github.com/pytest-dev/pytest-bdd";
     license = licenses.mit;

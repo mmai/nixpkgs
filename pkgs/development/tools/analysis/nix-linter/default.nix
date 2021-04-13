@@ -36,6 +36,11 @@ mkDerivation rec {
   executableHaskellDepends = [ streamly mtl path pretty-terminal text base aeson cmdargs containers hnix bytestring path-io ];
   testHaskellDepends = [ tasty tasty-hunit tasty-th ];
 
+  # Relax upper bound on hnix https://github.com/Synthetica9/nix-linter/pull/46
+  postPatch = ''
+    substituteInPlace nix-linter.cabal --replace "hnix >=0.8 && < 0.11" "hnix >=0.8"
+  '';
+
   description = "Linter for Nix(pkgs), based on hnix";
   homepage = "https://github.com/Synthetica9/nix-linter";
   license = lib.licenses.bsd3;

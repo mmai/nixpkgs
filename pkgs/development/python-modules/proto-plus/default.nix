@@ -1,30 +1,33 @@
-{ stdenv
+{ lib
 , buildPythonPackage
 , fetchPypi
 , isPy3k
 , protobuf
-, google_api_core
+, googleapis-common-protos
 , pytestCheckHook
+, pytz
 }:
 
 buildPythonPackage rec {
   pname = "proto-plus";
-  version = "1.10.1";
+  version = "1.18.1";
   disabled = !isPy3k;
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "0n8ia51jg2dkab2sf0qnh39bssqhz65ybcqr78f3zzf7ja923lkr";
+    sha256 = "sha256-z8RUdMftoP48S57KJUISTyoP9VQyQr7GHo0IvOD1vUg=";
   };
 
   propagatedBuildInputs = [ protobuf ];
 
-  checkInputs = [ pytestCheckHook google_api_core ];
+  checkInputs = [ pytestCheckHook pytz googleapis-common-protos ];
 
-  meta = with stdenv.lib; {
+  pythonImportsCheck = [ "proto" ];
+
+  meta = with lib; {
     description = "Beautiful, idiomatic protocol buffers in Python";
     homepage = "https://github.com/googleapis/proto-plus-python";
     license = licenses.asl20;
-    maintainers = [ maintainers.ruuda ];
+    maintainers = with maintainers; [ ruuda SuperSandro2000 ];
   };
 }

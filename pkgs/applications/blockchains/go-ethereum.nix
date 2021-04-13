@@ -1,20 +1,33 @@
-{ stdenv, buildGoModule, fetchFromGitHub, libobjc, IOKit }:
+{ lib, stdenv, buildGoModule, fetchFromGitHub, libobjc, IOKit }:
 
-buildGoModule rec {
+let
+  # A list of binaries to put into separate outputs
+  bins = [
+    "geth"
+  ];
+
+in buildGoModule rec {
   pname = "go-ethereum";
-  version = "1.9.23";
+  version = "1.10.2";
 
   src = fetchFromGitHub {
     owner = "ethereum";
     repo = pname;
     rev = "v${version}";
-    sha256 = "0w65sln5l3sxwzxwjvyaial0m1kxhivhw8xwl5faxxxlk50rs4wm";
+    sha256 = "sha256-PJaJ9fCva9UUBcQrnVa2c7dk4koi6AyX6bj3JStUMwM=";
   };
 
   runVend = true;
-  vendorSha256 = "1qbg44cryiv9kvcak6qjrbmkc9bxyk5fybj62vdkskqfjvv86068";
+  vendorSha256 = "sha256-qLpwrV9NkmUO0yoK2/gwb5oe/lky/w/P0QVoFSTNuMU=";
 
   doCheck = false;
+
+  outputs = [ "out" ] ++ bins;
+
+  # Move binaries to separate outputs and symlink them back to $out
+  postInstall = lib.concatStringsSep "\n" (
+    builtins.map (bin: "mkdir -p \$${bin}/bin && mv $out/bin/${bin} \$${bin}/bin/ && ln -s \$${bin}/bin/${bin} $out/bin/") bins
+  );
 
   subPackages = [
     "cmd/abidump"
@@ -35,12 +48,12 @@ buildGoModule rec {
 
   # Fix for usb-related segmentation faults on darwin
   propagatedBuildInputs =
-    stdenv.lib.optionals stdenv.isDarwin [ libobjc IOKit ];
+    lib.optionals stdenv.isDarwin [ libobjc IOKit ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://geth.ethereum.org/";
     description = "Official golang implementation of the Ethereum protocol";
-    license = with licenses; [ lgpl3 gpl3 ];
+    license = with licenses; [ lgpl3Plus gpl3Plus ];
     maintainers = with maintainers; [ adisbladis lionello xrelkd RaghavSood ];
   };
 }

@@ -1,25 +1,25 @@
-{ stdenv, fetchFromGitLab, cmake, cairo }:
+{ lib, stdenv, fetchFromGitHub, cmake, cairo }:
 
 stdenv.mkDerivation rec {
   pname = "redkite";
-  version = "1.0.3";
+  version = "1.3.1";
 
-  src = fetchFromGitLab {
+  src = fetchFromGitHub {
     owner = "iurie-sw";
     repo = pname;
     rev = "v${version}";
-    sha256 = "1m2db7c791fi33snkjwnvlxapmf879g5r8azlkx7sr6vp2s0jq2k";
+    sha256 = "sha256-bf8kz9RyhDDuUHKiKvLiQLBIEXbIyoy3yuKfSpSYYv0=";
   };
 
   nativeBuildInputs = [ cmake ];
 
   buildInputs = [ cairo ];
 
-  meta = {
+  meta = with lib; {
     homepage = "https://gitlab.com/iurie-sw/redkite";
     description = "A small GUI toolkit";
-    license = stdenv.lib.licenses.gpl3Plus;
-    platforms = stdenv.lib.platforms.linux;
-    maintainers = [ stdenv.lib.maintainers.magnetophon ];
+    license = licenses.gpl3Plus;
+    platforms = platforms.linux;
+    maintainers = [ maintainers.magnetophon ];
   };
 }

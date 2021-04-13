@@ -1,5 +1,5 @@
 {
-  mkDerivation, lib,
+  mkDerivation, lib, fetchpatch,
   extra-cmake-modules, kdoctools,
 
   epoxy,libICE, libSM, libinput, libxkbcommon, udev, wayland, xcb-util-cursor,
@@ -11,8 +11,8 @@
   breeze-qt5, kactivities, kcompletion, kcmutils, kconfig, kconfigwidgets,
   kcoreaddons, kcrash, kdeclarative, kdecoration, kglobalaccel, ki18n,
   kiconthemes, kidletime, kinit, kio, knewstuff, knotifications, kpackage,
-  kscreenlocker, kservice, kwayland, kwidgetsaddons, kwindowsystem, kxmlgui,
-  plasma-framework, libcap, libdrm, mesa
+  kscreenlocker, kservice, kwayland, kwayland-server, kwidgetsaddons, kwindowsystem, kxmlgui,
+  plasma-framework, libcap, libdrm, mesa, pipewire
 }:
 
 # TODO (ttuegel): investigate qmlplugindump failure
@@ -30,13 +30,15 @@ mkDerivation {
     breeze-qt5 kactivities kcmutils kcompletion kconfig kconfigwidgets
     kcoreaddons kcrash kdeclarative kdecoration kglobalaccel ki18n kiconthemes
     kidletime kinit kio knewstuff knotifications kpackage kscreenlocker kservice
-    kwayland kwidgetsaddons kwindowsystem kxmlgui plasma-framework
-    libcap libdrm mesa
+    kwayland kwayland-server kwidgetsaddons kwindowsystem kxmlgui plasma-framework
+    libcap libdrm mesa pipewire
   ];
-  outputs = [ "bin" "dev" "out" ];
+  outputs = [ "dev" "out" ];
   patches = [
     ./0001-follow-symlinks.patch
     ./0002-xwayland.patch
+    ./0003-plugins-qpa-allow-using-nixos-wrapper.patch
+    ./0001-NixOS-Unwrap-executable-name-for-.desktop-search.patch
   ];
   CXXFLAGS = [
     ''-DNIXPKGS_XWAYLAND=\"${lib.getBin xwayland}/bin/Xwayland\"''

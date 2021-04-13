@@ -1,24 +1,15 @@
-{ stdenv, fetchpatch, fetchFromGitHub, makeWrapper, SDL2, gzip, libvorbis, libmad, vulkan-headers, vulkan-loader }:
+{ lib, stdenv, fetchFromGitHub, makeWrapper, SDL2, gzip, libvorbis, libmad, vulkan-headers, vulkan-loader }:
 
 stdenv.mkDerivation rec {
   pname = "vkquake";
-  version = "1.04.1";
+  version = "1.05.2";
 
   src = fetchFromGitHub {
     owner = "Novum";
     repo = "vkQuake";
     rev = version;
-    sha256 = "1ry861pk3z02hy7i0yi3xwmd1zma802qzcnlm09w6pslayd9rwbf";
+    sha256 = "sha256-h4TpeOwCK3Ynd+XZKo7wHncWS1OI6+b9SReD5xMK9zk=";
   };
-
-  # patches and patchFlags can be deleted with the next release
-  patches = [
-    (fetchpatch {
-      url = "https://github.com/Novum/vkQuake/commit/a869a22d9b51c68e57646fa20e4c40fc6db36760.patch";
-      sha256 = "sha256-ea5lcXTTlJZnuOdF1W+GCYvVgj/gW10tDNyTgfl3Kfs=";
-    })
-  ];
-  patchFlags = "-p2";
 
   sourceRoot = "source/Quake";
 
@@ -50,7 +41,7 @@ stdenv.mkDerivation rec {
 
   enableParallelBuilding = true;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Vulkan Quake port based on QuakeSpasm";
     homepage = src.meta.homepage;
     longDescription = ''

@@ -50,9 +50,14 @@ let
   # List of components used in config
   extraComponents = filter useComponent availableComponents;
 
-  package = if (cfg.autoExtraComponents && cfg.config != null)
+  testedPackage = if (cfg.autoExtraComponents && cfg.config != null)
     then (cfg.package.override { inherit extraComponents; })
     else cfg.package;
+
+  # overridePythonAttrs has to be applied after override
+  package = testedPackage.overridePythonAttrs (oldAttrs: {
+    doCheck = false;
+  });
 
   # If you are changing this, please update the description in applyDefaultConfig
   defaultConfig = {
@@ -63,7 +68,7 @@ let
   };
 
 in {
-  meta.maintainers = with maintainers; [ dotlambda ];
+  meta.maintainers = teams.home-assistant.members;
 
   options.services.home-assistant = {
     enable = mkEnableOption "Home Assistant";
@@ -184,7 +189,9 @@ in {
 
     package = mkOption {
       default = pkgs.home-assistant;
-      defaultText = "pkgs.home-assistant";
+      defaultText = literalExample ''
+        pkgs.home-assistant
+      '';
       type = types.package;
       example = literalExample ''
         pkgs.home-assistant.override {
@@ -192,10 +199,12 @@ in {
         }
       '';
       description = ''
-        Home Assistant package to use.
+        Home Assistant package to use. Tests are automatically disabled, as they take a considerable amout of time to complete.
         Override <literal>extraPackages</literal> or <literal>extraComponents</literal> in order to add additional dependencies.
         If you specify <option>config</option> and do not set <option>autoExtraComponents</option>
         to <literal>false</literal>, overriding <literal>extraComponents</literal> will have no effect.
+        Avoid <literal>home-assistant.overridePythonAttrs</literal> if you use
+        <literal>autoExtraComponents</literal>.
       '';
     };
 
@@ -245,7 +254,11 @@ in {
         Group = "hass";
         Restart = "on-failure";
         ProtectSystem = "strict";
-        ReadWritePaths = "${cfg.configDir}";
+        ReadWritePaths = let
+          cfgPath = [ "config" "homeassistant" "allowlist_external_dirs" ];
+          value = attrByPath cfgPath [] cfg;
+          allowPaths = if isList value then value else singleton value;
+        in [ "${cfg.configDir}" ] ++ allowPaths;
         KillSignal = "SIGINT";
         PrivateTmp = true;
         RemoveIPC = true;

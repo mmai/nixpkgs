@@ -3,10 +3,11 @@
 , nix-update-script
 , meson
 , ninja
-, pkgconfig
+, pkg-config
 , python3
 , gtk3
 , gst_all_1
+, libhandy
 , libsecret
 , libsoup
 , appstream-glib
@@ -24,7 +25,7 @@
 
 python3.pkgs.buildPythonApplication rec  {
   pname = "lollypop";
-  version = "1.3.2";
+  version = "1.4.17";
 
   format = "other";
   doCheck = false;
@@ -33,7 +34,7 @@ python3.pkgs.buildPythonApplication rec  {
     url = "https://gitlab.gnome.org/World/lollypop";
     rev = "refs/tags/${version}";
     fetchSubmodules = true;
-    sha256 = "14854j1dhq67s1vzs0lqy345vbl6f5w8nb36n4i33fmpva2flsk3";
+    sha256 = "sha256-GrznUXIYUTYOKQ1znsCqmBdm5YImCABMK2NGRtx5fSk=";
   };
 
   nativeBuildInputs = [
@@ -42,7 +43,7 @@ python3.pkgs.buildPythonApplication rec  {
     gobject-introspection
     meson
     ninja
-    pkgconfig
+    pkg-config
     wrapGAppsHook
   ];
 
@@ -57,6 +58,7 @@ python3.pkgs.buildPythonApplication rec  {
     gst-plugins-ugly
     gstreamer
     gtk3
+    libhandy
     libsoup
     pango
     totem-pl-parser
@@ -104,7 +106,7 @@ python3.pkgs.buildPythonApplication rec  {
     description = "A modern music player for GNOME";
     homepage = "https://wiki.gnome.org/Apps/Lollypop";
     license = licenses.gpl3Plus;
-    maintainers = with maintainers; [ worldofpeace ];
+    maintainers = with maintainers; [ worldofpeace lovesegfault ];
     platforms = platforms.linux;
   };
 }

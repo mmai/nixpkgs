@@ -1,12 +1,12 @@
-{ stdenv, fetchurl, makeWrapper, jre }:
+{ lib, stdenv, fetchurl, makeWrapper, jre }:
 
 stdenv.mkDerivation rec {
-  version = "8.36.2";
+  version = "8.41.1";
   pname = "checkstyle";
 
   src = fetchurl {
     url = "https://github.com/checkstyle/checkstyle/releases/download/checkstyle-${version}/checkstyle-${version}-all.jar";
-    sha256 = "05yb3020q0r75ggh0nm56yj45ha2ppyhbnjn34wqpadi842pzpfh";
+    sha256 = "sha256-zW6gjRu5YEH04xCbsW20FeFfmBg+i+aW3WpViBQigXI=";
   };
 
   nativeBuildInputs = [ makeWrapper ];
@@ -22,7 +22,7 @@ stdenv.mkDerivation rec {
     runHook postInstall
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Checks Java source against a coding standard";
     longDescription = ''
       checkstyle is a development tool to help programmers write Java code that

@@ -1,4 +1,4 @@
-{ stdenv
+{ lib
 , buildPythonPackage
 , fetchPypi
 , flask
@@ -11,11 +11,11 @@
 
 buildPythonPackage rec {
   pname = "Eve";
-  version = "1.1.3";
+  version = "1.1.5";
 
   src = fetchPypi {
     inherit pname version;
-    sha256 = "ef335d13b798bc901636643f11455bab8b8698ddfe3a0b67bc251af1fd809b21";
+    sha256 = "5647ee7dd6e063b967276e49f564cd4f96decdd0a218482bdf86c404a2be1fbf";
   };
 
   propagatedBuildInputs = [
@@ -32,7 +32,7 @@ buildPythonPackage rec {
   # tests call a running mongodb instance
   doCheck = false;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     homepage = "https://python-eve.org/";
     description = "Open source Python REST API framework designed for human beings";
     license = licenses.bsd3;

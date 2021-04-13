@@ -1,4 +1,4 @@
-{ stdenv
+{ lib, stdenv
 , fetchurl
 , aspell
 , pkg-config
@@ -10,13 +10,13 @@
 
 stdenv.mkDerivation rec {
   pname = "enchant";
-  version = "2.2.11";
+  version = "2.2.15";
 
   outputs = [ "out" "dev" ];
 
   src = fetchurl {
     url = "https://github.com/AbiWord/${pname}/releases/download/v${version}/${pname}-${version}.tar.gz";
-    sha256 = "opxXd8TkX8rCWVwVxJ1tKqQ0+l58mT3/P582e2X+Ryo=";
+    sha256 = "sha256-Ow8iFVeBFfKOKmqlSbNRKGADlDBL151vKLDTs9b0bAM=";
   };
 
   nativeBuildInputs = [
@@ -46,7 +46,7 @@ stdenv.mkDerivation rec {
     "--enable-relocatable" # needed for tests
   ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Generic spell checking library";
     homepage = "https://abiword.github.io/enchant/";
     license = licenses.lgpl21Plus; # with extra provision for non-free checkers

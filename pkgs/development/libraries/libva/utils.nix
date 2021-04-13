@@ -1,23 +1,23 @@
-{ stdenv, fetchFromGitHub, meson, ninja, pkg-config
+{ lib, stdenv, fetchFromGitHub, meson, ninja, pkg-config
 , libdrm, libva, libX11, libXext, libXfixes, wayland
 }:
 
 stdenv.mkDerivation rec {
   pname = "libva-utils";
-  inherit (libva) version;
+  version = "2.11.1";
 
   src = fetchFromGitHub {
     owner  = "intel";
     repo   = "libva-utils";
     rev    = version;
-    sha256 = "1xylc940ffhqay9lyy48872cfw61ziky8dw21vm69psngfz3zs9n";
+    sha256 = "1arp5r0csahjbbsmdmf0dzpgwcpps9s2hlh68lgg6n5n85zkd4b5";
   };
 
   nativeBuildInputs = [ meson ninja pkg-config ];
 
   buildInputs = [ libdrm libva libX11 libXext libXfixes wayland ];
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "A collection of utilities and examples for VA-API";
     longDescription = ''
       libva-utils is a collection of utilities and examples to exercise VA-API

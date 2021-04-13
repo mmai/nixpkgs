@@ -2,16 +2,16 @@
 
 buildGoModule rec {
   pname = "fzf";
-  version = "0.23.1";
+  version = "0.27.0";
 
   src = fetchFromGitHub {
     owner = "junegunn";
     repo = pname;
     rev = version;
-    sha256 = "1x55y96i4b3gk9l2zlwb6ifsk8nxzfny3b73ly89g7kifwkb543k";
+    sha256 = "sha256-q0rAAD6du0WLcd46LUpkG3gBIvmtOE/foEMW5QCoIak=";
   };
 
-  vendorSha256 = "0bd4fk15i292377mv5w57gzxjp21f0rcf1py9gd6v99rx1pviq66";
+  vendorSha256 = "sha256-FKDCIotyra/TZ48wbpzudJZ2aI2pn+ZR4EoZ+9+19Mw=";
 
   outputs = [ "out" "man" ];
 
@@ -19,8 +19,12 @@ buildGoModule rec {
 
   buildInputs = [ ncurses ];
 
+  buildFlagsArray = [
+    "-ldflags=-s -w -X main.version=${version} -X main.revision=${src.rev}"
+  ];
+
   # The vim plugin expects a relative path to the binary; patch it to abspath.
-  patchPhase = ''
+  postPatch = ''
     sed -i -e "s|expand('<sfile>:h:h')|'$out'|" plugin/fzf.vim
 
     if ! grep -q $out plugin/fzf.vim; then
@@ -65,7 +69,8 @@ buildGoModule rec {
     homepage = "https://github.com/junegunn/fzf";
     description = "A command-line fuzzy finder written in Go";
     license = licenses.mit;
-    maintainers = with maintainers; [ filalex77 ma27 zowoq ];
+    maintainers = with maintainers; [ Br1ght0ne ma27 zowoq ];
     platforms = platforms.unix;
+    changelog = "https://github.com/junegunn/fzf/blob/${version}/CHANGELOG.md";
   };
 }

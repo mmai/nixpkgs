@@ -1,17 +1,17 @@
-{ stdenv, buildGoModule, fetchFromGitHub }:
+{ lib, buildGoModule, fetchFromGitHub, installShellFiles }:
 
 buildGoModule rec {
   pname = "hugo";
-  version = "0.76.5";
+  version = "0.82.0";
 
   src = fetchFromGitHub {
     owner = "gohugoio";
     repo = pname;
     rev = "v${version}";
-    sha256 = "0p7zz9cif1vihhs21nvh4n3y1p2cwpga59rilpam7yvza4nzx7ay";
+    sha256 = "sha256-D0bwy8LJihlfM+E3oys85yjadjZNfPv5xnq4ekaZPCU=";
   };
 
-  vendorSha256 = "0kiqy8n2df52gsgsbmr96rph8lpnw06g622123hlwk7kqg0z9ifh";
+  vendorSha256 = "sha256-pJBm+yyy1DbH28oVBQA+PHSDtSg3RcgbRlurrwnnEls=";
 
   doCheck = false;
 
@@ -21,10 +21,21 @@ buildGoModule rec {
 
   subPackages = [ "." ];
 
-  meta = with stdenv.lib; {
+  nativeBuildInputs = [ installShellFiles ];
+
+  postInstall = ''
+    $out/bin/hugo gen man
+    installManPage man/*
+    installShellCompletion --cmd hugo \
+      --bash <($out/bin/hugo gen autocomplete --type=bash) \
+      --fish <($out/bin/hugo gen autocomplete --type=fish) \
+      --zsh <($out/bin/hugo gen autocomplete --type=zsh)
+  '';
+
+  meta = with lib; {
     description = "A fast and modern static website engine";
     homepage = "https://gohugo.io";
     license = licenses.asl20;
-    maintainers = with maintainers; [ schneefux filalex77 Frostman ];
+    maintainers = with maintainers; [ schneefux Br1ght0ne Frostman ];
   };
 }

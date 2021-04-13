@@ -1,18 +1,20 @@
-{ stdenv, mkDerivation, lib, fetchzip, cmake, pkgconfig
+{ mkDerivation, lib, fetchFromGitHub, cmake, pkg-config
 , alsaLib, freetype, libjack2, lame, libogg, libpulseaudio, libsndfile, libvorbis
 , portaudio, portmidi, qtbase, qtdeclarative, qtgraphicaleffects
 , qtquickcontrols2, qtscript, qtsvg, qttools
 , qtwebengine, qtxmlpatterns
+, nixosTests
 }:
 
 mkDerivation rec {
   pname = "musescore";
-  version = "3.5.0";
+  version = "3.6.2";
 
-  src = fetchzip {
-    url = "https://github.com/musescore/MuseScore/releases/download/v3.5/MuseScore-${version}.zip";
-    sha256 = "0m598xh0s4f5m4l2ymy7g44bbvc14bcfi4gifhjnrg091rsk57c9";
-    stripRoot = false;
+  src = fetchFromGitHub {
+    owner = "musescore";
+    repo = "MuseScore";
+    rev = "v${version}";
+    sha256 = "sha256-GBGAD/qdOhoNfDzI+O0EiKgeb86GFJxpci35T6tZ+2s=";
   };
 
   patches = [
@@ -20,6 +22,7 @@ mkDerivation rec {
   ];
 
   cmakeFlags = [
+    "-DMUSESCORE_BUILD_CONFIG=release"
     "-DUSE_SYSTEM_FREETYPE=ON"
   ];
 
@@ -29,7 +32,7 @@ mkDerivation rec {
     "--set QML_DISABLE_DISK_CACHE 1"
   ];
 
-  nativeBuildInputs = [ cmake pkgconfig ];
+  nativeBuildInputs = [ cmake pkg-config ];
 
   buildInputs = [
     alsaLib libjack2 freetype lame libogg libpulseaudio libsndfile libvorbis
@@ -38,7 +41,9 @@ mkDerivation rec {
     qtscript qtsvg qttools qtwebengine qtxmlpatterns
   ];
 
-  meta = with stdenv.lib; {
+  passthru.tests = nixosTests.musescore;
+
+  meta = with lib; {
     description = "Music notation and composition software";
     homepage = "https://musescore.org/";
     license = licenses.gpl2;

@@ -45,7 +45,7 @@ let
         trusted-substituters = ${toString cfg.trustedBinaryCaches}
         trusted-public-keys = ${toString cfg.binaryCachePublicKeys}
         auto-optimise-store = ${boolToString cfg.autoOptimiseStore}
-        require-sigs = ${if cfg.requireSignedBinaryCaches then "true" else "false"}
+        require-sigs = ${boolToString cfg.requireSignedBinaryCaches}
         trusted-users = ${toString cfg.trustedUsers}
         allowed-users = ${toString cfg.allowedUsers}
         ${optionalString (!cfg.distributedBuilds) ''
@@ -539,7 +539,7 @@ in
     systemd.sockets.nix-daemon.wantedBy = [ "sockets.target" ];
 
     systemd.services.nix-daemon =
-      { path = [ nix pkgs.utillinux config.programs.ssh.package ]
+      { path = [ nix pkgs.util-linux config.programs.ssh.package ]
           ++ optionals cfg.distributedBuilds [ pkgs.gzip ];
 
         environment = cfg.envVars
@@ -587,10 +587,10 @@ in
 
     nix.systemFeatures = mkDefault (
       [ "nixos-test" "benchmark" "big-parallel" "kvm" ] ++
-      optionals (pkgs.hostPlatform.platform ? gcc.arch) (
-        # a builder can run code for `platform.gcc.arch` and inferior architectures
-        [ "gccarch-${pkgs.hostPlatform.platform.gcc.arch}" ] ++
-        map (x: "gccarch-${x}") lib.systems.architectures.inferiors.${pkgs.hostPlatform.platform.gcc.arch}
+      optionals (pkgs.hostPlatform ? gcc.arch) (
+        # a builder can run code for `gcc.arch` and inferior architectures
+        [ "gccarch-${pkgs.hostPlatform.gcc.arch}" ] ++
+        map (x: "gccarch-${x}") lib.systems.architectures.inferiors.${pkgs.hostPlatform.gcc.arch}
       )
     );
 

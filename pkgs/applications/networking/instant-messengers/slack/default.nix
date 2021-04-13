@@ -1,4 +1,4 @@
-{ stdenv
+{ lib, stdenv
 , fetchurl
 , dpkg
 , undmg
@@ -25,12 +25,14 @@
 , libpulseaudio
 , libuuid
 , libxcb
+, libxkbcommon
+, libxshmfence
 , mesa
 , nspr
 , nss
 , pango
 , systemd
-, xdg_utils
+, xdg-utils
 , xorg
 }:
 
@@ -39,9 +41,16 @@ let
   throwSystem = throw "Unsupported system: ${system}";
 
   pname = "slack";
+
+  x86_64-darwin-version = "4.14.0";
+  x86_64-darwin-sha256 = "0kpjsnriav6rcddjkz0z9arxjd09i6bw2krnmf3dc31my64nmxs6";
+
+  x86_64-linux-version = "4.14.0";
+  x86_64-linux-sha256 = "0xy9i8ssjba62ca7lfan58rhwx69wkapfd0jzkaj95qhqnv019fg";
+
   version = {
-    x86_64-darwin = "4.9.0";
-    x86_64-linux = "4.9.1";
+    x86_64-darwin = x86_64-darwin-version;
+    x86_64-linux = x86_64-linux-version;
   }.${system} or throwSystem;
 
   src = let
@@ -49,15 +58,15 @@ let
   in {
     x86_64-darwin = fetchurl {
       url = "${base}/releases/macos/${version}/prod/x64/Slack-${version}-macOS.dmg";
-      sha256 = "007fflncvvclj4agb6g5hc5k9j5hhz1rpvlcfd8w31rn1vad4abk";
+      sha256 = x86_64-darwin-sha256;
     };
     x86_64-linux = fetchurl {
       url = "${base}/linux_releases/slack-desktop-${version}-amd64.deb";
-      sha256 = "1n8br5vlcnf13b8m6727hy4bkmd6wayss96ck4ba9zsjiyj7v74i";
+      sha256 = x86_64-linux-sha256;
     };
   }.${system} or throwSystem;
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     description = "Desktop client for Slack";
     homepage = "https://slack.com";
     license = licenses.unfree;
@@ -68,7 +77,9 @@ let
   linux = stdenv.mkDerivation rec {
     inherit pname version src meta;
 
-    rpath = stdenv.lib.makeLibraryPath [
+    passthru.updateScript = ./update.sh;
+
+    rpath = lib.makeLibraryPath [
       alsaLib
       at-spi2-atk
       at-spi2-core
@@ -90,6 +101,7 @@ let
       libpulseaudio
       libuuid
       libxcb
+      libxkbcommon
       mesa
       nspr
       nss
@@ -106,6 +118,7 @@ let
       xorg.libXi
       xorg.libXrandr
       xorg.libXrender
+      xorg.libxshmfence
       xorg.libXtst
       xorg.libxkbfile
     ] + ":${stdenv.cc.cc.lib}/lib64";
@@ -140,7 +153,7 @@ let
       rm $out/bin/slack
       makeWrapper $out/lib/slack/slack $out/bin/slack \
         --prefix XDG_DATA_DIRS : $GSETTINGS_SCHEMAS_PATH \
-        --prefix PATH : ${xdg_utils}/bin
+        --prefix PATH : ${xdg-utils}/bin
 
       # Fix the desktop link
       substituteInPlace $out/share/applications/slack.desktop \
@@ -151,6 +164,8 @@ let
 
   darwin = stdenv.mkDerivation {
     inherit pname version src meta;
+
+    passthru.updateScript = ./update.sh;
 
     nativeBuildInputs = [ undmg ];
 

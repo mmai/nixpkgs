@@ -1,18 +1,18 @@
-{ mkDerivation, fetchurl, pkgs, lib, php }:
+{ mkDerivation, fetchurl, makeWrapper, lib, php }:
 let
   pname = "phpcs";
-  version = "3.5.5";
+  version = "3.5.8";
 in
 mkDerivation {
   inherit pname version;
 
   src = fetchurl {
     url = "https://github.com/squizlabs/PHP_CodeSniffer/releases/download/${version}/phpcs.phar";
-    sha256 = "0jl038l55cmzn5ml61qkv4z1w4ri0h3v7h00pcb04xhz3gznlbsa";
+    sha256 = "037mdnpbgd9xaj556pf14h02a4a6f5zzdg58p2z1sivxcygf8aka";
   };
 
   phases = [ "installPhase" ];
-  nativeBuildInputs = [ pkgs.makeWrapper ];
+  nativeBuildInputs = [ makeWrapper ];
 
   installPhase = ''
     mkdir -p $out/bin
@@ -21,7 +21,7 @@ mkDerivation {
       --add-flags "$out/libexec/phpcs/phpcs.phar"
   '';
 
-  meta = with pkgs.lib; {
+  meta = with lib; {
     description = "PHP coding standard tool";
     license = licenses.bsd3;
     homepage = "https://squizlabs.github.io/PHP_CodeSniffer/";

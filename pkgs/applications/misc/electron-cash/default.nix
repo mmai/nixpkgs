@@ -3,35 +3,45 @@
 
 python3Packages.buildPythonApplication rec {
   pname = "electron-cash";
-  version = "4.1.1";
+  version = "4.2.4";
 
   src = fetchFromGitHub {
     owner = "Electron-Cash";
     repo = "Electron-Cash";
     rev = version;
-    sha256 = "1fllz2s20lg4hrppzmnlgjy9mrq7gaq66l2apb3vz1avzvsjw3gm";
+    sha256 = "sha256-hiOS0cTaPqllb31p+6nU4GYvw/E1Hdn8yd3sppzGkqg=";
   };
 
   propagatedBuildInputs = with python3Packages; [
-    dnspython
-    ecdsa
-    jsonrpclib-pelix
-    matplotlib
-    pbkdf2
+    # requirements
     pyaes
-    pycrypto
-    pyqt5
-    pysocks
-    qrcode
+    ecdsa
     requests
-    tlslite-ng
+    qrcode
+    protobuf
+    jsonrpclib-pelix
+    pysocks
     qdarkstyle
+    python-dateutil
     stem
+    certifi
+    pathvalidate
+    dnspython
 
-    # plugins
-    keepkey
+    # requirements-binaries
+    pyqt5
+    psutil
+    pycryptodomex
+    cryptography
+
+    # requirements-hw
+    cython
     trezor
+    keepkey
     btchip
+    hidapi
+    pyscard
+    pysatochip
   ];
 
   nativeBuildInputs = [ wrapQtAppsHook ];
@@ -48,7 +58,7 @@ python3Packages.buildPythonApplication rec {
 
   checkPhase = ''
     unset HOME
-    pytest lib/tests
+    pytest electroncash/tests
   '';
 
   postInstall = ''
@@ -83,7 +93,7 @@ python3Packages.buildPythonApplication rec {
     '';
     homepage = "https://www.electroncash.org/";
     platforms = platforms.linux;
-    maintainers = with maintainers; [ lassulus nyanloutre ];
+    maintainers = with maintainers; [ lassulus nyanloutre oxalica ];
     license = licenses.mit;
   };
 }

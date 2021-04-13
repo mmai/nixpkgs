@@ -66,9 +66,10 @@ in
       };
 
       plugins = mkOption {
+        type = types.functionTo (types.listOf types.package);
         default = plugins: [];
         defaultText = "plugins: []";
-        example = literalExample "plugins: with plugins; [ m33-fio stlviewer ]";
+        example = literalExample "plugins: with plugins; [ themeify stlviewer ]";
         description = "Additional plugins to be used. Available plugins are passed through the plugins input.";
       };
 

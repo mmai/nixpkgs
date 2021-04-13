@@ -3,12 +3,13 @@
 buildPecl {
   pname = "redis";
 
-  version = "5.1.1";
-  sha256 = "1041zv91fkda73w4c3pj6zdvwjgb3q7mxg6mwnq9gisl80mrs732";
+  version = "5.3.3";
+  sha256 = "sha256-N3iRYeFkzVIjmjDJojjaYf7FyDlc2sOFtu2PDFD9kvA=";
 
   internalDeps = with php.extensions; [
-    json
     session
+  ] ++ lib.optionals (lib.versionOlder php.version "8.0") [
+    json
   ] ++ lib.optionals (lib.versionOlder php.version "7.4") [
     hash
   ];

@@ -427,12 +427,12 @@ in
       wantedBy = [ "multi-user.target" ];
       restartTriggers = [ cfg.configFile modulesDir ];
 
+      startLimitIntervalSec = 60;  # 1 min
       serviceConfig = {
         ExecStart = "${dovecotPkg}/sbin/dovecot -F";
         ExecReload = "${dovecotPkg}/sbin/doveadm reload";
         Restart = "on-failure";
         RestartSec = "1s";
-        StartLimitInterval = "1min";
         RuntimeDirectory = [ "dovecot2" ];
       };
 
@@ -463,7 +463,7 @@ in
     environment.systemPackages = [ dovecotPkg ];
 
     warnings = mkIf (any isList options.services.dovecot2.mailboxes.definitions) [
-      "Declaring `services.dovecot2.mailboxes' as a list is deprecated and will break eval in 21.03! See the release notes for more info for migration."
+      "Declaring `services.dovecot2.mailboxes' as a list is deprecated and will break eval in 21.05! See the release notes for more info for migration."
     ];
 
     assertions = [

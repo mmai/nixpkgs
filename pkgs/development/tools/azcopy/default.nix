@@ -1,19 +1,19 @@
-{ stdenv, fetchFromGitHub, buildGoModule }:
+{ lib, fetchFromGitHub, buildGoModule }:
 
 buildGoModule rec {
   pname = "azure-storage-azcopy";
-  version = "10.6.0";
+  version = "10.9.0";
 
   src = fetchFromGitHub {
     owner = "Azure";
     repo = "azure-storage-azcopy";
     rev = "v${version}";
-    sha256 = "0izjnbldgf0597j4rh2ir9jsc2nzp9vwxcgllvkm5lh1xqf6i0nf";
+    sha256 = "sha256-IVbvBqp/7Y3La0pP6gbWl0ATfEvkCuR4J9ChTDPNhB0=";
   };
 
   subPackages = [ "." ];
 
-  vendorSha256 = "10sxkb2dh1il4ps15dlvq0xsry8hax27imb5qg3khdmjhb4yaj7k";
+  vendorSha256 = "sha256-mj1TvNuFFPJGAJCBTQtU5WWPhHbiXUxRiMZQ/XvEy0U=";
 
   doCheck = false;
 
@@ -21,7 +21,7 @@ buildGoModule rec {
     ln -rs "$out/bin/azure-storage-azcopy" "$out/bin/azcopy"
   '';
 
-  meta = with stdenv.lib; {
+  meta = with lib; {
     maintainers = with maintainers; [ colemickens ];
     license = licenses.mit;
     description = "The new Azure Storage data transfer utility - AzCopy v10";

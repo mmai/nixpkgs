@@ -3,33 +3,33 @@
 }:
 
 let
-  version = "4.31.0";
+  version = "4.37.0";
 
   src = fetchFromGitHub {
-    owner = "v2ray";
+    owner = "v2fly";
     repo = "v2ray-core";
     rev = "v${version}";
-    sha256 = "0s0blc05nrqm78qslv5xb42pjlx5v8qqwg0pwbzhxn9s71x2669m";
+    sha256 = "00bw91n7210gsnc7bw2spl6k1yl2i7d1j55w98qf4rvn80z9d59r";
   };
 
-  vendorSha256 = "0n2mf19fvgk5x0j2wwm4zk9xikzvl6cdvw26qar91wzcsraf5z2d";
+  vendorSha256 = "sha256-sc001qWdmhhaUh0nmvaqwwVE2Ee8IFWYi4K8aAURWBE=";
 
   assets = {
     # MIT licensed
     "geoip.dat" = let
-      geoipRev = "202009300006";
-      geoipSha256 = "1ss2izqlmrp5b5kpw804jk6c1nyimwlccbkikix3bwfaz4vlv1nc";
+      geoipRev = "202104010913";
+      geoipSha256 = "1kq6d68ii9hr2w0caxacqh5q8jran154b99aik4g7ripgx7lckpr";
     in fetchurl {
-      url = "https://github.com/v2ray/geoip/releases/download/${geoipRev}/geoip.dat";
+      url = "https://github.com/v2fly/geoip/releases/download/${geoipRev}/geoip.dat";
       sha256 = geoipSha256;
     };
 
     # MIT licensed
     "geosite.dat" = let
-      geositeRev = "20201010021828";
-      geositeSha256 = "0gpfhcf4iyx7ip7rlkb0l1q64w84zvmcah52qyjwljs6l4p3hrj9";
+      geositeRev = "20210403111045";
+      geositeSha256 = "1b64yci0dmvw9divfv3njpzczz2ag3cnvyr29c2mk8y85vp05ysc";
     in fetchurl {
-      url = "https://github.com/v2ray/domain-list-community/releases/download/${geositeRev}/dlc.dat";
+      url = "https://github.com/v2fly/domain-list-community/releases/download/${geositeRev}/dlc.dat";
       sha256 = geositeSha256;
     };
 
@@ -48,32 +48,33 @@ let
     doCheck = false;
 
     buildPhase = ''
+      buildFlagsArray=(-v -p $NIX_BUILD_CORES -ldflags="-s -w")
       runHook preBuild
-
-      go build -o v2ray v2ray.com/core/main
-      go build -o v2ctl v2ray.com/core/infra/control/main
-
+      go build "''${buildFlagsArray[@]}" -o v2ray ./main
+      go build "''${buildFlagsArray[@]}" -o v2ctl -tags confonly ./infra/control/main
       runHook postBuild
     '';
 
     installPhase = ''
       install -Dm755 v2ray v2ctl -t $out/bin
     '';
+
+    meta = {
+      homepage = "https://www.v2fly.org/en_US/";
+      description = "A platform for building proxies to bypass network restrictions";
+      license = with lib.licenses; [ mit ];
+      maintainers = with lib.maintainers; [ servalcatty ];
+    };
   };
 
 in runCommand "v2ray-${version}" {
-  inherit version;
+  inherit src version;
+  inherit (core) meta;
 
   nativeBuildInputs = [ makeWrapper ];
 
-  meta = {
-    homepage = "https://www.v2ray.com/en/index.html";
-    description = "A platform for building proxies to bypass network restrictions";
-    license = with lib.licenses; [ mit ];
-    maintainers = with lib.maintainers; [ servalcatty ];
-  };
-
   passthru = {
+    inherit core;
     updateScript = ./update.sh;
     tests = {
       simple-vmess-proxy-test = nixosTests.v2ray;
