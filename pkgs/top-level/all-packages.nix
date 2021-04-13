@@ -17753,6 +17753,7 @@ in
 
   waffle = callPackage ../development/libraries/waffle { };
 
+  wally = callPackage ../development/tools/wally { };
   wally-cli = callPackage ../development/tools/wally-cli { };
   zsa-udev-rules = callPackage ../os-specific/linux/zsa-udev-rules { };
 
